@@ -1,0 +1,46 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test and lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Packaging/build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# PyInstaller outputs
+*.exe
+*.msi
+*.app
+
+# IDE/editor files
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local artifacts
+screenshots/
+*.log
