@@ -2,6 +2,10 @@
 
 Desktop toolbox launcher built with Python and PySide6.
 
+## Screenshot
+
+![Toolbox screenshot](screenshots/one.png)
+
 ## Highlights
 
 - Multiple toolbox tabs with reorder/visibility management
