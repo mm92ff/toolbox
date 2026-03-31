@@ -2,9 +2,10 @@
 
 Desktop toolbox launcher built with Python and PySide6.
 
-## Screenshot
+## Screenshots
 
-![Toolbox screenshot](screenshots/one.png)
+![Toolbox screenshot 1](screenshots/one.png)
+![Toolbox screenshot 2](screenshots/two.png)
 
 ## Highlights
 
