@@ -48,6 +48,7 @@ class CanvasSurfaceRenderMixin:
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
+        ffmpeg_manual_path: str = "",
         thumbnail_cache_dir: Path | None = None,
     ) -> None:
         self.clear()
@@ -58,6 +59,7 @@ class CanvasSurfaceRenderMixin:
         self._image_file_preview_mode = image_file_preview_mode
         self._video_file_preview_enabled = video_file_preview_enabled
         self._hover_preview_enabled = hover_preview_enabled
+        self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
         self._thumbnail_cache_dir = thumbnail_cache_dir
         self._selected_entry_ids = set(selected_entry_ids)
         self._hidden_entry_ids = set(hidden_entry_ids)
@@ -114,6 +116,7 @@ class CanvasSurfaceRenderMixin:
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
+        ffmpeg_manual_path: str = "",
         thumbnail_cache_dir: Path | None = None,
     ) -> bool:
         self._entries = entries
@@ -122,6 +125,7 @@ class CanvasSurfaceRenderMixin:
         self._image_file_preview_mode = image_file_preview_mode
         self._video_file_preview_enabled = video_file_preview_enabled
         self._hover_preview_enabled = hover_preview_enabled
+        self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
         self._thumbnail_cache_dir = thumbnail_cache_dir
         previous_tool_cell_size = self._layout_engine.tool_cell_size()
         previous_segments = self._layout_engine.segment_ranges(self._entries)
@@ -244,6 +248,7 @@ class CanvasSurfaceRenderMixin:
                 self._layout_engine.icon_size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
+                manual_ffmpeg_path=self._ffmpeg_manual_path,
             )
             if pixmap is not None and not pixmap.isNull():
                 return QtGui.QIcon(pixmap)
@@ -284,6 +289,7 @@ class CanvasSurfaceRenderMixin:
                 size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
+                manual_ffmpeg_path=self._ffmpeg_manual_path,
             )
         if self._video_file_preview_enabled and is_supported_video_path(entry.path):
             return load_or_create_video_thumbnail(

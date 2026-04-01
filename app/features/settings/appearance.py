@@ -7,6 +7,15 @@ from __future__ import annotations
 from PySide6 import QtGui, QtWidgets
 
 from app import constants
+from app.services.video_thumbnails import (
+    FFMPEG_SOURCE_ENV,
+    FFMPEG_SOURCE_INTERNAL,
+    FFMPEG_SOURCE_MANUAL,
+    FFMPEG_SOURCE_NOT_FOUND,
+    FFMPEG_SOURCE_SYSTEM,
+    clear_ffmpeg_resolution_cache,
+    resolve_ffmpeg_path,
+)
 
 
 class MainWindowSettingsAppearanceMixin:
@@ -138,6 +147,58 @@ class MainWindowSettingsAppearanceMixin:
         image_preview_checkbox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX]
         image_preview_mode = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
         image_preview_mode.setEnabled(bool(image_preview_checkbox.isChecked()))
+
+    @staticmethod
+    def _ffmpeg_source_text(source: str) -> str:
+        normalized = (source or "").strip().lower()
+        if normalized == FFMPEG_SOURCE_ENV:
+            return "Environment override (TOOLBOX_FFMPEG_PATH)"
+        if normalized == FFMPEG_SOURCE_MANUAL:
+            return "Manual path (Settings)"
+        if normalized == FFMPEG_SOURCE_SYSTEM:
+            return "System installation (PATH/common locations)"
+        if normalized == FFMPEG_SOURCE_INTERNAL:
+            return "Bundled internal ffmpeg"
+        if normalized == FFMPEG_SOURCE_NOT_FOUND:
+            return "Not found"
+        return "Unknown"
+
+    def _update_ffmpeg_status_preview(self) -> None:
+        source_value = self.widgets.get(constants.WIDGET_FFMPEG_SOURCE_VALUE)
+        resolved_path_value = self.widgets.get(constants.WIDGET_FFMPEG_RESOLVED_PATH_VALUE)
+        manual_input = self.widgets.get(constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT)
+        if source_value is None or resolved_path_value is None or manual_input is None:
+            return
+
+        manual_path = self._normalize_ffmpeg_manual_path(manual_input.text())
+        resolution = resolve_ffmpeg_path(manual_path or None)
+        source_value.setText(self._ffmpeg_source_text(resolution.source))
+        resolved_path_value.setText(resolution.path or "(not found)")
+
+    def _on_ffmpeg_manual_path_changed(self) -> None:
+        manual_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
+        manual_input.setText(self._normalize_ffmpeg_manual_path(manual_input.text()))
+        clear_ffmpeg_resolution_cache()
+        self._update_ffmpeg_status_preview()
+        self._mark_settings_dirty()
+
+    def _choose_ffmpeg_manual_path(self) -> None:
+        manual_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
+        selected_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Select ffmpeg executable",
+            manual_input.text().strip(),
+            "Executable (ffmpeg.exe);;All files (*)",
+        )
+        if not selected_path:
+            return
+        manual_input.setText(selected_path)
+        self._on_ffmpeg_manual_path_changed()
+
+    def _rescan_ffmpeg_status(self) -> None:
+        clear_ffmpeg_resolution_cache()
+        self._update_ffmpeg_status_preview()
+        self.status.showMessage("FFmpeg detection refreshed.", 2000)
 
     def _on_layout_settings_changed(self) -> None:
         self._update_settings_value_labels()

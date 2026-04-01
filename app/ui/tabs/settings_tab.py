@@ -12,6 +12,7 @@ from app.ui.tabs.settings_tab_sections import (
     build_appearance_group,
     build_apply_row,
     build_backup_group,
+    build_ffmpeg_group,
     build_grid_group,
     build_maintenance_group,
     build_section_colors_group,
@@ -40,6 +41,7 @@ def create_settings_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidge
     scroll_area.setWidget(content_widget)
 
     layout.addWidget(build_appearance_group(widgets))
+    layout.addWidget(build_ffmpeg_group(widgets))
     layout.addWidget(build_grid_group(widgets))
     layout.addWidget(build_section_separator_group(widgets))
     layout.addWidget(build_section_colors_group(widgets))
@@ -49,4 +51,3 @@ def create_settings_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidge
     layout.addLayout(build_apply_row(widgets))
     layout.addStretch(1)
     return tab, widgets
-

@@ -32,9 +32,11 @@ class MainWindowSettingsApplyMixin:
         frame_color_input = self.widgets[constants.WIDGET_TILE_FRAME_COLOR_INPUT]
         highlight_color_input = self.widgets[constants.WIDGET_TILE_HIGHLIGHT_COLOR_INPUT]
         section_color_input = self.widgets[constants.WIDGET_SECTION_LINE_COLOR_INPUT]
+        ffmpeg_manual_path_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
         frame_color_input.setText(str(pending_values["tile_frame_color"]))
         highlight_color_input.setText(str(pending_values["tile_highlight_color"]))
         section_color_input.setText(str(pending_values["section_line_color"]))
+        ffmpeg_manual_path_input.setText(str(pending_values["ffmpeg_manual_path"]))
 
         tab_settings_changed = self._apply_tab_manager_state_from_ui(
             preferred_key=self._selected_tab_manager_key(), rebuild_ui=True
@@ -43,6 +45,7 @@ class MainWindowSettingsApplyMixin:
         if tab_settings_changed:
             self.persist_toolbox_state()
         self.refresh_all_canvases(apply_layout_only=True)
+        self._update_ffmpeg_status_preview()
         self._save_settings()
         self._clear_settings_dirty()
         self.status.showMessage("Settings saved and applied.", 3000)

@@ -26,6 +26,8 @@ Desktop toolbox launcher built with Python and PySide6.
 - Tool launch options (args, working dir, wait mode, admin)
 - Image-file thumbnail previews with `Fit` / `Fill and crop`
 - Video-file thumbnail previews (ffmpeg-based)
+- FFmpeg source detection with status display in Settings (env/manual/system/internal)
+- Manual FFmpeg path field in Settings (with browse + rescan)
 - Hover-enlarged media preview (optional, configurable in Settings)
 - Persistent thumbnail cache with pre-generated `normal` + `HQ` variants
 - Broken-entry diagnostics and optional cleanup
@@ -73,11 +75,20 @@ pytest -q
 
 - Runtime lookup order:
   - `TOOLBOX_FFMPEG_PATH`
-  - bundled binaries next to the executable / `_MEIPASS`
+  - manual path from Settings
   - system `PATH`
+  - common Windows install locations
+  - bundled binaries next to the executable / `_MEIPASS`
 - PyInstaller spec supports optional ffmpeg/ffprobe bundling:
   - `TOOLBOX_FFMPEG_BINARY`
   - `TOOLBOX_FFPROBE_BINARY`
+- In Settings, the FFmpeg section shows the currently detected source and resolved executable path.
+
+## Third-Party Licensing
+
+- This project can distribute FFmpeg/FFprobe binaries for video preview support.
+- If FFmpeg is bundled with your release, you must comply with FFmpeg/GPL obligations for that binary build.
+- See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for source references and legal links used by this project.
 
 ## Project Layout
 

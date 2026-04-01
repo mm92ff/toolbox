@@ -103,6 +103,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
+        ffmpeg_manual_path: str = "",
     ) -> None:
         self._hover_preview_enabled = bool(hover_preview_enabled)
         self._hide_hover_preview()
@@ -130,6 +131,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             image_file_preview_mode=image_file_preview_mode,
             video_file_preview_enabled=video_file_preview_enabled,
             hover_preview_enabled=self._hover_preview_enabled,
+            ffmpeg_manual_path=ffmpeg_manual_path,
             thumbnail_cache_dir=self._thumbnail_cache_dir,
         )
 
@@ -154,6 +156,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
+        ffmpeg_manual_path: str = "",
     ) -> bool:
         self._hover_preview_enabled = bool(hover_preview_enabled)
         self._hide_hover_preview()
@@ -177,6 +180,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             image_file_preview_mode=image_file_preview_mode,
             video_file_preview_enabled=video_file_preview_enabled,
             hover_preview_enabled=self._hover_preview_enabled,
+            ffmpeg_manual_path=ffmpeg_manual_path,
             thumbnail_cache_dir=self._thumbnail_cache_dir,
         )
 

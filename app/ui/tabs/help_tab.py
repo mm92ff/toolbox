@@ -150,6 +150,8 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 ),
                 "Image preview thumbnails and video preview thumbnails (ffmpeg) can be enabled independently.",
                 "Preview mode supports Fit (full image) and Fill (crop).",
+                "The Settings tab includes an FFmpeg section showing source/status and the resolved executable path.",
+                "You can set a manual ffmpeg.exe path there and use Rescan to refresh detection.",
                 "Optional hover preview can show larger image/video thumbnails on mouse-over.",
                 "Changes in the Settings tab become active only after 'Save & Apply'.",
                 "UI settings are also stored as JSON in the config folder (ui_settings.json).",

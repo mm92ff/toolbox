@@ -40,6 +40,7 @@ class MainWindowSettingsStateMixin:
         self._applied_image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
         self._applied_video_file_preview_enabled = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
         self._applied_hover_preview_enabled = constants.DEFAULT_HOVER_PREVIEW_ENABLED
+        self._applied_ffmpeg_manual_path = ""
         self._applied_tile_frame_thickness = constants.DEFAULT_TILE_FRAME_THICKNESS
         self._applied_tile_frame_color = constants.DEFAULT_TILE_FRAME_COLOR
         self._applied_tile_highlight_color = constants.DEFAULT_TILE_HIGHLIGHT_COLOR
@@ -60,6 +61,7 @@ class MainWindowSettingsStateMixin:
         image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
         video_preview_checkbox = self.widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX]
         hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
+        ffmpeg_manual_path_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
         frame_thickness_slider = self.widgets[constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER]
         frame_color_input = self.widgets[constants.WIDGET_TILE_FRAME_COLOR_INPUT]
         highlight_color_input = self.widgets[constants.WIDGET_TILE_HIGHLIGHT_COLOR_INPUT]
@@ -88,6 +90,9 @@ class MainWindowSettingsStateMixin:
             ),
             "video_file_preview_enabled": bool(video_preview_checkbox.isChecked()),
             "hover_preview_enabled": bool(hover_preview_checkbox.isChecked()),
+            "ffmpeg_manual_path": self._normalize_ffmpeg_manual_path(
+                ffmpeg_manual_path_input.text()
+            ),
             "tile_frame_thickness": int(frame_thickness_slider.value()),
             "tile_frame_color": self._normalize_tile_frame_color(frame_color_input.text()),
             "tile_highlight_color": self._normalize_tile_highlight_color(
@@ -142,6 +147,9 @@ class MainWindowSettingsStateMixin:
         )
         self._applied_hover_preview_enabled = bool(
             values.get("hover_preview_enabled", constants.DEFAULT_HOVER_PREVIEW_ENABLED)
+        )
+        self._applied_ffmpeg_manual_path = self._normalize_ffmpeg_manual_path(
+            str(values.get("ffmpeg_manual_path", ""))
         )
         self._applied_tile_frame_thickness = self._coerce_int(
             values.get("tile_frame_thickness"),
@@ -214,6 +222,9 @@ class MainWindowSettingsStateMixin:
     def current_tile_highlight_color(self) -> str:
         return str(self._applied_tile_highlight_color)
 
+    def current_ffmpeg_manual_path(self) -> str:
+        return str(self._applied_ffmpeg_manual_path)
+
     def current_grid_spacing_x(self) -> int:
         return int(self._applied_grid_spacing_x)
 
@@ -268,6 +279,10 @@ class MainWindowSettingsStateMixin:
         if mode == constants.IMAGE_PREVIEW_MODE_FILL:
             return constants.IMAGE_PREVIEW_MODE_FILL
         return constants.IMAGE_PREVIEW_MODE_FIT
+
+    @staticmethod
+    def _normalize_ffmpeg_manual_path(value: str) -> str:
+        return (value or "").strip().strip('"')
 
     def _default_tile_frame_color(self) -> str:
         return self.palette().color(QtGui.QPalette.ColorRole.Mid).name()

@@ -169,6 +169,53 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     return appearance_group
 
 
+def build_ffmpeg_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGroupBox:
+    ffmpeg_group = QtWidgets.QGroupBox("FFmpeg")
+    ffmpeg_layout = QtWidgets.QGridLayout(ffmpeg_group)
+    ffmpeg_layout.setColumnStretch(1, 1)
+
+    ffmpeg_layout.addWidget(QtWidgets.QLabel("Detected Source:"), 0, 0)
+    source_value = QtWidgets.QLabel("Detecting...")
+    source_value.setObjectName(constants.WIDGET_FFMPEG_SOURCE_VALUE)
+    source_value.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+    widgets[constants.WIDGET_FFMPEG_SOURCE_VALUE] = source_value
+    ffmpeg_layout.addWidget(source_value, 0, 1, 1, 2)
+
+    ffmpeg_layout.addWidget(QtWidgets.QLabel("Resolved Path:"), 1, 0)
+    resolved_path_value = QtWidgets.QLineEdit()
+    resolved_path_value.setObjectName(constants.WIDGET_FFMPEG_RESOLVED_PATH_VALUE)
+    resolved_path_value.setReadOnly(True)
+    widgets[constants.WIDGET_FFMPEG_RESOLVED_PATH_VALUE] = resolved_path_value
+    ffmpeg_layout.addWidget(resolved_path_value, 1, 1, 1, 2)
+
+    ffmpeg_layout.addWidget(QtWidgets.QLabel("Manual Path:"), 2, 0)
+    manual_path_row = QtWidgets.QHBoxLayout()
+    manual_path_input = QtWidgets.QLineEdit()
+    manual_path_input.setObjectName(constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT)
+    manual_path_input.setPlaceholderText(r"Optional: C:\...\ffmpeg.exe")
+    widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT] = manual_path_input
+    manual_path_row.addWidget(manual_path_input, 1)
+
+    manual_path_button = QtWidgets.QPushButton("Browse")
+    manual_path_button.setObjectName(constants.WIDGET_FFMPEG_MANUAL_PATH_BUTTON)
+    widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_BUTTON] = manual_path_button
+    manual_path_row.addWidget(manual_path_button)
+
+    rescan_button = QtWidgets.QPushButton("Rescan")
+    rescan_button.setObjectName(constants.WIDGET_FFMPEG_RESCAN_BUTTON)
+    widgets[constants.WIDGET_FFMPEG_RESCAN_BUTTON] = rescan_button
+    manual_path_row.addWidget(rescan_button)
+    ffmpeg_layout.addLayout(manual_path_row, 2, 1, 1, 2)
+
+    ffmpeg_hint = QtWidgets.QLabel(
+        "Detection order: environment override (TOOLBOX_FFMPEG_PATH), manual path, "
+        "system install (PATH/common locations), then bundled internal ffmpeg."
+    )
+    ffmpeg_hint.setWordWrap(True)
+    ffmpeg_layout.addWidget(ffmpeg_hint, 3, 0, 1, 3)
+    return ffmpeg_group
+
+
 def build_grid_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGroupBox:
     grid_group = QtWidgets.QGroupBox("Grid")
     grid_layout = QtWidgets.QGridLayout(grid_group)
@@ -580,4 +627,3 @@ def build_apply_row(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QHBoxLay
     widgets[constants.BUTTON_APPLY_SETTINGS] = apply_settings_button
     apply_row.addWidget(apply_settings_button)
     return apply_row
-

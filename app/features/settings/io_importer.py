@@ -95,6 +95,12 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
             ),
         )
         settings.setValue(
+            "layout/ffmpeg_manual_path",
+            owner._normalize_ffmpeg_manual_path(
+                str(layout_settings.get("ffmpeg_manual_path", ""))
+            ),
+        )
+        settings.setValue(
             "layout/tile_frame_thickness",
             owner._coerce_int(
                 layout_settings.get("tile_frame_thickness"),
@@ -196,4 +202,3 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
                 settings.setValue(f"toolbox/{tab_id}/splitter_sizes", normalized_sizes)
 
     settings.sync()
-

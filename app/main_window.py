@@ -113,6 +113,12 @@ class MainWindow(
         video_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
         hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
         hover_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
+        ffmpeg_manual_path_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
+        ffmpeg_manual_path_input.editingFinished.connect(self._on_ffmpeg_manual_path_changed)
+        ffmpeg_manual_path_button = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_BUTTON]
+        ffmpeg_manual_path_button.clicked.connect(self._choose_ffmpeg_manual_path)
+        ffmpeg_rescan_button = self.widgets[constants.WIDGET_FFMPEG_RESCAN_BUTTON]
+        ffmpeg_rescan_button.clicked.connect(self._rescan_ffmpeg_status)
 
         auto_compact_left_checkbox = self.widgets[constants.WIDGET_AUTO_COMPACT_LEFT_CHECKBOX]
         auto_compact_left_checkbox.toggled.connect(self._on_layout_settings_changed)
@@ -290,6 +296,7 @@ class MainWindow(
             self._update_window_minimum_width(ctx)
         elif self.tab_widget.widget(index) is self.settings_tab:
             self._refresh_section_color_manager()
+            self._update_ffmpeg_status_preview()
         self._last_tab_index = index
         self._save_settings()
 

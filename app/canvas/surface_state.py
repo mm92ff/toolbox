@@ -27,6 +27,7 @@ class CanvasSurfaceStateMixin:
         self._image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
         self._video_file_preview_enabled = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
         self._hover_preview_enabled = constants.DEFAULT_HOVER_PREVIEW_ENABLED
+        self._ffmpeg_manual_path = ""
         self._thumbnail_cache_dir: Path | None = None
         self._selected_entry_ids: set[str] = set()
         self._hidden_entry_ids: set[str] = set()

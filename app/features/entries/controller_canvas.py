@@ -44,6 +44,7 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
         image_file_preview_mode=owner.current_image_file_preview_mode(),
         video_file_preview_enabled=owner.current_video_file_preview_enabled(),
         hover_preview_enabled=owner.current_hover_preview_enabled(),
+        ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
     )
     update_details(owner, ctx)
     update_action_buttons(ctx)
@@ -74,6 +75,7 @@ def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None
                 image_file_preview_mode=owner.current_image_file_preview_mode(),
                 video_file_preview_enabled=owner.current_video_file_preview_enabled(),
                 hover_preview_enabled=owner.current_hover_preview_enabled(),
+                ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
             )
             if reflow_changed:
                 layout_reflow_changed_entries = True
@@ -104,4 +106,3 @@ def open_config_directory(owner: object) -> None:
         owner.status.showMessage(f"Config folder opened: {owner.config_dir}", 3000)
     else:
         QtWidgets.QMessageBox.warning(owner, "Error", f"Could not open folder:\n{owner.config_dir}")
-

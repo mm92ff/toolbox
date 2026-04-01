@@ -6,7 +6,16 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Added
+
+- `THIRD_PARTY_NOTICES.md` with FFmpeg/FFprobe licensing, provenance, and source-reference guidance for distributed binaries
+- New FFmpeg section in Settings with detected source/status, resolved path display, manual path input, browse, and rescan controls
+- Windows common-location FFmpeg discovery (Program Files, Chocolatey, Scoop, WinGet package folders)
+
+### Changed
+
+- README now includes a dedicated third-party licensing section pointing to FFmpeg compliance notes
+- FFmpeg resolution order is now: environment override -> manual Settings path -> local/system install (PATH/common locations) -> bundled internal fallback
 
 ## [0.42-beta] - 2026-04-01
 

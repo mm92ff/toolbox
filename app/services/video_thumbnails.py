@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from functools import lru_cache
 import hashlib
 import os
 import shutil
@@ -19,6 +21,18 @@ from app import constants
 _CACHE_VARIANT_NORMAL = "normal"
 _CACHE_VARIANT_HQ = "hq"
 
+FFMPEG_SOURCE_ENV = "env"
+FFMPEG_SOURCE_MANUAL = "manual"
+FFMPEG_SOURCE_SYSTEM = "system"
+FFMPEG_SOURCE_INTERNAL = "internal"
+FFMPEG_SOURCE_NOT_FOUND = "none"
+
+
+@dataclass(frozen=True)
+class FfmpegResolution:
+    path: str | None
+    source: str = FFMPEG_SOURCE_NOT_FOUND
+
 
 def is_supported_video_path(path: str) -> bool:
     suffix = Path(path).suffix.lower()
@@ -31,6 +45,7 @@ def load_or_create_video_thumbnail(
     mode: str,
     cache_dir: Path | None,
     capture_seconds: float = constants.VIDEO_PREVIEW_CAPTURE_SECONDS,
+    manual_ffmpeg_path: str | None = None,
 ) -> QtGui.QPixmap | None:
     source = Path(source_path)
     if not source.exists() or not source.is_file():
@@ -51,7 +66,7 @@ def load_or_create_video_thumbnail(
         if not cached.isNull():
             return cached
 
-    ffmpeg_path = _find_ffmpeg_path()
+    ffmpeg_path = _find_ffmpeg_path(manual_ffmpeg_path)
     if not ffmpeg_path:
         return None
 
@@ -145,18 +160,131 @@ def _extract_video_frame(source: Path, ffmpeg_path: str, capture_seconds: float)
         return pixmap
 
 
-def _find_ffmpeg_path() -> str | None:
-    env_override = (os.environ.get("TOOLBOX_FFMPEG_PATH") or "").strip()
-    if env_override:
-        override_path = Path(env_override)
-        if override_path.is_file():
-            return str(override_path)
+def clear_ffmpeg_resolution_cache() -> None:
+    _resolve_ffmpeg_path_cached.cache_clear()
+
+
+def resolve_ffmpeg_path(manual_ffmpeg_path: str | None = None) -> FfmpegResolution:
+    normalized_manual = _normalize_candidate_path(manual_ffmpeg_path)
+    normalized_env_override = _normalize_candidate_path(os.environ.get("TOOLBOX_FFMPEG_PATH"))
+    return _resolve_ffmpeg_path_cached(normalized_manual, normalized_env_override)
+
+
+@lru_cache(maxsize=32)
+def _resolve_ffmpeg_path_cached(
+    normalized_manual_path: str,
+    normalized_env_override: str,
+) -> FfmpegResolution:
+    env_candidate = _candidate_file(normalized_env_override)
+    if env_candidate is not None:
+        return FfmpegResolution(env_candidate, FFMPEG_SOURCE_ENV)
+
+    manual_candidate = _candidate_file(normalized_manual_path)
+    if manual_candidate is not None:
+        return FfmpegResolution(manual_candidate, FFMPEG_SOURCE_MANUAL)
+
+    system_path = shutil.which("ffmpeg")
+    system_candidate = _candidate_file(system_path)
+    if system_candidate is not None:
+        return FfmpegResolution(system_candidate, FFMPEG_SOURCE_SYSTEM)
+
+    for candidate in _common_windows_ffmpeg_candidates():
+        common_candidate = _candidate_file(candidate)
+        if common_candidate is not None:
+            return FfmpegResolution(common_candidate, FFMPEG_SOURCE_SYSTEM)
 
     for candidate in _bundled_ffmpeg_candidates():
         if candidate.is_file():
-            return str(candidate)
+            return FfmpegResolution(str(candidate), FFMPEG_SOURCE_INTERNAL)
 
-    return shutil.which("ffmpeg")
+    return FfmpegResolution(None, FFMPEG_SOURCE_NOT_FOUND)
+
+
+def _normalize_candidate_path(value: str | None) -> str:
+    text = (value or "").strip().strip('"')
+    if not text:
+        return ""
+    try:
+        return str(Path(text).expanduser().resolve(strict=False))
+    except OSError:
+        return str(Path(text).expanduser())
+
+
+def _candidate_file(value: str | os.PathLike[str] | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        candidate = Path(text).expanduser().resolve(strict=False)
+    except OSError:
+        return None
+    if candidate.is_file():
+        return str(candidate)
+    return None
+
+
+def _find_ffmpeg_path(manual_ffmpeg_path: str | None = None) -> str | None:
+    return resolve_ffmpeg_path(manual_ffmpeg_path).path
+
+
+def _common_windows_ffmpeg_candidates() -> list[Path]:
+    if os.name != "nt":
+        return []
+    candidates: list[Path] = []
+    binary_name = "ffmpeg.exe"
+
+    program_files = os.environ.get("ProgramFiles", "").strip()
+    if program_files:
+        base = Path(program_files)
+        candidates.append(base / "ffmpeg" / "bin" / binary_name)
+        candidates.append(base / "FFmpeg" / "bin" / binary_name)
+
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", "").strip()
+    if program_files_x86:
+        base = Path(program_files_x86)
+        candidates.append(base / "ffmpeg" / "bin" / binary_name)
+        candidates.append(base / "FFmpeg" / "bin" / binary_name)
+
+    chocolatey_base = os.environ.get("ChocolateyInstall", r"C:\ProgramData\chocolatey").strip()
+    if chocolatey_base:
+        base = Path(chocolatey_base)
+        candidates.append(base / "bin" / binary_name)
+        candidates.append(base / "lib" / "ffmpeg" / "tools" / "ffmpeg" / "bin" / binary_name)
+
+    user_profile = os.environ.get("USERPROFILE", "").strip()
+    if user_profile:
+        candidates.append(Path(user_profile) / "scoop" / "apps" / "ffmpeg" / "current" / "bin" / binary_name)
+
+    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_app_data:
+        winget_root = Path(local_app_data) / "Microsoft" / "WinGet" / "Packages"
+        winget_patterns = (
+            "*FFmpeg*_*",
+            "*ffmpeg*_*",
+        )
+        for pattern in winget_patterns:
+            for package_dir in winget_root.glob(pattern):
+                if not package_dir.is_dir():
+                    continue
+                try:
+                    package_children = list(package_dir.iterdir())
+                except OSError:
+                    continue
+                for inner in package_children:
+                    if inner.is_dir():
+                        candidates.append(inner / "bin" / binary_name)
+
+    deduped: list[Path] = []
+    seen: set[str] = set()
+    for path in candidates:
+        key = str(path).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(path)
+    return deduped
 
 
 def _bundled_ffmpeg_candidates() -> list[Path]:

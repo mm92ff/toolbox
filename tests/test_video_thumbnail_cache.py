@@ -16,6 +16,7 @@ def _ensure_app() -> QtWidgets.QApplication:
 
 def test_video_thumbnail_cache_hit_without_ffmpeg(monkeypatch) -> None:
     _ensure_app()
+    video_thumbnails.clear_ffmpeg_resolution_cache()
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
         source = base / "clip.mp4"
@@ -46,12 +47,13 @@ def test_video_thumbnail_cache_hit_without_ffmpeg(monkeypatch) -> None:
 
 def test_video_thumbnail_returns_none_without_ffmpeg_or_cache(monkeypatch) -> None:
     _ensure_app()
+    video_thumbnails.clear_ffmpeg_resolution_cache()
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
         source = base / "clip.mp4"
         source.write_bytes(b"dummy")
 
-        monkeypatch.setattr(video_thumbnails, "_find_ffmpeg_path", lambda: None)
+        monkeypatch.setattr(video_thumbnails, "_find_ffmpeg_path", lambda _manual_path=None: None)
         result = video_thumbnails.load_or_create_video_thumbnail(
             str(source),
             64,
@@ -63,6 +65,7 @@ def test_video_thumbnail_returns_none_without_ffmpeg_or_cache(monkeypatch) -> No
 
 def test_video_thumbnail_generates_normal_and_hq_cache_variants(monkeypatch) -> None:
     _ensure_app()
+    video_thumbnails.clear_ffmpeg_resolution_cache()
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
         source = base / "clip.mp4"
@@ -77,7 +80,11 @@ def test_video_thumbnail_generates_normal_and_hq_cache_variants(monkeypatch) -> 
             pixmap.fill(QtGui.QColor("#446688"))
             return pixmap
 
-        monkeypatch.setattr(video_thumbnails, "_find_ffmpeg_path", lambda: "ffmpeg")
+        monkeypatch.setattr(
+            video_thumbnails,
+            "_find_ffmpeg_path",
+            lambda _manual_path=None: "ffmpeg",
+        )
         monkeypatch.setattr(video_thumbnails, "_extract_video_frame", _fake_extract)
 
         result = video_thumbnails.load_or_create_video_thumbnail(
@@ -93,3 +100,33 @@ def test_video_thumbnail_generates_normal_and_hq_cache_variants(monkeypatch) -> 
 
         cache_files = list(cache_dir.glob("*.png"))
         assert len(cache_files) == 2
+
+
+def test_resolve_ffmpeg_prefers_manual_then_system_then_internal(monkeypatch) -> None:
+    video_thumbnails.clear_ffmpeg_resolution_cache()
+    monkeypatch.setattr(video_thumbnails.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(video_thumbnails, "_common_windows_ffmpeg_candidates", lambda: [])
+    monkeypatch.setattr(video_thumbnails, "_bundled_ffmpeg_candidates", lambda: [])
+
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        manual = base / "manual_ffmpeg.exe"
+        manual.write_bytes(b"binary")
+        resolution = video_thumbnails.resolve_ffmpeg_path(str(manual))
+        assert resolution.path == str(manual.resolve())
+        assert resolution.source == video_thumbnails.FFMPEG_SOURCE_MANUAL
+
+
+def test_resolve_ffmpeg_uses_internal_fallback_when_local_missing(monkeypatch) -> None:
+    video_thumbnails.clear_ffmpeg_resolution_cache()
+    monkeypatch.setattr(video_thumbnails.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(video_thumbnails, "_common_windows_ffmpeg_candidates", lambda: [])
+
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        internal = base / "ffmpeg.exe"
+        internal.write_bytes(b"binary")
+        monkeypatch.setattr(video_thumbnails, "_bundled_ffmpeg_candidates", lambda: [internal])
+        resolution = video_thumbnails.resolve_ffmpeg_path("")
+        assert resolution.path == str(internal)
+        assert resolution.source == video_thumbnails.FFMPEG_SOURCE_INTERNAL

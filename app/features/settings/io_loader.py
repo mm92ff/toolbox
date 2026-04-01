@@ -120,6 +120,15 @@ def load_settings(owner: object) -> None:
     )
     hover_preview_checkbox.blockSignals(False)
 
+    ffmpeg_manual_path_input = owner.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
+    ffmpeg_manual_path_input.blockSignals(True)
+    ffmpeg_manual_path_input.setText(
+        owner._normalize_ffmpeg_manual_path(
+            settings.value("layout/ffmpeg_manual_path", "", type=str)
+        )
+    )
+    ffmpeg_manual_path_input.blockSignals(False)
+
     auto_compact_left_checkbox = owner.widgets[constants.WIDGET_AUTO_COMPACT_LEFT_CHECKBOX]
     auto_compact_left_checkbox.blockSignals(True)
     auto_compact_left_checkbox.setChecked(
@@ -175,6 +184,7 @@ def load_settings(owner: object) -> None:
     owner._update_tile_style_controls_enabled()
     owner._update_tile_color_previews()
     owner._update_section_color_preview()
+    owner._update_ffmpeg_status_preview()
 
     for ctx in owner.toolbox_tabs:
         top_sizes = settings.value(f"toolbox/{ctx.tab_id}/splitter_sizes")
@@ -215,4 +225,3 @@ def load_settings(owner: object) -> None:
     owner._set_applied_settings(owner._capture_pending_settings_from_widgets())
     owner._refresh_section_color_manager(preserve_selection=False)
     owner._clear_settings_dirty()
-
