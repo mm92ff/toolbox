@@ -248,7 +248,6 @@ class CanvasSurfaceRenderMixin:
                 self._layout_engine.icon_size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
-                manual_ffmpeg_path=self._ffmpeg_manual_path,
             )
             if pixmap is not None and not pixmap.isNull():
                 return QtGui.QIcon(pixmap)
@@ -258,6 +257,7 @@ class CanvasSurfaceRenderMixin:
                 self._layout_engine.icon_size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
+                manual_ffmpeg_path=self._ffmpeg_manual_path,
             )
             if pixmap is not None and not pixmap.isNull():
                 return QtGui.QIcon(pixmap)
@@ -289,7 +289,6 @@ class CanvasSurfaceRenderMixin:
                 size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
-                manual_ffmpeg_path=self._ffmpeg_manual_path,
             )
         if self._video_file_preview_enabled and is_supported_video_path(entry.path):
             return load_or_create_video_thumbnail(
@@ -297,6 +296,7 @@ class CanvasSurfaceRenderMixin:
                 size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
+                manual_ffmpeg_path=self._ffmpeg_manual_path,
             )
         return None
 
