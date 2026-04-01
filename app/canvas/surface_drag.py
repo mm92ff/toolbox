@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from bisect import bisect_right
+
 from PySide6 import QtCore
 
 from app import constants
@@ -92,10 +94,18 @@ class CanvasSurfaceDragMixin:
                     self.entry_moved.emit(entry.entry_id, entry.x, entry.y)
                 return
 
+            drop_x = x
+            drop_y = y
+            if hasattr(widget, "last_release_parent_pos"):
+                release_pos = widget.last_release_parent_pos()
+                if release_pos != QtCore.QPoint(-1, -1):
+                    drop_x = release_pos.x()
+                    drop_y = release_pos.y()
+
             other_entries = [item for item in self._entries if item.entry_id != entry.entry_id]
-            preferred_segment_index = self._layout_engine.segment_index_for_y(other_entries, y)
+            preferred_segment_index = self._layout_engine.segment_index_for_y(other_entries, drop_y)
             _, snapped_y = self._layout_engine.snap_tool_position(
-                self._entries, x, y, exclude_entry_id=entry.entry_id
+                self._entries, drop_x, drop_y, exclude_entry_id=entry.entry_id
             )
             resolved_segment_index = self._layout_engine.segment_index_for_y(
                 other_entries, snapped_y
@@ -103,18 +113,24 @@ class CanvasSurfaceDragMixin:
 
             if resolved_segment_index > preferred_segment_index:
                 insertion_y, _, _ = self._layout_engine.insertion_row_y(
-                    other_entries, y, below=True
+                    other_entries, drop_y, below=True
                 )
                 self._insert_tool_row_at_y(insertion_y, exclude_entry_id=entry.entry_id)
+                other_entries = [item for item in self._entries if item.entry_id != entry.entry_id]
 
-            insertion_y, _, _ = self._layout_engine.insertion_row_y(other_entries, y, below=False)
-            # Keep dropped X as ordering hint.
-            # Compaction still snaps final positions to the grid.
-            entry.x = max(constants.CANVAS_PADDING, x)
-            entry.y = insertion_y
+            insertion_y, _, _ = self._layout_engine.insertion_row_y(
+                other_entries, drop_y, below=False
+            )
+            self._insert_tool_into_row(
+                other_entries=other_entries,
+                moving_entry=entry,
+                row_y=insertion_y,
+                drop_x=drop_x,
+                drop_y=drop_y,
+            )
             widget.move(entry.x, entry.y)
             widget.lower()
-            self._apply_geometry(compact_tools=self._auto_compact_left)
+            self._apply_geometry(compact_tools=False)
         else:
             entry.x = constants.CANVAS_PADDING
             entry.y = self._layout_engine.snap_section_position(
@@ -131,6 +147,50 @@ class CanvasSurfaceDragMixin:
         self._update_canvas_size()
         if emit_signal:
             self.entry_moved.emit(entry.entry_id, entry.x, entry.y)
+
+    def _insert_tool_into_row(
+        self,
+        other_entries: list[ToolboxEntry],
+        moving_entry: ToolboxEntry,
+        row_y: int,
+        drop_x: int,
+        drop_y: int,
+    ) -> None:
+        cell_w, cell_h = self._layout_engine.tool_cell_size()
+        cell_w = max(1, cell_w)
+        cell_h = max(1, cell_h)
+        segments = self._layout_engine.segment_ranges(other_entries)
+        target_segment_index = self._layout_engine.segment_index_for_y(other_entries, drop_y)
+        if not segments:
+            moving_entry.x = constants.CANVAS_PADDING
+            moving_entry.y = row_y
+            return
+
+        target_segment_index = max(0, min(target_segment_index, len(segments) - 1))
+        segment_start, _segment_end = segments[target_segment_index]
+        target_row_index = max(0, round((row_y - segment_start) / cell_h))
+
+        row_tools = []
+        for item in other_entries:
+            if not item.is_tool:
+                continue
+            item_segment_index = self._layout_engine.segment_index_for_y(other_entries, item.y)
+            if item_segment_index != target_segment_index:
+                continue
+            item_row_index = max(0, round((item.y - segment_start) / cell_h))
+            if item_row_index == target_row_index:
+                row_tools.append(item)
+
+        row_tools.sort(key=lambda item: (item.x, item.title.lower()))
+        centers = [item.x + (cell_w // 2) for item in row_tools]
+        insert_index = bisect_right(centers, drop_x)
+
+        ordered_row = list(row_tools)
+        ordered_row.insert(insert_index, moving_entry)
+
+        for col_index, item in enumerate(ordered_row):
+            item.x = constants.CANVAS_PADDING + (col_index * cell_w)
+            item.y = row_y
 
     def _on_widget_move_live(self, entry_id: str) -> None:
         if len(self._selected_entry_ids) <= 1 or entry_id not in self._selected_entry_ids:

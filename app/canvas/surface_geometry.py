@@ -154,13 +154,53 @@ class CanvasSurfaceGeometryMixin:
     def _resolve_section_protection_conflicts(self) -> bool:
         return resolve_section_protection_conflicts(self._entries, self._layout_engine)
 
+    def _resolve_tool_overlap_conflicts(self) -> bool:
+        """Resolve tool-vs-tool overlaps by remapping to nearest free grid cells."""
+        tools = [entry for entry in self._entries if entry.is_tool]
+        if len(tools) < 2:
+            return False
+
+        section_bands = self._layout_engine.section_bands(self._entries)
+        tools.sort(
+            key=lambda item: (
+                self._layout_engine.segment_index_for_y(self._entries, item.y),
+                item.y,
+                item.x,
+                item.title.lower(),
+            )
+        )
+
+        occupied_rects: list[QtCore.QRect] = []
+        changed = False
+        for entry in tools:
+            target_col, _ = self._layout_engine.tool_cell_from_position(entry.x, entry.y)
+            snapped_x, snapped_y = self._layout_engine.find_nearest_free_cell(
+                target_col,
+                entry.y,
+                occupied_rects,
+                section_bands,
+            )
+            if snapped_x != entry.x or snapped_y != entry.y:
+                entry.x = snapped_x
+                entry.y = snapped_y
+                changed = True
+            occupied_rects.append(self._layout_engine.tool_rect_at(entry.x, entry.y))
+        return changed
+
     def _update_canvas_size(self) -> None:
         max_right = self._layout_engine.content_width() + (2 * constants.CANVAS_PADDING)
         max_bottom = 420
-        for widget in self._widgets.values():
-            if not widget.isVisible():
+        for entry in self._entries:
+            if entry.entry_id in self._hidden_entry_ids:
                 continue
-            max_right = max(max_right, widget.geometry().right() + constants.CANVAS_PADDING)
-            max_bottom = max(max_bottom, widget.geometry().bottom() + constants.CANVAS_PADDING)
+            widget = self._widgets.get(entry.entry_id)
+            if widget is not None and widget.isVisible():
+                rect = widget.geometry()
+            elif entry.is_tool:
+                rect = self._layout_engine.tool_rect_at(entry.x, entry.y)
+            else:
+                rect = self._layout_engine.section_rect_at(entry.y)
+            max_right = max(max_right, rect.right() + constants.CANVAS_PADDING)
+            max_bottom = max(max_bottom, rect.bottom() + constants.CANVAS_PADDING)
         self.resize(max_right, max_bottom)
         self.update()

@@ -43,6 +43,7 @@ MAX_SECTION_PROTECTED_GAP_BELOW = MAX_SECTION_PROTECTED_GAP
 DEFAULT_SECTION_LINE_COLOR = "#444a57"
 DEFAULT_TILE_FRAME_COLOR = "#6f7278"
 DEFAULT_TILE_HIGHLIGHT_COLOR = "#649cff"
+DEFAULT_ICON_PREVIEW_BACKGROUND_COLOR = "#4a5568"
 DEFAULT_TILE_BASE_FILL_ALPHA = 16
 DEFAULT_TILE_HOVER_ALPHA = 26
 DEFAULT_TILE_SELECTED_ALPHA = 31
@@ -50,6 +51,37 @@ DEFAULT_TILE_FRAME_ENABLED = True
 DEFAULT_TILE_FRAME_THICKNESS = 1
 MIN_TILE_FRAME_THICKNESS = 1
 MAX_TILE_FRAME_THICKNESS = 8
+DEFAULT_IMAGE_FILE_PREVIEW_ENABLED = False
+IMAGE_PREVIEW_MODE_FIT = "fit"
+IMAGE_PREVIEW_MODE_FILL = "fill"
+DEFAULT_IMAGE_FILE_PREVIEW_MODE = IMAGE_PREVIEW_MODE_FIT
+DEFAULT_VIDEO_FILE_PREVIEW_ENABLED = False
+DEFAULT_HOVER_PREVIEW_ENABLED = False
+HOVER_PREVIEW_SIZE = 256
+VIDEO_PREVIEW_CAPTURE_SECONDS = 1.0
+IMAGE_PREVIEW_EXTENSIONS = (
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".bmp",
+    ".gif",
+    ".webp",
+    ".tif",
+    ".tiff",
+    ".ico",
+)
+VIDEO_PREVIEW_EXTENSIONS = (
+    ".mp4",
+    ".mkv",
+    ".mov",
+    ".avi",
+    ".webm",
+    ".wmv",
+    ".m4v",
+    ".flv",
+    ".mpeg",
+    ".mpg",
+)
 DEFAULT_AUTO_COMPACT_LEFT = True
 LAUNCH_CLICK_MODE_SINGLE = "single"
 LAUNCH_CLICK_MODE_DOUBLE = "double"
@@ -72,6 +104,7 @@ WIDGET_TOOL_DETAILS = "lbl_tool_details"
 
 WIDGET_ICON_SIZE_SLIDER = "sld_icon_size"
 WIDGET_ICON_SIZE_VALUE = "lbl_icon_size_value"
+WIDGET_ICON_SIZE_LIVE_PREVIEW = "wgt_icon_size_live_preview"
 WIDGET_GRID_SPACING_X_SLIDER = "sld_grid_spacing_x"
 WIDGET_GRID_SPACING_X_VALUE = "lbl_grid_spacing_x_value"
 WIDGET_GRID_SPACING_Y_SLIDER = "sld_grid_spacing_y"
@@ -91,6 +124,7 @@ WIDGET_SECTION_GAP_BELOW_SPINBOX = "spb_section_gap_below"
 WIDGET_SECTION_LINE_COLOR_INPUT = "inp_section_line_color"
 WIDGET_SECTION_LINE_COLOR_PREVIEW = "lbl_section_line_color_preview"
 WIDGET_SECTION_LINE_COLOR_BUTTON = "btn_section_line_color"
+WIDGET_SECTION_SEPARATOR_LIVE_PREVIEW = "wgt_section_separator_live_preview"
 WIDGET_SECTION_COLOR_LIST = "lst_section_color_manager"
 WIDGET_SECTION_SELECTED_LINE_COLOR_INPUT = "inp_section_selected_line_color"
 WIDGET_SECTION_SELECTED_LINE_COLOR_PREVIEW = "lbl_section_selected_line_color_preview"
@@ -119,6 +153,10 @@ BUTTON_SECTION_QUICK_ALL_TITLE_AMBER = "btn_section_quick_all_title_amber"
 BUTTON_SECTION_QUICK_ALL_TITLE_CYAN = "btn_section_quick_all_title_cyan"
 BUTTON_SECTION_QUICK_ALL_TITLE_RED = "btn_section_quick_all_title_red"
 WIDGET_TILE_FRAME_ENABLED_CHECKBOX = "chk_tile_frame_enabled"
+WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX = "chk_image_file_preview"
+WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX = "cmb_image_file_preview_mode"
+WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX = "chk_video_file_preview"
+WIDGET_HOVER_PREVIEW_CHECKBOX = "chk_hover_preview"
 WIDGET_TILE_FRAME_THICKNESS_SLIDER = "sld_tile_frame_thickness"
 WIDGET_TILE_FRAME_THICKNESS_VALUE = "lbl_tile_frame_thickness_value"
 WIDGET_TILE_FRAME_COLOR_INPUT = "inp_tile_frame_color"
@@ -127,6 +165,9 @@ WIDGET_TILE_FRAME_COLOR_BUTTON = "btn_tile_frame_color"
 WIDGET_TILE_HIGHLIGHT_COLOR_INPUT = "inp_tile_highlight_color"
 WIDGET_TILE_HIGHLIGHT_COLOR_PREVIEW = "lbl_tile_highlight_color_preview"
 WIDGET_TILE_HIGHLIGHT_COLOR_BUTTON = "btn_tile_highlight_color"
+WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT = "inp_icon_preview_background_color"
+WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_PREVIEW = "lbl_icon_preview_background_color_preview"
+WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_BUTTON = "btn_icon_preview_background_color"
 WIDGET_TOOL_LAUNCH_MODE_COMBOBOX = "cmb_tool_launch_mode"
 # Backward-compatible aliases for older internal names.
 WIDGET_TILE_FILL_COLOR_INPUT = WIDGET_TILE_HIGHLIGHT_COLOR_INPUT

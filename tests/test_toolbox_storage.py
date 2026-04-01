@@ -17,6 +17,7 @@ class ToolboxStorageTests(unittest.TestCase):
                     title="Work",
                     tab_id="tab-1",
                     is_primary=True,
+                    background_color="#202634",
                     entries=[
                         ToolboxEntry(
                             title="Editor",
@@ -51,6 +52,7 @@ class ToolboxStorageTests(unittest.TestCase):
             self.assertEqual("Work", loaded[0].title)
             self.assertEqual("tab-1", loaded[0].tab_id)
             self.assertTrue(loaded[0].is_primary)
+            self.assertEqual("#202634", loaded[0].background_color)
             self.assertEqual(2, len(loaded[0].entries))
             self.assertEqual("entry-1", loaded[0].entries[0].entry_id)
             self.assertTrue(loaded[0].entries[0].always_run_as_admin)

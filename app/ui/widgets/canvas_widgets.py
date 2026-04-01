@@ -17,6 +17,8 @@ class CanvasItemBase(QtWidgets.QFrame):
     context_requested = QtCore.Signal(str, QtCore.QPoint)
     move_finished = QtCore.Signal(str, int, int)
     move_live = QtCore.Signal()
+    hover_started = QtCore.Signal(str, QtCore.QPoint)
+    hover_ended = QtCore.Signal(str)
 
     def __init__(self, entry: ToolboxEntry, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -24,6 +26,7 @@ class CanvasItemBase(QtWidgets.QFrame):
         self._drag_active = False
         self._did_drag = False
         self._press_offset = QtCore.QPoint()
+        self._last_release_parent_pos = QtCore.QPoint(-1, -1)
         self._drag_timer = QtCore.QTimer(self)
         self._drag_timer.setSingleShot(True)
         self._drag_timer.setInterval(constants.MOVE_HOLD_DELAY_MS)
@@ -70,6 +73,7 @@ class CanvasItemBase(QtWidgets.QFrame):
         self._drag_timer.stop()
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             if self._drag_active and self._did_drag:
+                self._last_release_parent_pos = self.mapToParent(event.position().toPoint())
                 self.move_finished.emit(self.entry.entry_id, self.x(), self.y())
                 event.accept()
             elif not self._did_drag:
@@ -90,6 +94,20 @@ class CanvasItemBase(QtWidgets.QFrame):
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         self.context_requested.emit(self.entry.entry_id, event.globalPos())
         event.accept()
+
+    def last_release_parent_pos(self) -> QtCore.QPoint:
+        return QtCore.QPoint(self._last_release_parent_pos)
+
+    def enterEvent(self, event: QtGui.QEnterEvent) -> None:
+        self.hover_started.emit(
+            self.entry.entry_id,
+            self.mapToGlobal(QtCore.QPoint(self.width(), max(0, self.height() // 6))),
+        )
+        super().enterEvent(event)
+
+    def leaveEvent(self, event: QtCore.QEvent) -> None:
+        self.hover_ended.emit(self.entry.entry_id)
+        super().leaveEvent(event)
 
 
 class ToolTileWidget(CanvasItemBase):
@@ -165,6 +183,7 @@ class ToolTileWidget(CanvasItemBase):
             }}
             QLabel#tool_title {{
                 font-weight: 600;
+                background: transparent;
             }}
             """)
 
@@ -221,6 +240,12 @@ class ToolTileWidget(CanvasItemBase):
             self._icon.pixmap(self._metrics.icon_size, self._metrics.icon_size)
         )
         self.resize(self._metrics.tile_size)
+
+    def set_icon(self, icon: QtGui.QIcon) -> None:
+        self._icon = icon
+        self.icon_label.setPixmap(
+            self._icon.pixmap(self._metrics.icon_size, self._metrics.icon_size)
+        )
 
 
 class SectionWidget(CanvasItemBase):

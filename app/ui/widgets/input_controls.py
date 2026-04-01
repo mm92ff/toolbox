@@ -19,3 +19,10 @@ class NoWheelSpinBox(QtWidgets.QSpinBox):
 
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         event.ignore()
+
+
+class NoWheelSlider(QtWidgets.QSlider):
+    """Slider that ignores mouse-wheel value changes."""
+
+    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
+        event.ignore()

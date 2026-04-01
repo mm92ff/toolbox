@@ -91,3 +91,14 @@ class TestToolboxTabParsing:
 
         assert tab.title == "Invalid Entries"
         assert tab.entries == []
+
+    def test_from_dict_parses_tab_background_color(self) -> None:
+        tab = ToolboxTabData.from_dict(
+            {
+                "title": "Colored",
+                "entries": [],
+                "background_color": "#223344",
+            }
+        )
+
+        assert tab.background_color == "#223344"

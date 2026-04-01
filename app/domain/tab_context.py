@@ -29,4 +29,5 @@ class ToolboxTabContext:
     title: str
     tab_id: str
     is_primary: bool
+    background_color: str
     selected_ids: set[str]

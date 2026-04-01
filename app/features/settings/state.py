@@ -36,6 +36,10 @@ class MainWindowSettingsStateMixin:
     def _initialize_applied_settings_defaults(self) -> None:
         self._applied_icon_size = constants.DEFAULT_ICON_SIZE
         self._applied_tile_frame_enabled = constants.DEFAULT_TILE_FRAME_ENABLED
+        self._applied_image_file_preview_enabled = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
+        self._applied_image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
+        self._applied_video_file_preview_enabled = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
+        self._applied_hover_preview_enabled = constants.DEFAULT_HOVER_PREVIEW_ENABLED
         self._applied_tile_frame_thickness = constants.DEFAULT_TILE_FRAME_THICKNESS
         self._applied_tile_frame_color = constants.DEFAULT_TILE_FRAME_COLOR
         self._applied_tile_highlight_color = constants.DEFAULT_TILE_HIGHLIGHT_COLOR
@@ -52,6 +56,10 @@ class MainWindowSettingsStateMixin:
     def _capture_pending_settings_from_widgets(self) -> dict[str, object]:
         icon_slider = self.widgets[constants.WIDGET_ICON_SIZE_SLIDER]
         frame_enabled_checkbox = self.widgets[constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX]
+        image_preview_checkbox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX]
+        image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
+        video_preview_checkbox = self.widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX]
+        hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
         frame_thickness_slider = self.widgets[constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER]
         frame_color_input = self.widgets[constants.WIDGET_TILE_FRAME_COLOR_INPUT]
         highlight_color_input = self.widgets[constants.WIDGET_TILE_HIGHLIGHT_COLOR_INPUT]
@@ -74,6 +82,12 @@ class MainWindowSettingsStateMixin:
         return {
             "icon_size": int(icon_slider.value()),
             "tile_frame_enabled": bool(frame_enabled_checkbox.isChecked()),
+            "image_file_preview_enabled": bool(image_preview_checkbox.isChecked()),
+            "image_file_preview_mode": self._normalize_image_file_preview_mode(
+                str(image_preview_mode_combobox.currentData())
+            ),
+            "video_file_preview_enabled": bool(video_preview_checkbox.isChecked()),
+            "hover_preview_enabled": bool(hover_preview_checkbox.isChecked()),
             "tile_frame_thickness": int(frame_thickness_slider.value()),
             "tile_frame_color": self._normalize_tile_frame_color(frame_color_input.text()),
             "tile_highlight_color": self._normalize_tile_highlight_color(
@@ -108,6 +122,26 @@ class MainWindowSettingsStateMixin:
         )
         self._applied_tile_frame_enabled = bool(
             values.get("tile_frame_enabled", constants.DEFAULT_TILE_FRAME_ENABLED)
+        )
+        self._applied_image_file_preview_enabled = bool(
+            values.get(
+                "image_file_preview_enabled", constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
+            )
+        )
+        self._applied_image_file_preview_mode = self._normalize_image_file_preview_mode(
+            str(
+                values.get(
+                    "image_file_preview_mode", constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
+                )
+            )
+        )
+        self._applied_video_file_preview_enabled = bool(
+            values.get(
+                "video_file_preview_enabled", constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
+            )
+        )
+        self._applied_hover_preview_enabled = bool(
+            values.get("hover_preview_enabled", constants.DEFAULT_HOVER_PREVIEW_ENABLED)
         )
         self._applied_tile_frame_thickness = self._coerce_int(
             values.get("tile_frame_thickness"),
@@ -161,6 +195,18 @@ class MainWindowSettingsStateMixin:
 
     def current_tile_frame_thickness(self) -> int:
         return int(self._applied_tile_frame_thickness)
+
+    def current_image_file_preview_enabled(self) -> bool:
+        return bool(self._applied_image_file_preview_enabled)
+
+    def current_image_file_preview_mode(self) -> str:
+        return str(self._applied_image_file_preview_mode)
+
+    def current_video_file_preview_enabled(self) -> bool:
+        return bool(self._applied_video_file_preview_enabled)
+
+    def current_hover_preview_enabled(self) -> bool:
+        return bool(self._applied_hover_preview_enabled)
 
     def current_tile_frame_color(self) -> str:
         return str(self._applied_tile_frame_color)
@@ -216,6 +262,12 @@ class MainWindowSettingsStateMixin:
         if mode == constants.LAUNCH_CLICK_MODE_SINGLE:
             return constants.LAUNCH_CLICK_MODE_SINGLE
         return constants.LAUNCH_CLICK_MODE_DOUBLE
+
+    def _normalize_image_file_preview_mode(self, value: str) -> str:
+        mode = (value or "").strip().lower()
+        if mode == constants.IMAGE_PREVIEW_MODE_FILL:
+            return constants.IMAGE_PREVIEW_MODE_FILL
+        return constants.IMAGE_PREVIEW_MODE_FIT
 
     def _default_tile_frame_color(self) -> str:
         return self.palette().color(QtGui.QPalette.ColorRole.Mid).name()

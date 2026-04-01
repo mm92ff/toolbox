@@ -48,6 +48,8 @@ class MainWindow(
         self._hidden_toolbox_tab_ids: set[str] = set()
         self._help_tab_hidden = False
         self._updating_tab_manager = False
+        self._auto_applying_settings_on_tab_change = False
+        self._last_tab_index = 0
         self._undo_stack: list[list[dict[str, object]]] = []
         self._redo_stack: list[list[dict[str, object]]] = []
         self._undo_last_state: list[dict[str, object]] | None = None
@@ -103,6 +105,14 @@ class MainWindow(
 
         frame_checkbox = self.widgets[constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX]
         frame_checkbox.toggled.connect(self._on_layout_settings_changed)
+        image_preview_checkbox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX]
+        image_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
+        image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
+        image_preview_mode_combobox.currentIndexChanged.connect(self._on_layout_settings_changed)
+        video_preview_checkbox = self.widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX]
+        video_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
+        hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
+        hover_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
 
         auto_compact_left_checkbox = self.widgets[constants.WIDGET_AUTO_COMPACT_LEFT_CHECKBOX]
         auto_compact_left_checkbox.toggled.connect(self._on_layout_settings_changed)
@@ -128,6 +138,12 @@ class MainWindow(
 
         tile_highlight_color_button = self.widgets[constants.WIDGET_TILE_HIGHLIGHT_COLOR_BUTTON]
         tile_highlight_color_button.clicked.connect(self._choose_tile_highlight_color)
+
+        icon_preview_bg_input = self.widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT]
+        icon_preview_bg_input.editingFinished.connect(self._on_icon_preview_background_color_changed)
+
+        icon_preview_bg_button = self.widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_BUTTON]
+        icon_preview_bg_button.clicked.connect(self._choose_icon_preview_background_color)
 
         tool_launch_mode_combobox = self.widgets[constants.WIDGET_TOOL_LAUNCH_MODE_COMBOBOX]
         tool_launch_mode_combobox.currentIndexChanged.connect(self._on_tool_launch_mode_changed)
@@ -247,6 +263,26 @@ class MainWindow(
         super().keyPressEvent(event)
 
     def _on_current_tab_changed(self, index: int) -> None:
+        previous_widget = None
+        if 0 <= self._last_tab_index < self.tab_widget.count():
+            previous_widget = self.tab_widget.widget(self._last_tab_index)
+        current_widget = self.tab_widget.widget(index)
+        target_ctx = self._toolbox_context_for_index(index)
+        should_auto_apply = (
+            not self._auto_applying_settings_on_tab_change
+            and previous_widget is self.settings_tab
+            and target_ctx is not None
+            and current_widget is not self.settings_tab
+            and bool(getattr(self, "_settings_dirty", False))
+        )
+        if should_auto_apply:
+            self._auto_applying_settings_on_tab_change = True
+            try:
+                self._apply_pending_settings()
+            finally:
+                self._auto_applying_settings_on_tab_change = False
+            index = self.tab_widget.currentIndex()
+
         ctx: Optional[ToolboxTabContext] = self._toolbox_context_for_index(index)
         if ctx is not None:
             self._update_details(ctx)
@@ -254,6 +290,7 @@ class MainWindow(
             self._update_window_minimum_width(ctx)
         elif self.tab_widget.widget(index) is self.settings_tab:
             self._refresh_section_color_manager()
+        self._last_tab_index = index
         self._save_settings()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:

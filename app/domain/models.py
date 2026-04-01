@@ -34,6 +34,7 @@ class ToolboxTabDict(TypedDict):
     title: str
     entries: list[ToolboxEntryDict]
     is_primary: bool
+    background_color: NotRequired[str]
 
 
 def _as_str(value: object, default: str = "") -> str:
@@ -171,14 +172,18 @@ class ToolboxTabData:
     entries: list[ToolboxEntry] = field(default_factory=list)
     tab_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     is_primary: bool = False
+    background_color: str = ""
 
     def to_dict(self) -> ToolboxTabDict:
-        return {
+        payload: ToolboxTabDict = {
             "id": self.tab_id,
             "title": self.title,
             "entries": [entry.to_dict() for entry in self.entries],
             "is_primary": self.is_primary,
         }
+        if self.background_color.strip():
+            payload["background_color"] = self.background_color.strip()
+        return payload
 
     @classmethod
     def from_dict(cls, payload: dict[str, object]) -> "ToolboxTabData":
@@ -193,9 +198,16 @@ class ToolboxTabData:
         if not isinstance(raw_entries, list):
             raw_entries = []
         is_primary = _as_bool(payload.get("is_primary"), False)
+        background_color = _as_str(payload.get("background_color")).strip()
         entries: list[ToolboxEntry] = []
         for raw_entry in raw_entries:
             if not isinstance(raw_entry, dict):
                 continue
             entries.append(ToolboxEntry.from_dict(cast(dict[str, object], raw_entry)))
-        return cls(title=title, entries=entries, tab_id=tab_id, is_primary=is_primary)
+        return cls(
+            title=title,
+            entries=entries,
+            tab_id=tab_id,
+            is_primary=is_primary,
+            background_color=background_color,
+        )

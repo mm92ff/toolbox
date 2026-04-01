@@ -58,8 +58,8 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
     header_layout.addWidget(title)
 
     intro = QtWidgets.QLabel(
-        "Quick overview of key features and current behavior. "
-        "The sections below cover the most common workflows and important layout rules."
+        "Current feature overview for the toolbox. "
+        "The sections below summarize the main workflows, layout behavior, and settings logic."
     )
     intro.setObjectName(constants.WIDGET_HELP_TEXT)
     intro.setWordWrap(True)
@@ -75,7 +75,7 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 "Drag and drop files or folders directly into a toolbox.",
                 "Alternatively, use 'Add Apps' to select apps manually.",
                 "Use right-click on empty canvas space to add a section at that position.",
-                "Launch behavior can be switched globally between single-click and double-click.",
+                "Launch behavior can be switched globally between single-click and double-click in Settings.",
             ),
         )
     )
@@ -93,7 +93,8 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "moves the whole group."
                 ),
                 "Mixed selection (sections + tiles) uses vertical group movement to keep structure stable.",
-                "A long left-click activates move mode; the tile then snaps cleanly to the grid.",
+                "A short hold with left mouse button activates move mode; release snaps back to grid.",
+                "Dropping a tile directly between two tiles in the same row requires 'Auto-compact icons to the left' to be enabled.",
                 "Right-click on empty canvas space to insert grid rows above or below.",
                 "Section drag hints: green means snap-near target, red means tool-conflict zone.",
             ),
@@ -113,6 +114,7 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "window style) can be saved per entry."
                 ),
                 "Use 'Open Path' to jump directly to the corresponding folder.",
+                "Delete or Backspace removes the current selection.",
             ),
         )
     )
@@ -132,10 +134,11 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
     )
     layout.addWidget(
         _create_help_section(
-            "Tabs and Appearance",
+            "Tabs, Colors, and Preview",
             (
                 "Tab titles can be renamed via right-click.",
                 "In 'Manage Tabs' you can adjust order and visibility.",
+                "Right-click on empty canvas space to set/reset the background color for the current tab.",
                 (
                     "In the Settings tab, you can fine-tune icon size, grid, "
                     "compaction, separator style, and tile colors."
@@ -145,6 +148,9 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "Section color manager lists separators from all tabs and supports "
                     "single, bulk, and quick apply actions."
                 ),
+                "Image preview thumbnails and video preview thumbnails (ffmpeg) can be enabled independently.",
+                "Preview mode supports Fit (full image) and Fill (crop).",
+                "Optional hover preview can show larger image/video thumbnails on mouse-over.",
                 "Changes in the Settings tab become active only after 'Save & Apply'.",
                 "UI settings are also stored as JSON in the config folder (ui_settings.json).",
             ),
@@ -159,17 +165,17 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "paths and can remove them."
                 ),
                 (
-                    "The diagnostics check runs in the background and opens the result "
-                    "message when finished."
+                    "The diagnostics check runs in the background and shows the result "
+                    "dialog when finished."
                 ),
-                "Export/Import saves tabs, entries, and UI settings as a JSON profile.",
+                "Export/Import saves tabs, entries, and UI settings to/from a JSON profile.",
             ),
         )
     )
 
     quick_tips = QtWidgets.QLabel(
-        "Tips: Use Shift-click for multi-select, Delete/Backspace for quick cleanup, "
-        "Ctrl+Z for Undo and Ctrl+Y for Redo."
+        "Tips: Shift-click supports multi-select, Ctrl+Z undoes the last toolbox change, "
+        "Ctrl+Y redoes it, and Save & Apply commits pending settings changes."
     )
     quick_tips.setWordWrap(True)
     quick_tips.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)

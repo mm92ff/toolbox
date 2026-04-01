@@ -7,7 +7,7 @@ from __future__ import annotations
 import copy
 from typing import Optional
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from app import constants
 from app.domain.models import ToolboxEntry, ToolboxTabData
@@ -18,6 +18,18 @@ from app.ui.layouts import UIBuilder
 
 
 class MainWindowTabsMixin(MainWindowTabManagerMixin):
+    @staticmethod
+    def _normalize_tab_background_color(value: str) -> str:
+        color = QtGui.QColor((value or "").strip())
+        if not color.isValid():
+            return ""
+        return color.name()
+
+    def _apply_tab_background_color(self, ctx: ToolboxTabContext) -> None:
+        normalized = self._normalize_tab_background_color(ctx.background_color)
+        ctx.background_color = normalized
+        ctx.canvas.set_background_color(normalized)
+
     def _collect_toolbox_state_dicts(self) -> list[dict[str, object]]:
         return [tab.to_dict() for tab in self._collect_toolbox_state()]
 
@@ -83,6 +95,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
                 tab_data.entries,
                 tab_data.tab_id,
                 tab_data.is_primary,
+                tab_data.background_color,
                 rebuild_tabs=False,
             )
 
@@ -165,6 +178,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         entries: Optional[list[ToolboxEntry]] = None,
         tab_id: Optional[str] = None,
         is_primary: bool = False,
+        background_color: str = "",
         insert_position: Optional[int] = None,
         switch_to: bool = False,
         rebuild_tabs: bool = True,
@@ -187,8 +201,10 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             tab_id=tab_id
             or QtCore.QUuid.createUuid().toString(QtCore.QUuid.StringFormat.WithoutBraces),
             is_primary=is_primary,
+            background_color=self._normalize_tab_background_color(background_color),
             selected_ids=set(),
         )
+        ctx.canvas.set_thumbnail_cache_dir(self.config_dir / "thumbnail_cache")
 
         ctx.add_tool_button.clicked.connect(lambda _=False, c=ctx: self.add_tools_from_dialog(c))
         ctx.add_section_button.clicked.connect(lambda _=False, c=ctx: self.add_section(c))
@@ -231,6 +247,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             insert_position = len(self.toolbox_tabs)
         insert_position = max(0, min(insert_position, len(self.toolbox_tabs)))
         self.toolbox_tabs.insert(insert_position, ctx)
+        self._apply_tab_background_color(ctx)
         if rebuild_tabs:
             preferred_widget = ctx.page if switch_to else self.tab_widget.currentWidget()
             self._reinsert_fixed_tabs(preferred_widget=preferred_widget)
@@ -271,6 +288,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
                 tab_data.entries,
                 tab_data.tab_id,
                 tab_data.is_primary,
+                tab_data.background_color,
                 rebuild_tabs=False,
             )
         self._reinsert_fixed_tabs()
@@ -279,7 +297,11 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
     def _collect_toolbox_state(self) -> list[ToolboxTabData]:
         return [
             ToolboxTabData(
-                title=ctx.title, entries=ctx.entries, tab_id=ctx.tab_id, is_primary=ctx.is_primary
+                title=ctx.title,
+                entries=ctx.entries,
+                tab_id=ctx.tab_id,
+                is_primary=ctx.is_primary,
+                background_color=ctx.background_color,
             )
             for ctx in self.toolbox_tabs
         ]

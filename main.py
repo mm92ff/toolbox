@@ -5,6 +5,7 @@
 import logging
 import os
 import sys
+from pathlib import Path
 from types import TracebackType
 
 # Ensure proper encoding for console output on Windows
@@ -16,7 +17,7 @@ if sys.platform == "win32":
     if getattr(sys.stderr, "buffer", None) is not None:
         sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
 
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from app import constants
 from app.main_window import MainWindow
@@ -60,6 +61,19 @@ def get_app_name() -> str:
     return app_name or constants.DEFAULT_APP_NAME
 
 
+def _resolve_app_icon_path() -> Path | None:
+    """Resolve the packaged/development path to the application icon."""
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        packaged = Path(meipass) / "app" / "assets" / "one.png"
+        if packaged.is_file():
+            return packaged
+    candidate = Path(__file__).resolve().parent / "app" / "assets" / "one.png"
+    if candidate.is_file():
+        return candidate
+    return None
+
+
 def main() -> int:
     """Start the application and return the process exit code."""
     configure_logging()
@@ -68,6 +82,9 @@ def main() -> int:
     app = QtWidgets.QApplication(sys.argv)
     app.setOrganizationName(app_name)
     app.setApplicationName(app_name)
+    icon_path = _resolve_app_icon_path()
+    if icon_path is not None:
+        app.setWindowIcon(QtGui.QIcon(str(icon_path)))
 
     try:
         config_dir = get_config_directory(app_name)
@@ -81,6 +98,8 @@ def main() -> int:
         return 1
 
     window = MainWindow(app_name, config_dir=config_dir)
+    if icon_path is not None:
+        window.setWindowIcon(QtGui.QIcon(str(icon_path)))
     window.show()
     return app.exec()
 

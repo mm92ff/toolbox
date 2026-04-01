@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from pathlib import Path
 
 from PySide6 import QtCore, QtWidgets
 
@@ -22,6 +23,11 @@ class CanvasSurfaceStateMixin:
         self._icon_provider = QtWidgets.QFileIconProvider()
         self._layout_engine = CanvasLayoutEngine()
         self._auto_compact_left = constants.DEFAULT_AUTO_COMPACT_LEFT
+        self._image_file_preview_enabled = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
+        self._image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
+        self._video_file_preview_enabled = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
+        self._hover_preview_enabled = constants.DEFAULT_HOVER_PREVIEW_ENABLED
+        self._thumbnail_cache_dir: Path | None = None
         self._selected_entry_ids: set[str] = set()
         self._hidden_entry_ids: set[str] = set()
         self._selection_band = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Shape.Rectangle, self)
