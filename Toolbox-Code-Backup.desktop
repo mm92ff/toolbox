@@ -1,0 +1,15 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Toolbox Code-Backup
+Name[de]=Toolbox Code-Backup
+Comment=Creates and verifies a compressed backup of the Toolbox source code
+Comment[de]=Erstellt und prüft ein komprimiertes Backup des Toolbox-Quellcodes
+TryExec=/usr/bin/env
+Exec=/usr/bin/env bash "/home/jemi/Desktop/Github/toolbox--/scripts/create_code_backup.sh"
+Path=/home/jemi/Desktop/Github/toolbox--
+Icon=document-save
+Terminal=false
+Categories=Utility;
+StartupNotify=false

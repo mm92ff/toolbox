@@ -162,6 +162,24 @@ $env:PYTHONPATH='.'
   `Icon=` through the active freedesktop icon theme. Existing user-renamed tile
   titles are preserved.
 
+## Source-code backup
+
+- On Linux, add `Toolbox-Code-Backup.desktop` to Toolbox or start
+  `scripts/create_code_backup.sh` directly.
+- The script requires `7z` (`sudo apt install p7zip-full`) and, for a Git
+  checkout, `git`. It archives source files, local changes, and the complete
+  self-contained Git history, then verifies both archive integrity and a
+  temporary restore.
+- Build outputs, AppImages, virtual environments, caches, `.env` files, logs,
+  executables, and previous archives are excluded.
+- The resulting unencrypted `toolbox_code_<timestamp>.7z` is stored in the
+  project root. Protect or move it after creation.
+- `scripts/create_code_backup.sh --self-test` performs the complete verification
+  without leaving an archive. Diagnostic output is written below
+  `$XDG_STATE_HOME/toolbox` (or `~/.local/state/toolbox`).
+- Windows users can use `create-project-backup.bat`, which applies matching
+  exclusions and archive-integrity checks.
+
 ## Linux release scope and known limitations
 
 - The release target is Linux Mint 22.3 Cinnamon x86_64; ARM64 is not built.

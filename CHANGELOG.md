@@ -23,6 +23,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Asynchronous desktop-process monitoring with bounded startup error details
 - Browser-style `+` action in the tab bar, with `Ctrl+T`, for creating and
   immediately opening new toolbox tabs
+- Toolbox-specific Linux code-backup launcher and verified 7z backup workflow
+  with Git-history restoration checks and AppImage/build exclusions
 
 ### Changed
 

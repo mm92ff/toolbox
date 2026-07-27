@@ -47,3 +47,6 @@ Thumbs.db
 
 # Local artifacts
 *.log
+toolbox_code_*.7z
+toolbox_backup_*.7z
+.toolbox-backup-tmp-*/
