@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import os
+
 from PySide6 import QtGui, QtWidgets
 
 from app import constants
@@ -188,7 +190,9 @@ class MainWindowSettingsAppearanceMixin:
             self,
             "Select ffmpeg executable",
             manual_input.text().strip(),
-            "Executable (ffmpeg.exe);;All files (*)",
+            "Executable (ffmpeg.exe);;All files (*)"
+            if os.name == "nt"
+            else "Executable (ffmpeg);;All files (*)",
         )
         if not selected_path:
             return

@@ -2,6 +2,54 @@
 
 This project includes or supports third-party components.
 
+## Python
+
+- Component: CPython runtime
+- Upstream project: https://www.python.org/
+- License: Python Software Foundation License
+
+The Linux AppImage contains a Python runtime supplied by the selected build
+environment. The matching Python license is copied into the AppImage at build time.
+
+## PySide6 / Qt / Shiboken
+
+- Component: PySide6, Qt 6 libraries and plugins, Shiboken
+- Upstream project: https://doc.qt.io/qtforpython-6/
+- License options: LGPLv3, GPLv3, or a commercial Qt license
+
+The community AppImage build uses the PyPI community packages. The AppImage includes
+the LGPLv3 and GPLv3 license texts and keeps Qt as dynamically linked shared
+libraries inside the bundle.
+
+## ICU
+
+- Component: ICU libraries distributed with the PySide6 Qt runtime
+- Upstream project: https://icu.unicode.org/
+- License: Unicode/ICU license (MIT-style)
+
+The matching ICU license text is included in the AppImage. Linux base-system
+libraries are deliberately not copied from the build system.
+
+## PyInstaller
+
+- Component: PyInstaller bootloader and collected runtime support
+- Upstream project: https://pyinstaller.org/
+- License: GPLv2-or-later with the PyInstaller bootloader exception
+
+The matching PyInstaller license and bootloader exception are copied from the build
+environment into the AppImage.
+
+## AppImage Runtime
+
+- Component: AppImage type-2 runtime and AppDir format
+- Upstream project: https://github.com/AppImage/AppImageKit
+- License information: https://github.com/AppImage/AppImageKit/blob/master/LICENSE
+
+The AppImage type-2 runtime is MIT-licensed and contains the third-party components
+listed in its license notice. That notice is included in the AppImage. The build
+validates `appimagetool` against the pinned SHA-256 value before packaging and
+records the value in `build-info.txt`.
+
 ## FFmpeg / FFprobe
 
 - Component: `ffmpeg`, `ffprobe`
@@ -11,7 +59,8 @@ This project includes or supports third-party components.
 
 ### Why this matters
 
-The application can ship FFmpeg/FFprobe binaries for video thumbnail generation.
+The application can ship FFmpeg/FFprobe binaries for video thumbnail generation,
+but Linux AppImage builds do not include them unless explicitly requested.
 When these binaries are distributed together with the app, FFmpeg license obligations apply.
 
 ### Binary provenance used for current beta builds

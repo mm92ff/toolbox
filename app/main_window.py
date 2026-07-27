@@ -15,6 +15,7 @@ from app.domain.tab_context import ToolboxTabContext
 from app.features.entries.controller import MainWindowEntriesMixin
 from app.features.settings.controller import MainWindowSettingsMixin
 from app.features.tabs.controller import MainWindowTabsMixin
+from app.services.desktop_entry_launch import DesktopProcessManager
 from app.services.system_utils import get_config_directory
 from app.ui.layouts import UIBuilder
 
@@ -31,11 +32,28 @@ class MainWindow(
         super().__init__()
         self.app_name = app_name or constants.DEFAULT_APP_NAME
         self.setWindowTitle(self.app_name)
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.setOrganizationName(self.app_name)
+            app.setApplicationName(self.app_name)
 
         self.config_dir = (
             config_dir if config_dir is not None else get_config_directory(self.app_name)
         )
         self.icon_provider = QtWidgets.QFileIconProvider()
+        self.desktop_process_manager = DesktopProcessManager(self)
+        self.desktop_process_manager.launch_started.connect(
+            self._on_desktop_launch_started
+        )
+        self.desktop_process_manager.launch_delegated.connect(
+            self._on_desktop_launch_delegated
+        )
+        self.desktop_process_manager.launch_finished.connect(
+            self._on_desktop_launch_finished
+        )
+        self.desktop_process_manager.launch_failed.connect(
+            self._on_desktop_launch_failed
+        )
         self.toolbox_tabs: list[ToolboxTabContext] = []
         self._drop_widget_map: weakref.WeakKeyDictionary[QtCore.QObject, ToolboxTabContext] = (
             weakref.WeakKeyDictionary()
@@ -61,7 +79,6 @@ class MainWindow(
         self.status.showMessage("Ready")
 
         self._setup_ui()
-        app = QtWidgets.QApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self._persist_on_quit)
         self._load_toolbox_state()
@@ -71,6 +88,7 @@ class MainWindow(
         self._settings_ready = True
 
     def _persist_on_quit(self) -> None:
+        self.desktop_process_manager.shutdown()
         self._shutdown_broken_entries_scan_worker()
         self.persist_toolbox_state()
         self._save_settings()
@@ -81,9 +99,24 @@ class MainWindow(
         self.tab_widget = self.widgets[constants.WIDGET_TABS]
         self.settings_tab = self.widgets[constants.WIDGET_SETTINGS_TAB]
         self.help_tab = self.widgets[constants.WIDGET_HELP_TAB]
+        self._new_toolbox_tab_action_page = QtWidgets.QWidget(self.tab_widget)
+        self._new_toolbox_tab_action_page.setObjectName(
+            "new_toolbox_tab_action_page"
+        )
+        self._new_toolbox_tab_button: QtWidgets.QToolButton | None = None
 
         self.tab_widget.setMovable(False)
         self.tab_widget.currentChanged.connect(self._on_current_tab_changed)
+        self._new_toolbox_tab_shortcut = QtGui.QShortcut(
+            QtGui.QKeySequence("Ctrl+T"),
+            self,
+        )
+        self._new_toolbox_tab_shortcut.setContext(
+            QtCore.Qt.ShortcutContext.ApplicationShortcut
+        )
+        self._new_toolbox_tab_shortcut.activated.connect(
+            self._create_new_toolbox_tab
+        )
 
         tab_bar = self.tab_widget.tabBar()
         tab_bar.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """Entry point for the toolbox desktop application."""
 
+import json
 import logging
 import os
 import sys
@@ -22,6 +23,7 @@ from PySide6 import QtGui, QtWidgets
 from app import constants
 from app.main_window import MainWindow
 from app.services.system_utils import get_config_directory
+from app.services.linux_icon_theme import initialize_linux_icon_theme
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +57,8 @@ def install_exception_hook() -> None:
 
 
 def get_app_name() -> str:
-    """Determines the application name from the filename."""
-    app_filename = os.path.basename(sys.argv[0]) if sys.argv else ""
-    app_name = os.path.splitext(app_filename)[0].strip()
-    return app_name or constants.DEFAULT_APP_NAME
+    """Return the stable product name independently of the executable filename."""
+    return constants.PRODUCT_NAME
 
 
 def _resolve_app_icon_path() -> Path | None:
@@ -74,20 +74,99 @@ def _resolve_app_icon_path() -> Path | None:
     return None
 
 
+def _write_smoke_test_report(
+    app: QtWidgets.QApplication,
+    window: MainWindow,
+    config_dir: Path,
+    icon_path: Path | None,
+) -> None:
+    """Write opt-in runtime evidence used by AppDir/AppImage acceptance tests."""
+    report_path = os.environ.get("TOOLBOX_SMOKE_REPORT", "").strip()
+    if not report_path:
+        return
+
+    report = {
+        "application_name": app.applicationName(),
+        "arguments": sys.argv[1:],
+        "config_directory": str(config_dir),
+        "desktop_file_name": app.desktopFileName(),
+        "device_pixel_ratio": window.devicePixelRatioF(),
+        "frozen": bool(getattr(sys, "frozen", False)),
+        "icon_available": bool(icon_path is not None and not window.windowIcon().isNull()),
+        "icon_theme_name": QtGui.QIcon.themeName(),
+        "icon_theme_search_path_count": len(QtGui.QIcon.themeSearchPaths()),
+        "organization_name": app.organizationName(),
+        "qt_platform": app.platformName(),
+        "window_title": window.windowTitle(),
+    }
+    desktop_fixture = os.environ.get("TOOLBOX_SMOKE_DESKTOP_ENTRY", "").strip()
+    if desktop_fixture:
+        from app.services.desktop_entries import (
+            DesktopLaunchInput,
+            desktop_entry_file_field_code,
+            read_desktop_entry,
+        )
+        from app.services.desktop_entry_launch import prepare_desktop_launch
+        from app.services.linux_icon_theme import desktop_icon_for_path
+
+        drop_path = os.environ.get("TOOLBOX_SMOKE_DROP_PATH", "").strip()
+        launch_input = (
+            DesktopLaunchInput.from_local_paths((drop_path,))
+            if drop_path
+            else DesktopLaunchInput()
+        )
+        metadata = read_desktop_entry(desktop_fixture, locale_name="de_CH")
+        prepared = prepare_desktop_launch(
+            desktop_fixture,
+            launch_input=launch_input,
+        )
+        fixture_icon = desktop_icon_for_path(
+            desktop_fixture,
+            window.icon_provider,
+        )
+        report.update(
+            {
+                "desktop_fixture_command": list(prepared.commands[0]),
+                "desktop_fixture_field_code": desktop_entry_file_field_code(metadata),
+                "desktop_fixture_icon_available": not fixture_icon.isNull(),
+                "desktop_fixture_mode": prepared.mode,
+                "desktop_fixture_name": metadata.name,
+            }
+        )
+    screenshot_path = os.environ.get("TOOLBOX_SMOKE_SCREENSHOT", "").strip()
+    if screenshot_path:
+        if (
+            os.environ.get("TOOLBOX_SMOKE_TOOLBOX_TAB", "").strip() == "1"
+            and window.toolbox_tabs
+        ):
+            window.tab_widget.setCurrentWidget(window.toolbox_tabs[0].page)
+            QtWidgets.QApplication.processEvents()
+        screenshot_saved = window.grab().save(screenshot_path, "PNG")
+        report["screenshot_saved"] = bool(screenshot_saved)
+    Path(report_path).write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> int:
     """Start the application and return the process exit code."""
     configure_logging()
     install_exception_hook()
     app_name = get_app_name()
     app = QtWidgets.QApplication(sys.argv)
-    app.setOrganizationName(app_name)
-    app.setApplicationName(app_name)
+    if sys.platform.startswith("linux"):
+        initialize_linux_icon_theme()
+    app.setOrganizationName(constants.ORGANIZATION_NAME)
+    app.setApplicationName(constants.PRODUCT_NAME)
+    if sys.platform.startswith("linux"):
+        app.setDesktopFileName(constants.DESKTOP_FILE_NAME)
     icon_path = _resolve_app_icon_path()
     if icon_path is not None:
         app.setWindowIcon(QtGui.QIcon(str(icon_path)))
 
     try:
-        config_dir = get_config_directory(app_name)
+        config_dir = get_config_directory(constants.CONFIG_DIRECTORY_NAME)
     except OSError as exc:
         logger.error("Startup aborted: configuration directory unavailable: %s", exc)
         QtWidgets.QMessageBox.critical(
@@ -101,6 +180,16 @@ def main() -> int:
     if icon_path is not None:
         window.setWindowIcon(QtGui.QIcon(str(icon_path)))
     window.show()
+    smoke_test_requested = (
+        "--smoke-test" in sys.argv
+        or os.environ.get("TOOLBOX_SMOKE_TEST", "").strip() == "1"
+    )
+    if smoke_test_requested:
+        app.processEvents()
+        _write_smoke_test_report(app, window, config_dir, icon_path)
+        window.close()
+        app.processEvents()
+        return 0
     return app.exec()
 
 

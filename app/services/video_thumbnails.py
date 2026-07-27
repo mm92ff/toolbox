@@ -17,6 +17,7 @@ from pathlib import Path
 from PySide6 import QtCore, QtGui
 
 from app import constants
+from app.services.system_utils import external_process_environment
 
 _CACHE_VARIANT_NORMAL = "normal"
 _CACHE_VARIANT_HQ = "hq"
@@ -149,6 +150,7 @@ def _extract_video_frame(source: Path, ffmpeg_path: str, capture_seconds: float)
                 stderr=subprocess.DEVNULL,
                 timeout=12,
                 check=False,
+                env=external_process_environment(ffmpeg_path),
             )
         except (OSError, subprocess.SubprocessError):
             return None

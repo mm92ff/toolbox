@@ -15,6 +15,7 @@ from app.canvas.section_conflicts import (
 )
 from app.domain.models import ToolboxEntry
 from app.services.image_thumbnails import is_supported_image_path, load_or_create_thumbnail
+from app.services.linux_icon_theme import desktop_icon_for_path
 from app.services.video_thumbnails import (
     is_supported_video_path,
     load_or_create_video_thumbnail,
@@ -239,6 +240,7 @@ class CanvasSurfaceRenderMixin:
         if isinstance(widget, ToolTileWidget):
             widget.hover_started.connect(self.entry_hover_started.emit)
             widget.hover_ended.connect(self.entry_hover_ended.emit)
+            widget.files_dropped.connect(self.entry_files_dropped.emit)
         return widget
 
     def _icon_for_tool_entry(self, entry: ToolboxEntry) -> QtGui.QIcon:
@@ -262,10 +264,10 @@ class CanvasSurfaceRenderMixin:
             if pixmap is not None and not pixmap.isNull():
                 return QtGui.QIcon(pixmap)
 
-        icon = self._icon_provider.icon(QtCore.QFileInfo(entry.path))
-        if icon.isNull():
-            icon = self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DesktopIcon)
-        return icon
+        fallback = self.style().standardIcon(
+            QtWidgets.QStyle.StandardPixmap.SP_DesktopIcon
+        )
+        return desktop_icon_for_path(entry.path, self._icon_provider, fallback)
 
     def _section_line_color_for_entry(self, entry: ToolboxEntry) -> str:
         custom_color = (entry.section_line_color or "").strip()

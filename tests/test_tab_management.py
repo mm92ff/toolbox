@@ -10,6 +10,7 @@ from PySide6 import QtGui, QtWidgets
 
 from app import constants
 from app.main_window import MainWindow
+from app.services.storage import load_toolbox_tabs
 from app.ui.widgets.input_controls import NoWheelSlider
 
 
@@ -33,6 +34,74 @@ class TabManagementTests(unittest.TestCase):
             resolved = window._toolbox_context_for_index(0)
 
             self.assertIs(second, resolved)
+        finally:
+            config_dir = window.config_dir
+            window.close()
+            shutil.rmtree(config_dir, ignore_errors=True)
+
+    def test_plus_action_is_between_toolbox_and_fixed_tabs(self) -> None:
+        window = self._create_window()
+        try:
+            plus_index = window.tab_widget.indexOf(
+                window._new_toolbox_tab_action_page
+            )
+            settings_index = window.tab_widget.indexOf(window.settings_tab)
+            help_index = window.tab_widget.indexOf(window.help_tab)
+
+            self.assertEqual(len(window._visible_toolbox_tabs()), plus_index)
+            self.assertEqual(plus_index + 1, settings_index)
+            self.assertEqual(settings_index + 1, help_index)
+            self.assertFalse(window.tab_widget.isTabEnabled(plus_index))
+            self.assertIsNotNone(window._new_toolbox_tab_button)
+            self.assertEqual("+", window._new_toolbox_tab_button.text())
+            self.assertIn(
+                "Create new toolbox tab",
+                window._new_toolbox_tab_button.toolTip(),
+            )
+        finally:
+            config_dir = window.config_dir
+            window.close()
+            shutil.rmtree(config_dir, ignore_errors=True)
+
+    def test_plus_button_creates_activates_and_persists_toolbox_tab(self) -> None:
+        window = self._create_window()
+        try:
+            initial_count = len(window.toolbox_tabs)
+            button = window._new_toolbox_tab_button
+            self.assertIsNotNone(button)
+
+            button.click()
+            QtWidgets.QApplication.processEvents()
+
+            self.assertEqual(initial_count + 1, len(window.toolbox_tabs))
+            created = window.toolbox_tabs[-1]
+            self.assertEqual("Toolbox 2", created.title)
+            self.assertIs(created.page, window.tab_widget.currentWidget())
+            plus_index = window.tab_widget.indexOf(
+                window._new_toolbox_tab_action_page
+            )
+            self.assertEqual(plus_index - 1, window.tab_widget.indexOf(created.page))
+            stored = load_toolbox_tabs(window.config_dir)
+            self.assertEqual(initial_count + 1, len(stored))
+            self.assertEqual(created.tab_id, stored[-1].tab_id)
+        finally:
+            config_dir = window.config_dir
+            window.close()
+            shutil.rmtree(config_dir, ignore_errors=True)
+
+    def test_ctrl_t_uses_same_new_toolbox_tab_action(self) -> None:
+        window = self._create_window()
+        try:
+            initial_count = len(window.toolbox_tabs)
+
+            window._new_toolbox_tab_shortcut.activated.emit()
+            QtWidgets.QApplication.processEvents()
+
+            self.assertEqual(initial_count + 1, len(window.toolbox_tabs))
+            self.assertIs(
+                window.toolbox_tabs[-1].page,
+                window.tab_widget.currentWidget(),
+            )
         finally:
             config_dir = window.config_dir
             window.close()

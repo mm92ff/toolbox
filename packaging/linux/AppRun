@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+if [ -n "${APPDIR:-}" ]; then
+    TOOLBOX_APPDIR=$APPDIR
+else
+    TOOLBOX_APPDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+fi
+
+exec "$TOOLBOX_APPDIR/usr/lib/toolbox/toolbox" "$@"

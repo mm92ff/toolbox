@@ -35,6 +35,7 @@ class CanvasSurface(
     entry_moved = QtCore.Signal(str, int, int)
     entry_hover_started = QtCore.Signal(str, QtCore.QPoint)
     entry_hover_ended = QtCore.Signal(str)
+    entry_files_dropped = QtCore.Signal(str, object)
 
 
 class ToolboxCanvas(QtWidgets.QScrollArea):
@@ -47,6 +48,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
     entry_moved = QtCore.Signal(str, int, int)
     entry_hover_started = QtCore.Signal(str, QtCore.QPoint)
     entry_hover_ended = QtCore.Signal(str)
+    entry_files_dropped = QtCore.Signal(str, object)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -76,6 +78,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         self.surface.entry_hover_ended.connect(self._on_entry_hover_ended)
         self.surface.entry_hover_started.connect(self.entry_hover_started.emit)
         self.surface.entry_hover_ended.connect(self.entry_hover_ended.emit)
+        self.surface.entry_files_dropped.connect(self.entry_files_dropped.emit)
         self.verticalScrollBar().valueChanged.connect(lambda _value: self._hide_hover_preview())
         self.horizontalScrollBar().valueChanged.connect(lambda _value: self._hide_hover_preview())
 

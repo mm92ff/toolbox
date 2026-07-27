@@ -2,7 +2,12 @@
 # -*- coding: utf-8 -*-
 """Central constants for the toolbox launcher."""
 
-DEFAULT_APP_NAME = "ToolboxStarter"
+PRODUCT_NAME = "Toolbox"
+VERSION = "0.42-beta"
+ORGANIZATION_NAME = "Toolbox"
+DESKTOP_FILE_NAME = "io.github.toolbox.Toolbox"
+CONFIG_DIRECTORY_NAME = "toolbox"
+DEFAULT_APP_NAME = PRODUCT_NAME
 DEFAULT_TOOLBOX_TAB_TITLE = "Toolbox"
 
 SUPPORTED_TOOL_EXTENSIONS = ()
@@ -94,6 +99,7 @@ TOP_PANEL_DEFAULT_SIZE = 170
 BOTTOM_PANEL_DEFAULT_SIZE = 92
 
 WIDGET_TABS = "tabs_main"
+WIDGET_NEW_TOOLBOX_TAB_BUTTON = "btn_new_toolbox_tab"
 WIDGET_TOOLBOX_SPLITTER = "splitter_toolbox"
 WIDGET_TOP_PANEL = "panel_top"
 WIDGET_DROP_ZONE = "drop_zone"

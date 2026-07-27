@@ -1,0 +1,109 @@
+#!/bin/sh
+set -eu
+
+PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+APPIMAGE=${1:-}
+
+if [ -z "$APPIMAGE" ]; then
+    APPIMAGE=$(find "$PROJECT_ROOT/dist-appimage" -maxdepth 1 -type f -name '*.AppImage' | head -n 1)
+fi
+if [ -z "$APPIMAGE" ] || [ ! -x "$APPIMAGE" ]; then
+    echo "ERROR: Executable AppImage not found." >&2
+    exit 1
+fi
+
+TEST_ROOT=$(mktemp -d)
+TEST_CONFIG="$TEST_ROOT/config"
+RELOCATED_DIR="$TEST_ROOT/Download Folder"
+RELOCATED_APPIMAGE="$RELOCATED_DIR/Renamed Toolbox.AppImage"
+SYMLINKED_APPIMAGE="$TEST_ROOT/Toolbox Link.AppImage"
+DESKTOP_FIXTURE="$TEST_ROOT/Frozen Drop.desktop"
+DROP_FIXTURE="$TEST_ROOT/input file.txt"
+mkdir -p "$TEST_CONFIG" "$RELOCATED_DIR"
+trap 'chmod u+w "$RELOCATED_DIR" 2>/dev/null || true; rm -rf "$TEST_ROOT"' EXIT HUP INT TERM
+
+printf '%s\n' \
+    '[Desktop Entry]' \
+    'Type=Application' \
+    'Name=Frozen Desktop Fixture' \
+    'Name[de_CH]=Eingefrorene Desktop-Probe' \
+    'Exec=/usr/bin/printf %F' \
+    'Icon=video-display' \
+    'Terminal=false' \
+    > "$DESKTOP_FIXTURE"
+: > "$DROP_FIXTURE"
+
+run_smoke_test() {
+    TEST_APPIMAGE=$1
+    REPORT_PATH=$2
+    FORWARD_TOKEN=$3
+    shift 3
+
+    env -u PYTHONPATH \
+        PATH=/usr/bin:/bin \
+        PYTHONNOUSERSITE=1 \
+        QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}" \
+        XDG_CONFIG_HOME="$TEST_CONFIG" \
+        TOOLBOX_SMOKE_REPORT="$REPORT_PATH" \
+        TOOLBOX_SMOKE_DESKTOP_ENTRY="$DESKTOP_FIXTURE" \
+        TOOLBOX_SMOKE_DROP_PATH="$DROP_FIXTURE" \
+        "$TEST_APPIMAGE" "$@" --smoke-test "$FORWARD_TOKEN"
+
+    grep -F -- "\"$FORWARD_TOKEN\"" "$REPORT_PATH" >/dev/null
+    grep -F -- '"application_name": "Toolbox"' "$REPORT_PATH" >/dev/null
+    grep -F -- '"desktop_file_name": "io.github.toolbox.Toolbox"' "$REPORT_PATH" >/dev/null
+    grep -F -- '"frozen": true' "$REPORT_PATH" >/dev/null
+    grep -F -- '"icon_available": true' "$REPORT_PATH" >/dev/null
+    grep -F -- '"icon_theme_name":' "$REPORT_PATH" >/dev/null
+    grep -F -- '"icon_theme_search_path_count":' "$REPORT_PATH" >/dev/null
+    grep -F -- '"desktop_fixture_field_code": "F"' "$REPORT_PATH" >/dev/null
+    grep -F -- '"desktop_fixture_icon_available": true' "$REPORT_PATH" >/dev/null
+    grep -F -- '"desktop_fixture_mode": "direct"' "$REPORT_PATH" >/dev/null
+    grep -F -- '"desktop_fixture_name": "Eingefrorene Desktop-Probe"' "$REPORT_PATH" >/dev/null
+    grep -F -- "\"$DROP_FIXTURE\"" "$REPORT_PATH" >/dev/null
+    grep -F -- '"window_title": "Toolbox"' "$REPORT_PATH" >/dev/null
+    grep -F -- "\"config_directory\": \"$TEST_CONFIG/toolbox\"" "$REPORT_PATH" >/dev/null
+}
+
+run_smoke_test \
+    "$APPIMAGE" \
+    "$TEST_ROOT/normal.json" \
+    "--normal-forwarding-token"
+run_smoke_test \
+    "$APPIMAGE" \
+    "$TEST_ROOT/extract-and-run.json" \
+    "--extract-forwarding-token" \
+    --appimage-extract-and-run
+QT_SCALE_FACTOR=2 run_smoke_test \
+    "$APPIMAGE" \
+    "$TEST_ROOT/hidpi.json" \
+    "--hidpi-forwarding-token"
+grep -F -- '"device_pixel_ratio": 2.0' "$TEST_ROOT/hidpi.json" >/dev/null
+
+cp "$APPIMAGE" "$RELOCATED_APPIMAGE"
+chmod +x "$RELOCATED_APPIMAGE"
+run_smoke_test \
+    "$RELOCATED_APPIMAGE" \
+    "$TEST_ROOT/renamed.json" \
+    "--renamed-forwarding-token"
+
+ln -s "Download Folder/Renamed Toolbox.AppImage" "$SYMLINKED_APPIMAGE"
+run_smoke_test \
+    "$SYMLINKED_APPIMAGE" \
+    "$TEST_ROOT/symlink.json" \
+    "--symlink-forwarding-token"
+
+chmod a-w "$RELOCATED_DIR"
+run_smoke_test \
+    "$RELOCATED_APPIMAGE" \
+    "$TEST_ROOT/read-only-directory.json" \
+    "--read-only-directory-token"
+chmod u+w "$RELOCATED_DIR"
+
+if [ -n "${DISPLAY:-}" ] && [ "${XDG_SESSION_TYPE:-}" = "x11" ]; then
+    QT_QPA_PLATFORM=xcb run_smoke_test \
+        "$APPIMAGE" \
+        "$TEST_ROOT/xcb.json" \
+        "--xcb-forwarding-token"
+    grep -F -- '"qt_platform": "xcb"' "$TEST_ROOT/xcb.json" >/dev/null
+fi

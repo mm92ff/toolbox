@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Toolbox
+Comment=Organize and launch applications, files, and folders
+Exec=toolbox
+Icon=toolbox
+Terminal=false
+Categories=Utility;
+StartupWMClass=Toolbox
+Keywords=launcher;tools;applications;files;

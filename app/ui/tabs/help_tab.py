@@ -73,6 +73,14 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
             "Quick Start",
             (
                 "Drag and drop files or folders directly into a toolbox.",
+                (
+                    "On Linux, drop files or URLs directly onto a compatible "
+                    ".desktop tile to pass them through %f, %F, %u, or %U."
+                ),
+                (
+                    "Drop on empty canvas space still adds the dropped item as "
+                    "a new toolbox tile."
+                ),
                 "Alternatively, use 'Add Apps' to select apps manually.",
                 "Use right-click on empty canvas space to add a section at that position.",
                 "Launch behavior can be switched globally between single-click and double-click in Settings.",
@@ -113,6 +121,18 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "Default launch options (arguments, working directory, wait, "
                     "window style) can be saved per entry."
                 ),
+                (
+                    "Linux .desktop entries are validated before launch. Toolbox "
+                    "shows monitored process failures when available."
+                ),
+                (
+                    "Terminal and D-Bus activated desktop entries are delegated "
+                    "to the desktop system; later target failures cannot always be detected."
+                ),
+                (
+                    "Desktop tiles use the Name and Icon declared by the launcher "
+                    "when those values can be resolved."
+                ),
                 "Use 'Open Path' to jump directly to the corresponding folder.",
                 "Delete or Backspace removes the current selection.",
             ),
@@ -136,6 +156,10 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
         _create_help_section(
             "Tabs, Colors, and Preview",
             (
+                (
+                    "Use the '+' button in the top tab bar, or press Ctrl+T, "
+                    "to create and open a new toolbox tab."
+                ),
                 "Tab titles can be renamed via right-click.",
                 "In 'Manage Tabs' you can adjust order and visibility.",
                 "Right-click on empty canvas space to set/reset the background color for the current tab.",
@@ -151,7 +175,10 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 "Image preview thumbnails and video preview thumbnails (ffmpeg) can be enabled independently.",
                 "Preview mode supports Fit (full image) and Fill (crop).",
                 "The Settings tab includes an FFmpeg section showing source/status and the resolved executable path.",
-                "You can set a manual ffmpeg.exe path there and use Rescan to refresh detection.",
+                (
+                    "You can set a manual FFmpeg executable path there and use "
+                    "Rescan to refresh detection."
+                ),
                 "Optional hover preview can show larger image/video thumbnails on mouse-over.",
                 "Changes in the Settings tab become active only after 'Save & Apply'.",
                 "UI settings are also stored as JSON in the config folder (ui_settings.json).",

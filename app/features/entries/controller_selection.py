@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from PySide6 import QtCore, QtWidgets
 
 from app import constants
@@ -109,17 +111,21 @@ def update_details(owner: object, ctx: ToolboxTabContext) -> None:
             args_text = entry.launch_arguments or "(none)"
             workdir_text = entry.launch_working_directory or "(default)"
             wait_text = "Yes" if entry.launch_wait else "No"
-            style_text = entry.launch_window_style or "normal"
             persistent_options_text = (
                 f"Arguments: {args_text}; Working directory: {workdir_text}; "
-                f"Wait: {wait_text}; Window style: {style_text}"
+                f"Wait: {wait_text}"
             )
+            if sys.platform == "win32":
+                style_text = entry.launch_window_style or "normal"
+                persistent_options_text += f"; Window style: {style_text}"
+        admin_line = (
+            f"Default launch as administrator: {admin_text}\n"
+            if sys.platform == "win32"
+            else ""
+        )
         ctx.details_label.setText(
-            (
-                f"{entry.title}\nPath: {entry.path}\n"
-                f"Default launch as administrator: {admin_text}\n"
-                f"Saved launch options: {persistent_options_text}"
-            )
+            f"{entry.title}\nPath: {entry.path}\n"
+            f"{admin_line}Saved launch options: {persistent_options_text}"
         )
     else:
         ctx.details_label.setText(
@@ -139,4 +145,3 @@ def hidden_entry_ids_for_context(ctx: ToolboxTabContext) -> set[str]:
         if query not in haystack:
             hidden_ids.add(entry.entry_id)
     return hidden_ids
-

@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.domain.tab_context import ToolboxTabContext
@@ -27,11 +29,15 @@ def show_canvas_context_menu(
     if entry.is_tool:
         start_action = menu.addAction("Launch")
         start_with_options_action = menu.addAction("Launch with Parameters ...")
-        admin_now_action = menu.addAction("Run as Administrator")
+        admin_now_action = (
+            menu.addAction("Run as Administrator") if sys.platform == "win32" else None
+        )
         menu.addSeparator()
-        persistent_admin_action = menu.addAction("Always Run as Administrator")
-        persistent_admin_action.setCheckable(True)
-        persistent_admin_action.setChecked(entry.always_run_as_admin)
+        persistent_admin_action = None
+        if sys.platform == "win32":
+            persistent_admin_action = menu.addAction("Always Run as Administrator")
+            persistent_admin_action.setCheckable(True)
+            persistent_admin_action.setChecked(entry.always_run_as_admin)
         save_persistent_options_action = menu.addAction("Save Default Launch Options ...")
         clear_persistent_options_action = menu.addAction("Reset Default Launch Options")
         clear_persistent_options_action.setEnabled(owner._entry_has_persistent_launch_options(entry))
@@ -44,9 +50,9 @@ def show_canvas_context_menu(
             owner._launch_entry(ctx, entry)
         elif chosen == start_with_options_action:
             owner._launch_entry_with_options(ctx, entry)
-        elif chosen == admin_now_action:
+        elif admin_now_action is not None and chosen == admin_now_action:
             owner._launch_entry(ctx, entry, force_admin=True)
-        elif chosen == persistent_admin_action:
+        elif persistent_admin_action is not None and chosen == persistent_admin_action:
             entry.always_run_as_admin = persistent_admin_action.isChecked()
             owner.persist_toolbox_state()
             owner._update_details(ctx)
@@ -136,4 +142,3 @@ def show_canvas_background_context_menu(
             set_toolbox_tab_background_color(owner, ctx, selected_color.name())
     elif chosen == reset_tab_background_action:
         set_toolbox_tab_background_color(owner, ctx, "")
-

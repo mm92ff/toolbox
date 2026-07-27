@@ -28,6 +28,10 @@ pip-wheel-metadata/
 *.exe
 *.msi
 *.app
+*.AppImage
+*.AppImage.sha256
+Toolbox.AppDir/
+dist-appimage/
 
 # IDE/editor files
 .vscode/

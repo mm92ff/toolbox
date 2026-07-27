@@ -1,6 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import Mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -130,3 +131,37 @@ def test_resolve_ffmpeg_uses_internal_fallback_when_local_missing(monkeypatch) -
         resolution = video_thumbnails.resolve_ffmpeg_path("")
         assert resolution.path == str(internal)
         assert resolution.source == video_thumbnails.FFMPEG_SOURCE_INTERNAL
+
+
+def test_system_ffmpeg_uses_external_process_environment(monkeypatch) -> None:
+    _ensure_app()
+    with tempfile.TemporaryDirectory() as tmp:
+        source = Path(tmp) / "clip.mp4"
+        source.write_bytes(b"dummy")
+        expected_environment = {"LD_LIBRARY_PATH": "/usr/lib"}
+        environment_calls: list[str] = []
+
+        def fake_environment(executable: str) -> dict[str, str]:
+            environment_calls.append(executable)
+            return expected_environment
+
+        monkeypatch.setattr(
+            video_thumbnails,
+            "external_process_environment",
+            fake_environment,
+        )
+        run = Mock()
+        run.return_value.returncode = 1
+        monkeypatch.setattr(video_thumbnails.subprocess, "run", run)
+
+        assert (
+            video_thumbnails._extract_video_frame(
+                source,
+                "/usr/bin/ffmpeg",
+                1.0,
+            )
+            is None
+        )
+
+    assert environment_calls == ["/usr/bin/ffmpeg"]
+    assert run.call_args.kwargs["env"] == expected_environment

@@ -56,6 +56,104 @@ class ToolboxDiagnosticsTests(unittest.TestCase):
 
             self.assertEqual([], broken)
 
+    def test_find_broken_tool_entries_reports_invalid_desktop_exec(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            desktop = Path(temp_dir) / "Broken.desktop"
+            desktop.write_text(
+                (
+                    "[Desktop Entry]\n"
+                    "Type=Application\n"
+                    "Name=Broken\n"
+                    "Exec=definitely-missing-toolbox-command\n"
+                ),
+                encoding="utf-8",
+            )
+            tab = ToolboxTabData(
+                title="Linux",
+                entries=[
+                    ToolboxEntry(
+                        title="Broken Desktop",
+                        path=str(desktop),
+                    )
+                ],
+            )
+
+            broken = find_broken_tool_entries([tab])
+
+            self.assertEqual(1, len(broken))
+            self.assertIn("not found", broken[0].reason.lower())
+
+    def test_find_broken_tool_entries_accepts_valid_desktop_exec(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            desktop = Path(temp_dir) / "Valid.desktop"
+            desktop.write_text(
+                (
+                    "[Desktop Entry]\n"
+                    "Type=Application\n"
+                    "Name=Valid\n"
+                    "Exec=/usr/bin/true\n"
+                ),
+                encoding="utf-8",
+            )
+            tab = ToolboxTabData(
+                title="Linux",
+                entries=[ToolboxEntry(title="Valid Desktop", path=str(desktop))],
+            )
+
+            self.assertEqual([], find_broken_tool_entries([tab]))
+
+    def test_desktop_diagnostics_distinguish_missing_exec_and_try_exec(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            missing_exec = root / "MissingExec.desktop"
+            missing_exec.write_text(
+                "[Desktop Entry]\nType=Application\nName=Missing Exec\n",
+                encoding="utf-8",
+            )
+            missing_try_exec = root / "MissingTryExec.desktop"
+            missing_try_exec.write_text(
+                (
+                    "[Desktop Entry]\n"
+                    "Type=Application\n"
+                    "Name=Missing TryExec\n"
+                    "Exec=/usr/bin/true\n"
+                    "TryExec=definitely-missing-toolbox-command\n"
+                ),
+                encoding="utf-8",
+            )
+            tab = ToolboxTabData(
+                title="Linux",
+                entries=[
+                    ToolboxEntry(title="Missing Exec", path=str(missing_exec)),
+                    ToolboxEntry(title="Missing TryExec", path=str(missing_try_exec)),
+                ],
+            )
+
+            broken = find_broken_tool_entries([tab])
+            reasons = {item.entry_title: item.reason for item in broken}
+
+            self.assertIn("missing Exec", reasons["Missing Exec"])
+            self.assertIn("not found", reasons["Missing TryExec"])
+
+    def test_missing_desktop_icon_is_valid_and_uses_ui_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            desktop = Path(temp_dir) / "NoIcon.desktop"
+            desktop.write_text(
+                (
+                    "[Desktop Entry]\n"
+                    "Type=Application\n"
+                    "Name=No Icon\n"
+                    "Exec=/usr/bin/true\n"
+                ),
+                encoding="utf-8",
+            )
+            tab = ToolboxTabData(
+                title="Linux",
+                entries=[ToolboxEntry(title="No Icon", path=str(desktop))],
+            )
+
+            self.assertEqual([], find_broken_tool_entries([tab]))
+
 
 if __name__ == "__main__":
     unittest.main()

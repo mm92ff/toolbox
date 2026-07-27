@@ -6,9 +6,11 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable
 
 from app.domain.models import ToolboxTabData
+from app.services.desktop_entry_launch import prepare_desktop_launch
 from app.services.paths import resolve_supported_tool_path
 
 
@@ -28,11 +30,19 @@ def _expanded_candidate_path(raw_path: str) -> str:
     return os.path.expandvars((raw_path or "").strip())
 
 
-def _is_tool_path_valid(raw_path: str) -> bool:
+def _tool_path_issue(raw_path: str) -> str | None:
     normalized = _expanded_candidate_path(raw_path)
     if not normalized:
-        return False
-    return resolve_supported_tool_path(normalized) is not None
+        return "Empty path"
+    resolved = resolve_supported_tool_path(normalized)
+    if resolved is None:
+        return "Path not found or unreachable"
+    if Path(resolved).suffix.lower() == ".desktop":
+        try:
+            prepare_desktop_launch(resolved)
+        except (OSError, ValueError) as exc:
+            return str(exc)
+    return None
 
 
 def find_broken_tool_entries(tabs: Iterable[ToolboxTabData]) -> list[BrokenToolEntry]:
@@ -58,7 +68,8 @@ def find_broken_tool_entries(tabs: Iterable[ToolboxTabData]) -> list[BrokenToolE
                 )
                 continue
 
-            if not _is_tool_path_valid(entry_path):
+            issue = _tool_path_issue(entry_path)
+            if issue is not None:
                 broken.append(
                     BrokenToolEntry(
                         tab_id=tab.tab_id,
@@ -66,7 +77,7 @@ def find_broken_tool_entries(tabs: Iterable[ToolboxTabData]) -> list[BrokenToolE
                         entry_id=entry.entry_id,
                         entry_title=entry.title,
                         path=entry.path,
-                        reason="Path not found or unreachable",
+                        reason=issue,
                     )
                 )
 

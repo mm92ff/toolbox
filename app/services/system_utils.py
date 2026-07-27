@@ -9,11 +9,15 @@ from functools import lru_cache
 import json
 import logging
 import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+import threading
+from pathlib import Path, PureWindowsPath
+
+from app import constants
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +46,69 @@ def _resolve_system_command(command: str) -> str:
     if executable:
         return executable
     raise FileNotFoundError(f"Required system command is not available: {command}")
+
+
+def external_process_environment(executable: str | Path | None = None) -> dict[str, str]:
+    """Return an environment suitable for a system-provided child process."""
+    env = os.environ.copy()
+    if sys.platform == "win32" or _is_bundled_executable(executable):
+        return env
+    if not getattr(sys, "frozen", False) and "LD_LIBRARY_PATH_ORIG" not in env:
+        return env
+
+    original_library_path = env.get("LD_LIBRARY_PATH_ORIG")
+    if original_library_path:
+        env["LD_LIBRARY_PATH"] = original_library_path
+    else:
+        env.pop("LD_LIBRARY_PATH", None)
+    return env
+
+
+def _is_bundled_executable(executable: str | Path | None) -> bool:
+    """Return whether an executable is shipped inside the frozen application."""
+    if executable is None:
+        return False
+    try:
+        candidate = Path(executable).expanduser().resolve(strict=False)
+    except OSError:
+        return False
+
+    roots: list[Path] = []
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        roots.append(Path(meipass).resolve(strict=False))
+    if getattr(sys, "frozen", False):
+        roots.append(Path(sys.executable).resolve(strict=False).parent)
+
+    for root in roots:
+        try:
+            candidate.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def _desktop_open_command(path: Path) -> list[str]:
+    """Return the native Linux desktop opener command for a path."""
+    xdg_open = shutil.which("xdg-open")
+    if xdg_open:
+        return [xdg_open, str(path)]
+    gio = shutil.which("gio")
+    if gio:
+        return [gio, "open", str(path)]
+    raise FileNotFoundError("Required system command is not available: xdg-open or gio")
+
+
+def _desktop_launch_command(path: Path) -> list[str]:
+    """Return the Linux command that resolves an application desktop file."""
+    gio = shutil.which("gio")
+    if gio:
+        return [gio, "launch", str(path)]
+    raise FileNotFoundError(
+        "Required system command is not available: gio "
+        "(needed to launch .desktop shortcuts)"
+    )
 
 
 def clear_system_utils_caches() -> None:
@@ -78,10 +145,12 @@ def ensure_writable_directory(directory: Path) -> None:
             )
 
 
-def get_config_directory(app_name: str) -> Path:
+def get_config_directory(app_name: str = constants.CONFIG_DIRECTORY_NAME) -> Path:
     """Return and create the OS-specific configuration directory."""
+    requested_name = app_name or constants.CONFIG_DIRECTORY_NAME
     safe_app_name = (
-        "".join(char for char in app_name if char.isalnum() or char in "_-") or "ToolboxStarter"
+        "".join(char for char in requested_name if char.isalnum() or char in "_-")
+        or constants.CONFIG_DIRECTORY_NAME
     )
 
     if sys.platform == "win32":
@@ -90,7 +159,13 @@ def get_config_directory(app_name: str) -> Path:
     elif sys.platform == "darwin":
         config_dir = Path.home() / "Library" / "Application Support" / safe_app_name
     else:
-        config_dir = Path.home() / ".config" / safe_app_name
+        xdg_config_home = os.environ.get("XDG_CONFIG_HOME", "").strip()
+        base = (
+            Path(xdg_config_home).expanduser()
+            if xdg_config_home
+            else Path.home() / ".config"
+        )
+        config_dir = base / safe_app_name
 
     ensure_writable_directory(config_dir)
     return config_dir
@@ -113,6 +188,13 @@ def normalize_tool_path(filepath: str) -> str:
 def display_name_from_path(filepath: str) -> str:
     """Return a user-facing display name derived from a file path."""
     path = Path(filepath)
+    if path.suffix.lower() == ".desktop":
+        try:
+            from app.services.desktop_entries import read_desktop_entry
+
+            return read_desktop_entry(path).name
+        except (OSError, ValueError):
+            pass
     return path.stem or path.name or filepath
 
 
@@ -127,10 +209,20 @@ def open_directory_in_os(dirpath: str) -> bool:
             os.startfile(str(directory))
         elif sys.platform == "darwin":
             open_cmd = _resolve_system_command("open")
-            subprocess.run([open_cmd, str(directory)], check=True, shell=False)
+            subprocess.run(
+                [open_cmd, str(directory)],
+                check=True,
+                shell=False,
+                env=external_process_environment(open_cmd),
+            )
         else:
-            xdg_open_cmd = _resolve_system_command("xdg-open")
-            subprocess.run([xdg_open_cmd, str(directory)], check=True, shell=False)
+            command = _desktop_open_command(directory)
+            subprocess.run(
+                command,
+                check=True,
+                shell=False,
+                env=external_process_environment(command[0]),
+            )
         return True
     except (
         subprocess.CalledProcessError,
@@ -207,10 +299,89 @@ def launch_path(
 
     if sys.platform == "darwin":
         open_cmd = _resolve_system_command("open")
-        subprocess.Popen([open_cmd, str(path)], cwd=str(path.parent), shell=False)
+        subprocess.Popen(
+            [open_cmd, str(path)],
+            cwd=str(path.parent),
+            shell=False,
+            env=external_process_environment(open_cmd),
+        )
         return
 
-    subprocess.Popen([str(path)], cwd=str(path.parent), shell=False)
+    launch_working_directory = path.parent
+    if normalized_working_directory:
+        launch_working_directory = Path(normalized_working_directory).expanduser()
+        if not launch_working_directory.is_dir():
+            raise NotADirectoryError(
+                f"Working directory not found: {normalized_working_directory}"
+            )
+
+    if path.suffix.lower() == ".desktop":
+        if normalized_arguments:
+            raise OSError(
+                "Custom launch arguments are not supported for Linux .desktop shortcuts."
+            )
+        from app.services.desktop_entry_launch import prepare_desktop_launch
+
+        prepared = prepare_desktop_launch(
+            path,
+            working_directory=normalized_working_directory,
+        )
+        for command in prepared.commands:
+            if prepared.mode in {"gio", "link"}:
+                subprocess.run(
+                    command,
+                    cwd=str(prepared.working_directory),
+                    check=True,
+                    shell=False,
+                    env=external_process_environment(command[0]),
+                )
+                continue
+            process = subprocess.Popen(
+                command,
+                cwd=str(prepared.working_directory),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                shell=False,
+                env=external_process_environment(command[0]),
+                start_new_session=True,
+            )
+            if wait:
+                threading.Thread(
+                    target=process.wait,
+                    name=f"toolbox-wait-{process.pid}",
+                    daemon=True,
+                ).start()
+        return
+
+    if not os.access(path, os.X_OK):
+        if normalized_arguments:
+            raise OSError("Launch arguments require an executable Linux target.")
+        command = _desktop_open_command(path)
+        subprocess.run(
+            command,
+            check=True,
+            shell=False,
+            env=external_process_environment(command[0]),
+        )
+        return
+
+    command = [str(path)]
+    if normalized_arguments:
+        command.extend(shlex.split(normalized_arguments, posix=True))
+    child_env = external_process_environment(path)
+    process = subprocess.Popen(
+        command,
+        cwd=str(launch_working_directory),
+        shell=False,
+        env=child_env,
+    )
+    if wait:
+        threading.Thread(
+            target=process.wait,
+            name=f"toolbox-wait-{process.pid}",
+            daemon=True,
+        ).start()
 
 
 def _launch_windows_admin(path: Path) -> None:
@@ -391,7 +562,7 @@ def _resolve_windows_shortcut(path: Path) -> tuple[Path | None, str | None, str 
         return None, None, None
 
     expanded_target = os.path.expandvars(raw_target)
-    target_path = Path(expanded_target).expanduser()
+    target_path = Path(PureWindowsPath(expanded_target).as_posix()).expanduser()
 
     arguments = str(payload.get("arguments") or "").strip() or None
     working_directory = str(payload.get("working_directory") or "").strip() or None

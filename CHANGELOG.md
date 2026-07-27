@@ -8,14 +8,53 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- Linux Mint 22.3 x86_64 AppImage build pipeline with AppDir, desktop metadata,
+  AppStream metadata, dependency validation, checksum generation, and smoke tests
+- Linux launcher tests for argument handling, working directories, desktop file
+  opening, XDG configuration, and PyInstaller environment isolation
+- AppImage content, relocation, argument-forwarding, read-only-directory, and
+  real-XCB acceptance checks
 - `THIRD_PARTY_NOTICES.md` with FFmpeg/FFprobe licensing, provenance, and source-reference guidance for distributed binaries
 - New FFmpeg section in Settings with detected source/status, resolved path display, manual path input, browse, and rescan controls
 - Windows common-location FFmpeg discovery (Program Files, Chocolatey, Scoop, WinGet package folders)
+- Standards-aware Linux desktop-entry parsing for names, icons, `Exec`, `TryExec`,
+  working directories, MIME declarations, and freedesktop field codes
+- File and URL drops directly onto compatible Linux `.desktop` tiles
+- Asynchronous desktop-process monitoring with bounded startup error details
+- Browser-style `+` action in the tab bar, with `Ctrl+T`, for creating and
+  immediately opening new toolbox tabs
 
 ### Changed
 
+- Application identity is stable across renamed/versioned executables and honors
+  `XDG_CONFIG_HOME` on Linux
+- Linux launches restore the host library search path before starting system
+  applications, desktop openers, or system FFmpeg
+- Linux `wait` launches are reaped by a background waiter instead of blocking the
+  Qt GUI thread
+- Linux release builds validate a pinned `appimagetool` checksum and create
+  portable relative SHA-256 metadata
+- Base-system libraries are no longer copied from the Mint builder into the
+  AppImage; the release uses the guaranteed Mint 22.3 base system
+- Windows-only administrator and window-style controls are hidden on Linux
 - README now includes a dedicated third-party licensing section pointing to FFmpeg compliance notes
 - FFmpeg resolution order is now: environment override -> manual Settings path -> local/system install (PATH/common locations) -> bundled internal fallback
+- Linux desktop tiles now use localized `Name=` metadata and resolve `Icon=`
+  through XDG/Cinnamon icon themes before falling back to generic file icons
+
+### Fixed
+
+- Executable Linux `.desktop` shortcuts are parsed and launched as safe argument
+  arrays instead of being passed directly to the kernel and failing with
+  `Exec format error`
+- Immediate desktop-launch failures no longer disappear behind a successful GIO
+  submission status
+- Desktop launch error capture now uses a hard 64 KiB in-memory ring buffer
+  instead of retaining unbounded temporary output
+- Terminal and D-Bus desktop entries are validated before GIO delegation, and
+  delegated file drops no longer show a misleading direct-launch status
+- Desktop-tile drag feedback now includes declared MIME compatibility instead
+  of deferring that rejection until the drop
 
 ## [0.42-beta] - 2026-04-01
 

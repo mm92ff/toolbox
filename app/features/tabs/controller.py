@@ -237,6 +237,13 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         ctx.canvas.entry_moved.connect(
             lambda entry_id, x, y, c=ctx: self._on_entry_moved(c, entry_id, x, y)
         )
+        ctx.canvas.entry_files_dropped.connect(
+            lambda entry_id, payload, c=ctx: self._on_entry_files_dropped(
+                c,
+                entry_id,
+                payload,
+            )
+        )
 
         for widget in (ctx.drop_zone, ctx.canvas.viewport(), ctx.canvas.surface):
             widget.setAcceptDrops(True)
@@ -327,6 +334,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
                 self.tab_widget.removeTab(0)
             for ctx in self._visible_toolbox_tabs():
                 self.tab_widget.addTab(ctx.page, ctx.title)
+            self._install_new_toolbox_tab_action()
             self.tab_widget.addTab(self.settings_tab, self._settings_title)
             if not self._help_tab_hidden:
                 self.tab_widget.addTab(self.help_tab, self._help_title)
@@ -340,12 +348,69 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         finally:
             self.tab_widget.blockSignals(False)
 
+    def _install_new_toolbox_tab_action(self) -> None:
+        """Insert the fixed browser-style plus action before Settings and Help."""
+
+        index = self.tab_widget.addTab(self._new_toolbox_tab_action_page, "")
+        self.tab_widget.setTabEnabled(index, False)
+        self.tab_widget.setTabToolTip(index, "Create new toolbox tab (Ctrl+T)")
+
+        button = QtWidgets.QToolButton(self.tab_widget.tabBar())
+        button.setObjectName(constants.WIDGET_NEW_TOOLBOX_TAB_BUTTON)
+        button.setText("+")
+        button.setToolTip("Create new toolbox tab (Ctrl+T)")
+        button.setAccessibleName("Create new toolbox tab")
+        button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        button.setAutoRaise(True)
+        button.setFixedSize(28, 28)
+        font = button.font()
+        font.setPixelSize(20)
+        font.setBold(True)
+        button.setFont(font)
+        button.clicked.connect(self._create_new_toolbox_tab)
+        self.tab_widget.tabBar().setTabButton(
+            index,
+            QtWidgets.QTabBar.ButtonPosition.RightSide,
+            button,
+        )
+        self._new_toolbox_tab_button = button
+
+    def _create_new_toolbox_tab(
+        self,
+        _checked: bool = False,
+        *,
+        insert_position: int | None = None,
+    ) -> ToolboxTabContext:
+        """Create, persist, and activate a new empty toolbox tab."""
+
+        if (
+            self.tab_widget.currentWidget() is self.settings_tab
+            and bool(getattr(self, "_settings_dirty", False))
+        ):
+            self._apply_pending_settings()
+
+        position = len(self.toolbox_tabs) if insert_position is None else insert_position
+        ctx = self._create_toolbox_tab(
+            title=self._suggest_toolbox_title(),
+            entries=[],
+            is_primary=False,
+            insert_position=position,
+            switch_to=True,
+        )
+        self.persist_toolbox_state()
+        self._save_settings()
+        self.refresh_all_canvases()
+        self.status.showMessage(f"New toolbox tab created: {ctx.title}", 3000)
+        return ctx
+
     def _show_tab_context_menu(self, pos: QtCore.QPoint) -> None:
         tab_bar = self.tab_widget.tabBar()
         index = tab_bar.tabAt(pos)
         if index < 0:
             return
         widget = self.tab_widget.widget(index)
+        if widget is self._new_toolbox_tab_action_page:
+            return
         is_fixed_tab = widget is self.settings_tab or widget is self.help_tab
         menu = QtWidgets.QMenu(self)
         rename_action = menu.addAction("Rename Tab")
@@ -363,17 +428,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             insert_position = len(self.toolbox_tabs)
             if ctx is not None:
                 insert_position = self._toolbox_tab_index(ctx) + 1
-            title = self._suggest_toolbox_title()
-            self._create_toolbox_tab(
-                title=title,
-                entries=[],
-                is_primary=False,
-                insert_position=insert_position,
-                switch_to=True,
-            )
-            self.persist_toolbox_state()
-            self._save_settings()
-            self.refresh_all_canvases()
+            self._create_new_toolbox_tab(insert_position=insert_position)
         elif delete_toolbox_action is not None and chosen == delete_toolbox_action:
             self._delete_toolbox_tab_by_index(index)
 

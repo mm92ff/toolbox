@@ -9,6 +9,14 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from app import constants
 from app.canvas.layout_engine import build_section_metrics, build_tile_metrics
 from app.domain.models import ToolboxEntry
+from app.services.desktop_entries import (
+    DesktopEntryError,
+    DesktopLaunchInput,
+    DesktopLaunchItem,
+    desktop_entry_file_field_code,
+    read_desktop_entry,
+    validate_desktop_launch_input,
+)
 
 
 class CanvasItemBase(QtWidgets.QFrame):
@@ -111,6 +119,8 @@ class CanvasItemBase(QtWidgets.QFrame):
 
 
 class ToolTileWidget(CanvasItemBase):
+    files_dropped = QtCore.Signal(str, object)
+
     def __init__(
         self, entry: ToolboxEntry, icon: QtGui.QIcon, icon_size: int, parent=None
     ) -> None:
@@ -123,6 +133,8 @@ class ToolTileWidget(CanvasItemBase):
         self._highlight_color = constants.DEFAULT_TILE_HIGHLIGHT_COLOR
         self.setObjectName("tool_tile")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_Hover, True)
+        self.setAcceptDrops(True)
+        self.setProperty("external_drop_state", "none")
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setLineWidth(0)
 
@@ -181,6 +193,14 @@ class ToolTileWidget(CanvasItemBase):
                 border: {selected_border_width}px solid {highlight_line_color};
                 background: {selected_fill_rgba};
             }}
+            QFrame#tool_tile[external_drop_state=\"valid\"] {{
+                border: 2px solid #39b86a;
+                background: rgba(57, 184, 106, 52);
+            }}
+            QFrame#tool_tile[external_drop_state=\"invalid\"] {{
+                border: 2px solid #dc5a63;
+                background: rgba(220, 90, 99, 52);
+            }}
             QLabel#tool_title {{
                 font-weight: 600;
                 background: transparent;
@@ -233,7 +253,18 @@ class ToolTileWidget(CanvasItemBase):
         title_font.setPixelSize(self._metrics.font_pixel_size)
         self.title_label.setFont(title_font)
         self.title_label.setFixedHeight(self._metrics.title_height)
-        self.title_label.setToolTip(f"{self.entry.title}\n{self.entry.path}")
+        tooltip = f"{self.entry.title}\n{self.entry.path}"
+        if self.entry.path.lower().endswith(".desktop"):
+            try:
+                field_code = desktop_entry_file_field_code(
+                    read_desktop_entry(self.entry.path)
+                )
+            except DesktopEntryError:
+                field_code = ""
+            if field_code:
+                tooltip += f"\nDrop files or URLs here (%{field_code})"
+        self.title_label.setToolTip(tooltip)
+        self.setToolTip(tooltip)
 
         self.icon_label.setFixedSize(self._metrics.icon_size, self._metrics.icon_size)
         self.icon_label.setPixmap(
@@ -246,6 +277,90 @@ class ToolTileWidget(CanvasItemBase):
         self.icon_label.setPixmap(
             self._icon.pixmap(self._metrics.icon_size, self._metrics.icon_size)
         )
+
+    def _set_external_drop_state(self, state: str) -> None:
+        normalized = state if state in {"none", "valid", "invalid"} else "none"
+        if str(self.property("external_drop_state") or "none") == normalized:
+            return
+        self.setProperty("external_drop_state", normalized)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
+
+    def _drop_is_compatible(self, urls: list[QtCore.QUrl]) -> bool:
+        if not urls or not self.entry.path.lower().endswith(".desktop"):
+            return False
+        try:
+            metadata = read_desktop_entry(self.entry.path)
+            field_code = desktop_entry_file_field_code(metadata)
+            if not field_code:
+                return False
+
+            mime_database = QtCore.QMimeDatabase()
+            launch_items: list[DesktopLaunchItem] = []
+            for url in urls:
+                local_path = url.toLocalFile()
+                mime_type = ""
+                if local_path:
+                    path = QtCore.QFileInfo(local_path)
+                    mime_type = (
+                        "inode/directory"
+                        if path.isDir()
+                        else mime_database.mimeTypeForFile(local_path).name()
+                    )
+                launch_items.append(
+                    DesktopLaunchItem(
+                        url=url.toString(
+                            QtCore.QUrl.ComponentFormattingOption.FullyEncoded
+                        ),
+                        local_path=local_path,
+                        mime_type=mime_type,
+                    )
+                )
+            validate_desktop_launch_input(
+                metadata,
+                DesktopLaunchInput(tuple(launch_items)),
+            )
+            return True
+        except DesktopEntryError:
+            return False
+
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
+        mime_data = event.mimeData()
+        if not mime_data.hasUrls():
+            self._set_external_drop_state("none")
+            event.ignore()
+            return
+        urls = list(mime_data.urls())
+        self._set_external_drop_state(
+            "valid" if self._drop_is_compatible(urls) else "invalid"
+        )
+        # Accept invalid URL drops as well so the controller can explain why
+        # the selected tile cannot consume them instead of adding a new tile.
+        event.acceptProposedAction()
+
+    def dragLeaveEvent(self, event: QtGui.QDragLeaveEvent) -> None:
+        self._set_external_drop_state("none")
+        event.accept()
+
+    def dropEvent(self, event: QtGui.QDropEvent) -> None:
+        mime_data = event.mimeData()
+        urls = list(mime_data.urls()) if mime_data.hasUrls() else []
+        payload = tuple(
+            {
+                "url": url.toString(
+                    QtCore.QUrl.ComponentFormattingOption.FullyEncoded
+                ),
+                "local_path": url.toLocalFile(),
+            }
+            for url in urls
+        )
+        self._set_external_drop_state("none")
+        if not payload:
+            event.ignore()
+            return
+        self.files_dropped.emit(self.entry.entry_id, payload)
+        event.acceptProposedAction()
 
 
 class SectionWidget(CanvasItemBase):

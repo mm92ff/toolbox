@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Dict
 
 from PySide6 import QtCore, QtWidgets
@@ -192,7 +193,9 @@ def build_ffmpeg_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGrou
     manual_path_row = QtWidgets.QHBoxLayout()
     manual_path_input = QtWidgets.QLineEdit()
     manual_path_input.setObjectName(constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT)
-    manual_path_input.setPlaceholderText(r"Optional: C:\...\ffmpeg.exe")
+    manual_path_input.setPlaceholderText(
+        r"Optional: C:\...\ffmpeg.exe" if os.name == "nt" else "Optional: /usr/bin/ffmpeg"
+    )
     widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT] = manual_path_input
     manual_path_row.addWidget(manual_path_input, 1)
 
