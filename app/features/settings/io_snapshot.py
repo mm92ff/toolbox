@@ -33,6 +33,7 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
             "video_file_preview_enabled": owner.current_video_file_preview_enabled(),
             "hover_preview_enabled": owner.current_hover_preview_enabled(),
             "ffmpeg_manual_path": owner.current_ffmpeg_manual_path(),
+            "icon_preview_background_color": owner.current_icon_preview_background_color(),
             "tile_frame_thickness": owner.current_tile_frame_thickness(),
             "tile_frame_color": owner.current_tile_frame_color(),
             "tile_highlight_color": owner.current_tile_highlight_color(),
@@ -119,6 +120,10 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("layout/video_file_preview_enabled", owner.current_video_file_preview_enabled())
     settings.setValue("layout/hover_preview_enabled", owner.current_hover_preview_enabled())
     settings.setValue("layout/ffmpeg_manual_path", owner.current_ffmpeg_manual_path())
+    settings.setValue(
+        "layout/icon_preview_background_color",
+        owner.current_icon_preview_background_color(),
+    )
     settings.setValue("layout/tile_frame_thickness", owner.current_tile_frame_thickness())
     settings.setValue("layout/tile_frame_color", owner.current_tile_frame_color())
     settings.setValue("layout/tile_highlight_color", owner.current_tile_highlight_color())

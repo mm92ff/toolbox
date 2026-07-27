@@ -36,7 +36,7 @@ Desktop toolbox launcher built with Python and PySide6.
 
 ## Requirements
 
-- Python 3.13
+- Python 3.11
 - PySide6
 - pytest (for running tests)
 - `ffmpeg` (optional, only needed for video thumbnail previews)
@@ -44,23 +44,27 @@ Desktop toolbox launcher built with Python and PySide6.
 ## Setup
 
 ```powershell
-python -m venv .venv
+py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -U pip
-pip install pyside6 pytest
+python -m pip install -U pip
+python -m pip install -r requirements-dev.txt
 ```
 
 ## Run
 
 ```powershell
-python main.py
+.venv\Scripts\python.exe main.py
 ```
+
+On Windows, `start-toolbox.bat` is the recommended launcher. It creates the `.venv`
+with Python 3.11 when needed, installs missing runtime dependencies, and starts the GUI
+with `.venv\Scripts\pythonw.exe`.
 
 ## Test
 
 ```powershell
 $env:PYTHONPATH='.'
-pytest -q
+.venv\Scripts\python.exe -m pytest -q
 ```
 
 ## Usage Notes

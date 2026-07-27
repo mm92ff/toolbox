@@ -253,6 +253,7 @@ class MainWindowSettingsAppearanceMixin:
         line_edit.setText(self._normalize_icon_preview_background_color(line_edit.text()))
         self._update_icon_preview_background_color_preview()
         self._update_icon_size_live_preview()
+        self._mark_settings_dirty()
 
     def _choose_icon_preview_background_color(self) -> None:
         line_edit = self.widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT]

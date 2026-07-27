@@ -129,6 +129,19 @@ def load_settings(owner: object) -> None:
     )
     ffmpeg_manual_path_input.blockSignals(False)
 
+    icon_preview_bg_input = owner.widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT]
+    icon_preview_bg_input.blockSignals(True)
+    icon_preview_bg_input.setText(
+        owner._normalize_icon_preview_background_color(
+            settings.value(
+                "layout/icon_preview_background_color",
+                constants.DEFAULT_ICON_PREVIEW_BACKGROUND_COLOR,
+                type=str,
+            )
+        )
+    )
+    icon_preview_bg_input.blockSignals(False)
+
     auto_compact_left_checkbox = owner.widgets[constants.WIDGET_AUTO_COMPACT_LEFT_CHECKBOX]
     auto_compact_left_checkbox.blockSignals(True)
     auto_compact_left_checkbox.setChecked(

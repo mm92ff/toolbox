@@ -175,7 +175,7 @@ class TabManagementTests(unittest.TestCase):
             window.close()
             shutil.rmtree(config_dir, ignore_errors=True)
 
-    def test_icon_preview_background_updates_without_marking_settings_dirty(self) -> None:
+    def test_icon_preview_background_updates_and_marks_settings_dirty(self) -> None:
         window = self._create_window()
         try:
             settings_index = window.tab_widget.indexOf(window.settings_tab)
@@ -191,7 +191,7 @@ class TabManagementTests(unittest.TestCase):
             QtWidgets.QApplication.processEvents()
 
             self.assertEqual("#334455", str(preview.property("preview_background_color")))
-            self.assertFalse(window._settings_dirty)
+            self.assertTrue(window._settings_dirty)
         finally:
             config_dir = window.config_dir
             window.close()

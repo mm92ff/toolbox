@@ -101,6 +101,17 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
             ),
         )
         settings.setValue(
+            "layout/icon_preview_background_color",
+            owner._normalize_icon_preview_background_color(
+                str(
+                    layout_settings.get(
+                        "icon_preview_background_color",
+                        constants.DEFAULT_ICON_PREVIEW_BACKGROUND_COLOR,
+                    )
+                )
+            ),
+        )
+        settings.setValue(
             "layout/tile_frame_thickness",
             owner._coerce_int(
                 layout_settings.get("tile_frame_thickness"),
