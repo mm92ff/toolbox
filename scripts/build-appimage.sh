@@ -201,7 +201,11 @@ ln -s \
 ln -s usr/share/icons/hicolor/1024x1024/apps/toolbox.png "$APPDIR/toolbox.png"
 
 # Download or bundle static FFmpeg
-if [ -x "$PROJECT_ROOT/.bin/ffmpeg" ] && [ -x "$PROJECT_ROOT/.bin/ffprobe" ]; then
+if [ -x "$PROJECT_ROOT/thirdparty/ffmpeg" ] && [ -x "$PROJECT_ROOT/thirdparty/ffprobe" ]; then
+    echo "Using pre-downloaded static FFmpeg from thirdparty/ folder..."
+    cp "$PROJECT_ROOT/thirdparty/ffmpeg" "$APPDIR/usr/bin/ffmpeg"
+    cp "$PROJECT_ROOT/thirdparty/ffprobe" "$APPDIR/usr/bin/ffprobe"
+elif [ -x "$PROJECT_ROOT/.bin/ffmpeg" ] && [ -x "$PROJECT_ROOT/.bin/ffprobe" ]; then
     echo "Using pre-downloaded static FFmpeg from .bin/ folder..."
     cp "$PROJECT_ROOT/.bin/ffmpeg" "$APPDIR/usr/bin/ffmpeg"
     cp "$PROJECT_ROOT/.bin/ffprobe" "$APPDIR/usr/bin/ffprobe"

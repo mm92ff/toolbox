@@ -21,33 +21,41 @@ class SizeCalculationWorker(QtCore.QThread):
         
     def run(self):
         total_size = 0
+        
+        def _get_dir_size_bfs(start_path: str) -> int:
+            sz = 0
+            dirs_to_visit = [start_path]
+            while dirs_to_visit:
+                if self._is_cancelled:
+                    return 0
+                current_dir = dirs_to_visit.pop()
+                try:
+                    for it in os.scandir(current_dir):
+                        if self._is_cancelled:
+                            return 0
+                        if it.is_symlink():
+                            continue
+                        if it.is_file():
+                            sz += it.stat(follow_symlinks=False).st_size
+                        elif it.is_dir():
+                            dirs_to_visit.append(it.path)
+                except Exception:
+                    pass
+            return sz
+
         for entry in self._entries:
             if self._is_cancelled:
                 return
             if entry.kind not in (constants.ENTRY_KIND_TOOL, constants.ENTRY_KIND_FILE, constants.ENTRY_KIND_FOLDER):
                 continue
-            path = Path(entry.path)
-            if not path.exists():
-                continue
                 
             try:
-                if path.is_file():
-                    total_size += path.stat().st_size
-                elif path.is_dir():
-                    # Walk the directory
-                    for root, dirs, files in os.walk(path):
-                        if self._is_cancelled:
-                            return
-                        for f in files:
-                            if self._is_cancelled:
-                                return
-                            try:
-                                fpath = Path(root) / f
-                                if fpath.is_symlink():
-                                    continue # ignore symlinks to avoid infinite loops or counting external sizes
-                                total_size += fpath.stat().st_size
-                            except Exception:
-                                pass
+                st = os.stat(entry.path)
+                import stat
+                if stat.S_ISREG(st.st_mode):
+                    total_size += st.st_size
+                elif stat.S_ISDIR(st.st_mode):
+                    total_size += _get_dir_size_bfs(entry.path)
             except Exception:
                 pass
                 
