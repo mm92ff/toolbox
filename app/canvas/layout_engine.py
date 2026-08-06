@@ -53,12 +53,12 @@ def build_tile_metrics(icon_size: int) -> TileMetrics:
     vertical_padding = clamp(round(safe_icon_size * 0.14), 5, 20)
     content_spacing = clamp(round(safe_icon_size * 0.10), 3, 14)
     title_height = clamp(round(font_pixel_size * 2.7), 22, 50)
-    tile_width = clamp(
-        safe_icon_size + (2 * horizontal_padding) + max(24, round(font_pixel_size * 4.8)),
-        96,
-        240,
-    )
     tile_height = safe_icon_size + title_height + (2 * vertical_padding) + content_spacing
+    
+    # Make the tile square based on its natural height
+    tile_width = clamp(tile_height, 96, 240)
+    tile_height = tile_width
+    
     border_radius = clamp(round(safe_icon_size * 0.18), 10, 24)
     return TileMetrics(
         icon_size=safe_icon_size,

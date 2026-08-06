@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
 
 from PySide6 import QtWidgets
 
@@ -31,3 +33,6 @@ class ToolboxTabContext:
     is_primary: bool
     background_color: str
     selected_ids: set[str]
+    # Browse state (not persisted)
+    browse_stack: list[Path] = field(default_factory=list)  # stack of visited paths
+    breadcrumb_bar: Optional[QtWidgets.QWidget] = field(default=None)  # injected after construction

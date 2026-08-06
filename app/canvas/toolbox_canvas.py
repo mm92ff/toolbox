@@ -18,6 +18,42 @@ from app.canvas.surface_state import CanvasSurfaceStateMixin
 from app.domain.models import ToolboxEntry
 
 
+class HoverPreviewPopup(QtWidgets.QWidget):
+    """Frameless popup for hover image preview with manually-drawn rounded background."""
+
+    _BG_COLOR = QtGui.QColor(14, 18, 26, 228)
+    _BORDER_COLOR = QtGui.QColor(170, 188, 220, 160)
+    _RADIUS = 8
+    _PADDING = 8
+
+    def __init__(self) -> None:
+        super().__init__(None)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setWindowFlags(
+            QtCore.Qt.WindowType.ToolTip
+            | QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
+        )
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(self._PADDING, self._PADDING, self._PADDING, self._PADDING)
+        layout.setSpacing(0)
+        self._img_label = QtWidgets.QLabel()
+        self._img_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._img_label)
+
+    def setPixmap(self, pixmap: QtGui.QPixmap) -> None:  # noqa: N802
+        self._img_label.setPixmap(pixmap)
+        self.adjustSize()
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        rect = QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        painter.setBrush(self._BG_COLOR)
+        painter.setPen(QtGui.QPen(self._BORDER_COLOR, 1.0))
+        painter.drawRoundedRect(rect, self._RADIUS, self._RADIUS)
+
+
 class CanvasSurface(
     CanvasSurfaceInteractionMixin,
     CanvasSurfaceDragMixin,
@@ -104,6 +140,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         section_gap_below: int | None = None,
         image_file_preview_enabled: bool = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED,
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
+        preview_overlay_enabled: bool = constants.DEFAULT_PREVIEW_OVERLAY_ENABLED,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
         ffmpeg_manual_path: str = "",
@@ -132,6 +169,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             section_gap_below=section_gap_below,
             image_file_preview_enabled=image_file_preview_enabled,
             image_file_preview_mode=image_file_preview_mode,
+            preview_overlay_enabled=preview_overlay_enabled,
             video_file_preview_enabled=video_file_preview_enabled,
             hover_preview_enabled=self._hover_preview_enabled,
             ffmpeg_manual_path=ffmpeg_manual_path,
@@ -157,6 +195,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         section_gap_below: int | None = None,
         image_file_preview_enabled: bool = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED,
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
+        preview_overlay_enabled: bool = constants.DEFAULT_PREVIEW_OVERLAY_ENABLED,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
         ffmpeg_manual_path: str = "",
@@ -181,6 +220,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             section_gap_below=section_gap_below,
             image_file_preview_enabled=image_file_preview_enabled,
             image_file_preview_mode=image_file_preview_mode,
+            preview_overlay_enabled=preview_overlay_enabled,
             video_file_preview_enabled=video_file_preview_enabled,
             hover_preview_enabled=self._hover_preview_enabled,
             ffmpeg_manual_path=ffmpeg_manual_path,
@@ -257,32 +297,14 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
     def set_thumbnail_cache_dir(self, cache_dir: Path | None) -> None:
         self._thumbnail_cache_dir = cache_dir
 
-    def _ensure_hover_preview_popup(self) -> QtWidgets.QLabel:
+    def _ensure_hover_preview_popup(self) -> HoverPreviewPopup:
         if self._hover_preview_popup is not None:
             return self._hover_preview_popup
-        popup = QtWidgets.QLabel(None)
-        popup.setObjectName("toolbox_hover_preview_popup")
-        popup.setWindowFlags(
-            QtCore.Qt.WindowType.ToolTip
-            | QtCore.Qt.WindowType.FramelessWindowHint
-            | QtCore.Qt.WindowType.WindowStaysOnTopHint
-        )
-        popup.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        popup.setStyleSheet(
-            """
-            QLabel#toolbox_hover_preview_popup {
-                background: rgba(14, 18, 26, 228);
-                border: 1px solid rgba(170, 188, 220, 160);
-                border-radius: 8px;
-                padding: 6px;
-            }
-            """
-        )
-        self._hover_preview_popup = popup
-        return popup
+        self._hover_preview_popup = HoverPreviewPopup()
+        return self._hover_preview_popup
 
     def _position_hover_preview_popup(
-        self, popup: QtWidgets.QLabel, anchor_global: QtCore.QPoint
+        self, popup: HoverPreviewPopup, anchor_global: QtCore.QPoint
     ) -> None:
         pos = QtCore.QPoint(anchor_global.x() + 10, anchor_global.y() + 4)
         popup.adjustSize()

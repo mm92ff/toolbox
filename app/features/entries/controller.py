@@ -42,6 +42,7 @@ from app.features.entries.controller_selection import (
     update_details,
 )
 from app.features.entries.diagnostics import MainWindowEntryDiagnosticsMixin
+from app.features.entries.folder_browse import enter_folder_browse, exit_folder_browse
 from app.features.entries.launching import MainWindowEntryLaunchingMixin
 
 
@@ -131,4 +132,10 @@ class MainWindowEntriesMixin(MainWindowEntryLaunchingMixin, MainWindowEntryDiagn
 
     def _open_config_directory(self) -> None:
         open_config_directory(self)
+
+    def _enter_folder_browse(self, ctx: ToolboxTabContext, folder) -> None:
+        enter_folder_browse(self, ctx, folder)
+
+    def _exit_folder_browse(self, ctx: ToolboxTabContext) -> None:
+        exit_folder_browse(self, ctx)
 

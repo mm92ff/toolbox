@@ -27,6 +27,8 @@ class ToolboxEntryDict(TypedDict):
     launch_window_style: LaunchWindowStyle
     section_line_color: NotRequired[str]
     section_title_color: NotRequired[str]
+    custom_title: NotRequired[str]
+    custom_icon_path: NotRequired[str]
 
 
 class ToolboxTabDict(TypedDict):
@@ -100,6 +102,8 @@ class ToolboxEntry:
     launch_window_style: LaunchWindowStyle = "normal"
     section_line_color: str = ""
     section_title_color: str = ""
+    custom_title: str = ""
+    custom_icon_path: str = ""
     entry_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     @property
@@ -128,6 +132,10 @@ class ToolboxEntry:
             payload["section_line_color"] = self.section_line_color.strip()
         if self.is_section and self.section_title_color.strip():
             payload["section_title_color"] = self.section_title_color.strip()
+        if self.custom_title.strip():
+            payload["custom_title"] = self.custom_title.strip()
+        if self.custom_icon_path.strip():
+            payload["custom_icon_path"] = self.custom_icon_path.strip()
         return payload
 
     @classmethod
@@ -160,6 +168,8 @@ class ToolboxEntry:
             launch_window_style=launch_window_style,
             section_line_color=_as_str(payload.get("section_line_color")).strip(),
             section_title_color=_as_str(payload.get("section_title_color")).strip(),
+            custom_title=_as_str(payload.get("custom_title")).strip(),
+            custom_icon_path=_as_str(payload.get("custom_icon_path")).strip(),
             entry_id=entry_id,
         )
 

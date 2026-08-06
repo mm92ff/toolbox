@@ -98,6 +98,18 @@ def load_settings(owner: object) -> None:
     image_preview_mode_combobox.setCurrentIndex(image_preview_mode_index)
     image_preview_mode_combobox.blockSignals(False)
 
+    preview_overlay_checkbox = owner.widgets.get(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
+    if preview_overlay_checkbox:
+        preview_overlay_checkbox.blockSignals(True)
+        preview_overlay_checkbox.setChecked(
+            settings.value(
+                "layout/preview_overlay_enabled",
+                constants.DEFAULT_PREVIEW_OVERLAY_ENABLED,
+                type=bool,
+            )
+        )
+        preview_overlay_checkbox.blockSignals(False)
+
     video_preview_checkbox = owner.widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX]
     video_preview_checkbox.blockSignals(True)
     video_preview_checkbox.setChecked(
@@ -108,6 +120,48 @@ def load_settings(owner: object) -> None:
         )
     )
     video_preview_checkbox.blockSignals(False)
+
+    minimize_tray_checkbox = owner.widgets.get("minimize_to_tray_checkbox")
+    if minimize_tray_checkbox:
+        minimize_tray_checkbox.blockSignals(True)
+        minimize_tray_checkbox.setChecked(settings.value("system/minimize_to_tray", False, type=bool))
+        minimize_tray_checkbox.blockSignals(False)
+
+    folder_click_cb = owner.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
+    if folder_click_cb:
+        folder_click_cb.blockSignals(True)
+        folder_click_cb.setChecked(
+            settings.value(
+                "system/folder_single_click_browse",
+                constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE,
+                type=bool,
+            )
+        )
+        folder_click_cb.blockSignals(False)
+
+    use_system_cb = owner.widgets.get(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
+    if use_system_cb:
+        use_system_cb.blockSignals(True)
+        use_system_cb.setChecked(settings.value("system/file_assoc_use_system", constants.DEFAULT_FILE_ASSOC_USE_SYSTEM, type=bool))
+        use_system_cb.blockSignals(False)
+        # Manually trigger the enable/disable logic
+        from PySide6 import QtWidgets as _QtWidgets
+        custom_container = use_system_cb.parent().findChild(_QtWidgets.QWidget, "file_assoc_custom_container")
+        if custom_container:
+            custom_container.setEnabled(not use_system_cb.isChecked())
+
+    for key, widget_key in [
+        ("system/file_assoc_audio", constants.WIDGET_FILE_ASSOC_AUDIO_INPUT),
+        ("system/file_assoc_video", constants.WIDGET_FILE_ASSOC_VIDEO_INPUT),
+        ("system/file_assoc_image", constants.WIDGET_FILE_ASSOC_IMAGE_INPUT),
+        ("system/file_assoc_pdf", constants.WIDGET_FILE_ASSOC_PDF_INPUT),
+        ("system/file_assoc_document", constants.WIDGET_FILE_ASSOC_DOCUMENT_INPUT),
+    ]:
+        inp = owner.widgets.get(widget_key)
+        if inp:
+            inp.blockSignals(True)
+            inp.setText(settings.value(key, "", type=str))
+            inp.blockSignals(False)
 
     hover_preview_checkbox = owner.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
     hover_preview_checkbox.blockSignals(True)

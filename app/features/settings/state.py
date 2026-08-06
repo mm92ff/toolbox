@@ -39,6 +39,7 @@ class MainWindowSettingsStateMixin:
         self._applied_image_file_preview_enabled = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
         self._applied_image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
         self._applied_video_file_preview_enabled = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
+        self._applied_preview_overlay_enabled = constants.DEFAULT_PREVIEW_OVERLAY_ENABLED
         self._applied_hover_preview_enabled = constants.DEFAULT_HOVER_PREVIEW_ENABLED
         self._applied_ffmpeg_manual_path = ""
         self._applied_icon_preview_background_color = (
@@ -56,6 +57,13 @@ class MainWindowSettingsStateMixin:
         self._applied_section_gap_below = constants.DEFAULT_SECTION_PROTECTED_GAP_BELOW
         self._applied_section_line_color = constants.DEFAULT_SECTION_LINE_COLOR
         self._applied_tool_launch_mode = constants.DEFAULT_LAUNCH_CLICK_MODE
+        self._applied_file_assoc_use_system = constants.DEFAULT_FILE_ASSOC_USE_SYSTEM
+        self._applied_file_assoc_audio = ""
+        self._applied_file_assoc_video = ""
+        self._applied_file_assoc_image = ""
+        self._applied_file_assoc_pdf = ""
+        self._applied_file_assoc_document = ""
+        self._applied_folder_single_click_browse = constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE
 
     def _capture_pending_settings_from_widgets(self) -> dict[str, object]:
         icon_slider = self.widgets[constants.WIDGET_ICON_SIZE_SLIDER]
@@ -63,6 +71,7 @@ class MainWindowSettingsStateMixin:
         image_preview_checkbox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX]
         image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
         video_preview_checkbox = self.widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX]
+        preview_overlay_checkbox = self.widgets.get(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
         hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
         ffmpeg_manual_path_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
         icon_preview_bg_input = self.widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT]
@@ -79,6 +88,14 @@ class MainWindowSettingsStateMixin:
         section_gap_spinbox = self.widgets.get(constants.WIDGET_SECTION_GAP_SPINBOX)
         section_color_input = self.widgets[constants.WIDGET_SECTION_LINE_COLOR_INPUT]
         launch_mode_combo = self.widgets[constants.WIDGET_TOOL_LAUNCH_MODE_COMBOBOX]
+        minimize_tray_checkbox = self.widgets.get("minimize_to_tray_checkbox")
+        folder_click_cb = self.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
+        use_system_cb = self.widgets.get(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
+        audio_inp = self.widgets.get(constants.WIDGET_FILE_ASSOC_AUDIO_INPUT)
+        video_inp = self.widgets.get(constants.WIDGET_FILE_ASSOC_VIDEO_INPUT)
+        image_inp = self.widgets.get(constants.WIDGET_FILE_ASSOC_IMAGE_INPUT)
+        pdf_inp = self.widgets.get(constants.WIDGET_FILE_ASSOC_PDF_INPUT)
+        document_inp = self.widgets.get(constants.WIDGET_FILE_ASSOC_DOCUMENT_INPUT)
         fallback_gap = (
             int(section_gap_spinbox.value())
             if section_gap_spinbox is not None
@@ -93,6 +110,7 @@ class MainWindowSettingsStateMixin:
                 str(image_preview_mode_combobox.currentData())
             ),
             "video_file_preview_enabled": bool(video_preview_checkbox.isChecked()),
+            "preview_overlay_enabled": bool(preview_overlay_checkbox.isChecked()) if preview_overlay_checkbox else False,
             "hover_preview_enabled": bool(hover_preview_checkbox.isChecked()),
             "ffmpeg_manual_path": self._normalize_ffmpeg_manual_path(
                 ffmpeg_manual_path_input.text()
@@ -126,6 +144,14 @@ class MainWindowSettingsStateMixin:
             "tool_launch_mode": self._normalize_tool_launch_mode(
                 str(launch_mode_combo.currentData())
             ),
+            "minimize_to_tray": bool(minimize_tray_checkbox.isChecked()) if minimize_tray_checkbox else False,
+            "folder_single_click_browse": bool(folder_click_cb.isChecked()) if folder_click_cb else False,
+            "file_assoc_use_system": bool(use_system_cb.isChecked()) if use_system_cb else True,
+            "file_assoc_audio": audio_inp.text().strip() if audio_inp else "",
+            "file_assoc_video": video_inp.text().strip() if video_inp else "",
+            "file_assoc_image": image_inp.text().strip() if image_inp else "",
+            "file_assoc_pdf": pdf_inp.text().strip() if pdf_inp else "",
+            "file_assoc_document": document_inp.text().strip() if document_inp else "",
         }
 
     def _set_applied_settings(self, values: dict[str, object]) -> None:
@@ -151,6 +177,9 @@ class MainWindowSettingsStateMixin:
             values.get(
                 "video_file_preview_enabled", constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
             )
+        )
+        self._applied_preview_overlay_enabled = bool(
+            values.get("preview_overlay_enabled", constants.DEFAULT_PREVIEW_OVERLAY_ENABLED)
         )
         self._applied_hover_preview_enabled = bool(
             values.get("hover_preview_enabled", constants.DEFAULT_HOVER_PREVIEW_ENABLED)
@@ -211,6 +240,16 @@ class MainWindowSettingsStateMixin:
         self._applied_tool_launch_mode = self._normalize_tool_launch_mode(
             str(values.get("tool_launch_mode", ""))
         )
+        self._minimize_to_tray = bool(values.get("minimize_to_tray", False))
+        self._applied_folder_single_click_browse = bool(
+            values.get("folder_single_click_browse", constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)
+        )
+        self._applied_file_assoc_use_system = bool(values.get("file_assoc_use_system", constants.DEFAULT_FILE_ASSOC_USE_SYSTEM))
+        self._applied_file_assoc_audio = str(values.get("file_assoc_audio", ""))
+        self._applied_file_assoc_video = str(values.get("file_assoc_video", ""))
+        self._applied_file_assoc_image = str(values.get("file_assoc_image", ""))
+        self._applied_file_assoc_pdf = str(values.get("file_assoc_pdf", ""))
+        self._applied_file_assoc_document = str(values.get("file_assoc_document", ""))
 
     def current_icon_size(self) -> int:
         return int(self._applied_icon_size)
@@ -229,6 +268,9 @@ class MainWindowSettingsStateMixin:
 
     def current_video_file_preview_enabled(self) -> bool:
         return bool(self._applied_video_file_preview_enabled)
+
+    def current_preview_overlay_enabled(self) -> bool:
+        return bool(self._applied_preview_overlay_enabled)
 
     def current_hover_preview_enabled(self) -> bool:
         return bool(self._applied_hover_preview_enabled)
@@ -315,3 +357,24 @@ class MainWindowSettingsStateMixin:
 
     def _default_tile_highlight_color(self) -> str:
         return self.palette().color(QtGui.QPalette.ColorRole.Highlight).name()
+
+    def current_file_assoc_use_system(self) -> bool:
+        return self._applied_file_assoc_use_system
+
+    def current_file_assoc_audio(self) -> str:
+        return self._applied_file_assoc_audio
+
+    def current_file_assoc_video(self) -> str:
+        return self._applied_file_assoc_video
+
+    def current_file_assoc_image(self) -> str:
+        return self._applied_file_assoc_image
+
+    def current_file_assoc_pdf(self) -> str:
+        return self._applied_file_assoc_pdf
+
+    def current_file_assoc_document(self) -> str:
+        return self._applied_file_assoc_document
+
+    def current_folder_single_click_browse(self) -> bool:
+        return bool(self._applied_folder_single_click_browse)

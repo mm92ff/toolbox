@@ -11,17 +11,28 @@ from PySide6 import QtCore, QtWidgets
 from app import constants
 
 
-def _create_help_section(title: str, points: Sequence[str]) -> QtWidgets.QGroupBox:
-    section = QtWidgets.QGroupBox(title)
+def _create_help_section(title: str, points: Sequence[str]) -> QtWidgets.QWidget:
+    section = QtWidgets.QWidget()
     section.setObjectName("help_section")
     section_layout = QtWidgets.QVBoxLayout(section)
-    section_layout.setContentsMargins(12, 10, 12, 10)
+    section_layout.setContentsMargins(0, 0, 0, 10)
     section_layout.setSpacing(6)
-    for point in points:
-        row = QtWidgets.QLabel(f"• {point}")
-        row.setWordWrap(True)
-        row.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
-        section_layout.addWidget(row)
+    
+    title_label = QtWidgets.QLabel(title)
+    title_label.setObjectName("help_section_title")
+    title_font = title_label.font()
+    title_font.setBold(True)
+    title_font.setPointSize(max(10, title_font.pointSize() + 1))
+    title_label.setFont(title_font)
+    section_layout.addWidget(title_label)
+    
+    # Use HTML for bullet points
+    html_points = "".join(f"<li style='margin-bottom: 4px;'>{point}</li>" for point in points)
+    content_label = QtWidgets.QLabel(f"<ul style='margin-top: 4px; margin-bottom: 0px; padding-left: 20px;'>{html_points}</ul>")
+    content_label.setWordWrap(True)
+    content_label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse | QtCore.Qt.TextInteractionFlag.LinksAccessibleByMouse)
+    section_layout.addWidget(content_label)
+    
     return section
 
 
@@ -51,15 +62,16 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
     header_layout.setSpacing(5)
 
     title = QtWidgets.QLabel("Toolbox Help")
+    title.setObjectName("help_main_title")
     title_font = title.font()
     title_font.setBold(True)
-    title_font.setPointSize(max(12, title_font.pointSize() + 2))
+    title_font.setPointSize(max(16, title_font.pointSize() + 6))
     title.setFont(title_font)
     header_layout.addWidget(title)
 
     intro = QtWidgets.QLabel(
-        "Current feature overview for the toolbox. "
-        "The sections below summarize the main workflows, layout behavior, and settings logic."
+        "<i>Current feature overview for the toolbox. "
+        "The sections below summarize the main workflows, layout behavior, and settings logic.</i>"
     )
     intro.setObjectName(constants.WIDGET_HELP_TEXT)
     intro.setWordWrap(True)
@@ -104,6 +116,7 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 "A short hold with left mouse button activates move mode; release snaps back to grid.",
                 "Dropping a tile directly between two tiles in the same row requires 'Auto-compact icons to the left' to be enabled.",
                 "Right-click on empty canvas space to insert grid rows above or below.",
+                "Right-click on empty canvas space or a section header to 'Alphabetisch sortieren' (Auto-sort alphabetically).",
                 "Section drag hints: green means snap-near target, red means tool-conflict zone.",
             ),
         )
@@ -114,9 +127,10 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
             (
                 "Double-click a section separator to rename its header.",
                 (
-                    "Right-click a tile for Launch, Launch with parameters, "
-                    "and 'Run as administrator'."
+                    "Right-click a tile to access Launch options, 'Eigenschaften bearbeiten' (Tile Properties), "
+                    "or 'Run as administrator'."
                 ),
+                "In 'Tile Properties', you can set a custom title or custom icon path for a specific tile.",
                 (
                     "Default launch options (arguments, working directory, wait, "
                     "window style) can be saved per entry."
@@ -162,7 +176,16 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 ),
                 "Tab titles can be renamed via right-click.",
                 "In 'Manage Tabs' you can adjust order and visibility.",
+                "The 'Settings' and 'Help' tabs are permanently docked on the right side of the tab bar.",
                 "Right-click on empty canvas space to set/reset the background color for the current tab.",
+                (
+                    "Settings are organized into sub-tabs (Design & Layout, System, Export & Import) "
+                    "for easier navigation."
+                ),
+                (
+                    "In the System settings, you can enable 'Minimize to Tray' to keep the app running in the background "
+                    "when the main window is closed."
+                ),
                 (
                     "In the Settings tab, you can fine-tune icon size, grid, "
                     "compaction, separator style, and tile colors."
@@ -172,12 +195,13 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "Section color manager lists separators from all tabs and supports "
                     "single, bulk, and quick apply actions."
                 ),
+                "Tile titles that are too long will gracefully elide with '...' and show the full name as a tooltip.",
                 "Image preview thumbnails and video preview thumbnails (ffmpeg) can be enabled independently.",
                 "Preview mode supports Fit (full image) and Fill (crop).",
                 "The Settings tab includes an FFmpeg section showing source/status and the resolved executable path.",
                 (
-                    "You can set a manual FFmpeg executable path there and use "
-                    "Rescan to refresh detection."
+                    "You can download a portable internal FFmpeg directly from Settings if it's missing, "
+                    "or set a manual path."
                 ),
                 "Optional hover preview can show larger image/video thumbnails on mouse-over.",
                 "Changes in the Settings tab become active only after 'Save & Apply'.",
@@ -213,21 +237,21 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
 
     tab.setStyleSheet("""
         QFrame#help_header {
-            border: 1px solid palette(mid);
-            border-radius: 8px;
-            background: palette(base);
+            background: transparent;
+            border-bottom: 1px solid palette(midlight);
+            border-radius: 0px;
         }
-        QGroupBox#help_section {
-            margin-top: 10px;
-            border: 1px solid palette(mid);
-            border-radius: 8px;
-            padding-top: 8px;
-            background: palette(base);
+        QLabel#help_main_title {
+            color: palette(highlight);
         }
-        QGroupBox#help_section::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 4px 0 4px;
+        QLabel[objectName="help_section_title"] {
+            color: palette(highlight);
+            padding-bottom: 2px;
+            border-bottom: 1px solid palette(midlight);
+        }
+        QWidget#help_section {
+            margin-top: 8px;
+            background: transparent;
         }
         """)
     return tab, widgets

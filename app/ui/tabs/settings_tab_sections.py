@@ -167,6 +167,20 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     )
     appearance_hint.setWordWrap(True)
     appearance_layout.addWidget(appearance_hint, 12, 0, 1, 3)
+    appearance_layout.addWidget(QtWidgets.QLabel("Tile Overlay:"), 13, 0)
+    preview_overlay_enabled = QtWidgets.QCheckBox("Full tile image preview (title as overlay)")
+    preview_overlay_enabled.setObjectName(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
+    preview_overlay_enabled.setChecked(constants.DEFAULT_PREVIEW_OVERLAY_ENABLED)
+    widgets[constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX] = preview_overlay_enabled
+    appearance_layout.addWidget(preview_overlay_enabled, 13, 1, 1, 2)
+
+    appearance_layout.addWidget(QtWidgets.QLabel("Folders:"), 14, 0)
+    folder_single_click = QtWidgets.QCheckBox("Open folders with a single click")
+    folder_single_click.setObjectName(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
+    folder_single_click.setChecked(constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)
+    widgets[constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX] = folder_single_click
+    appearance_layout.addWidget(folder_single_click, 14, 1, 1, 2)
+
     return appearance_group
 
 
@@ -208,6 +222,12 @@ def build_ffmpeg_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGrou
     rescan_button.setObjectName(constants.WIDGET_FFMPEG_RESCAN_BUTTON)
     widgets[constants.WIDGET_FFMPEG_RESCAN_BUTTON] = rescan_button
     manual_path_row.addWidget(rescan_button)
+
+    ffmpeg_download_button = QtWidgets.QPushButton("Download FFmpeg")
+    ffmpeg_download_button.setObjectName("ffmpeg_download_button")
+    widgets["ffmpeg_download_button"] = ffmpeg_download_button
+    manual_path_row.addWidget(ffmpeg_download_button)
+
     ffmpeg_layout.addLayout(manual_path_row, 2, 1, 1, 2)
 
     ffmpeg_hint = QtWidgets.QLabel(

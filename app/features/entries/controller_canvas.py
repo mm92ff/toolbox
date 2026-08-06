@@ -21,6 +21,12 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
     ctx = ctx or owner.current_toolbox_context()
     if ctx is None:
         return
+
+    if getattr(ctx, "browse_stack", None):
+        from app.features.entries.folder_browse import _refresh_browse_view
+        _refresh_browse_view(owner, ctx)
+        return
+
     ctx.canvas.set_entries(
         ctx.entries,
         owner.icon_provider,
@@ -42,6 +48,7 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
         section_gap_below=owner.current_section_gap_below(),
         image_file_preview_enabled=owner.current_image_file_preview_enabled(),
         image_file_preview_mode=owner.current_image_file_preview_mode(),
+        preview_overlay_enabled=owner.current_preview_overlay_enabled(),
         video_file_preview_enabled=owner.current_video_file_preview_enabled(),
         hover_preview_enabled=owner.current_hover_preview_enabled(),
         ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
@@ -73,6 +80,7 @@ def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None
                 section_gap_below=owner.current_section_gap_below(),
                 image_file_preview_enabled=owner.current_image_file_preview_enabled(),
                 image_file_preview_mode=owner.current_image_file_preview_mode(),
+                preview_overlay_enabled=owner.current_preview_overlay_enabled(),
                 video_file_preview_enabled=owner.current_video_file_preview_enabled(),
                 hover_preview_enabled=owner.current_hover_preview_enabled(),
                 ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),

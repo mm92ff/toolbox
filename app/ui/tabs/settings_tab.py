@@ -26,28 +26,53 @@ def create_settings_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidge
     widgets: Dict[str, QtWidgets.QWidget] = {}
     tab = QtWidgets.QWidget()
     root_layout = QtWidgets.QVBoxLayout(tab)
-    root_layout.setContentsMargins(0, 0, 0, 0)
-    root_layout.setSpacing(0)
+    root_layout.setContentsMargins(14, 14, 14, 14)
+    root_layout.setSpacing(14)
 
-    scroll_area = QtWidgets.QScrollArea()
-    scroll_area.setWidgetResizable(True)
-    scroll_area.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-    root_layout.addWidget(scroll_area)
+    sub_tabs = QtWidgets.QTabWidget()
+    root_layout.addWidget(sub_tabs)
 
-    content_widget = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout(content_widget)
-    layout.setContentsMargins(14, 14, 14, 14)
-    layout.setSpacing(14)
-    scroll_area.setWidget(content_widget)
+    def create_scrollable_tab(groups) -> QtWidgets.QWidget:
+        t = QtWidgets.QWidget()
+        l = QtWidgets.QVBoxLayout(t)
+        l.setContentsMargins(0, 0, 0, 0)
 
-    layout.addWidget(build_appearance_group(widgets))
-    layout.addWidget(build_ffmpeg_group(widgets))
-    layout.addWidget(build_grid_group(widgets))
-    layout.addWidget(build_section_separator_group(widgets))
-    layout.addWidget(build_section_colors_group(widgets))
-    layout.addWidget(build_tabs_group(widgets))
-    layout.addWidget(build_maintenance_group(widgets))
-    layout.addWidget(build_backup_group(widgets))
-    layout.addLayout(build_apply_row(widgets))
-    layout.addStretch(1)
+        sa = QtWidgets.QScrollArea()
+        sa.setWidgetResizable(True)
+        sa.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        l.addWidget(sa)
+
+        cw = QtWidgets.QWidget()
+        cl = QtWidgets.QVBoxLayout(cw)
+        cl.setContentsMargins(14, 14, 14, 14)
+        cl.setSpacing(14)
+        sa.setWidget(cw)
+
+        for g in groups:
+            cl.addWidget(g)
+        cl.addStretch(1)
+
+        return t
+
+    tab_appearance = create_scrollable_tab([
+        build_appearance_group(widgets),
+        build_grid_group(widgets),
+        build_ffmpeg_group(widgets),
+    ])
+    sub_tabs.addTab(tab_appearance, "Appearance & Layout")
+
+    tab_sections = create_scrollable_tab([
+        build_section_separator_group(widgets),
+        build_section_colors_group(widgets),
+    ])
+    sub_tabs.addTab(tab_sections, "Sections & Colors")
+
+    tab_system = create_scrollable_tab([
+        build_tabs_group(widgets),
+        build_maintenance_group(widgets),
+        build_backup_group(widgets),
+    ])
+    sub_tabs.addTab(tab_system, "System")
+
+    root_layout.addLayout(build_apply_row(widgets))
     return tab, widgets

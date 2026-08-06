@@ -185,6 +185,10 @@ def _resolve_ffmpeg_path_cached(
     if manual_candidate is not None:
         return FfmpegResolution(manual_candidate, FFMPEG_SOURCE_MANUAL)
 
+    for candidate in _bundled_ffmpeg_candidates():
+        if candidate.is_file():
+            return FfmpegResolution(str(candidate), FFMPEG_SOURCE_INTERNAL)
+
     system_path = shutil.which("ffmpeg")
     system_candidate = _candidate_file(system_path)
     if system_candidate is not None:
@@ -194,10 +198,6 @@ def _resolve_ffmpeg_path_cached(
         common_candidate = _candidate_file(candidate)
         if common_candidate is not None:
             return FfmpegResolution(common_candidate, FFMPEG_SOURCE_SYSTEM)
-
-    for candidate in _bundled_ffmpeg_candidates():
-        if candidate.is_file():
-            return FfmpegResolution(str(candidate), FFMPEG_SOURCE_INTERNAL)
 
     return FfmpegResolution(None, FFMPEG_SOURCE_NOT_FOUND)
 
@@ -292,6 +292,16 @@ def _common_windows_ffmpeg_candidates() -> list[Path]:
 def _bundled_ffmpeg_candidates() -> list[Path]:
     binary_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
     candidates: list[Path] = []
+
+    appdir = os.environ.get("APPDIR")
+    if appdir:
+        bundle_root = Path(appdir)
+        candidates.append(bundle_root / "usr" / "bin" / binary_name)
+        candidates.append(bundle_root / binary_name)
+        candidates.append(bundle_root / "bin" / binary_name)
+        
+    project_root = Path(__file__).resolve().parent.parent.parent
+    candidates.append(project_root / ".bin" / binary_name)
 
     meipass = getattr(sys, "_MEIPASS", None)
     if meipass:

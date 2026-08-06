@@ -61,6 +61,7 @@ IMAGE_PREVIEW_MODE_FIT = "fit"
 IMAGE_PREVIEW_MODE_FILL = "fill"
 DEFAULT_IMAGE_FILE_PREVIEW_MODE = IMAGE_PREVIEW_MODE_FIT
 DEFAULT_VIDEO_FILE_PREVIEW_ENABLED = False
+DEFAULT_PREVIEW_OVERLAY_ENABLED = False
 DEFAULT_HOVER_PREVIEW_ENABLED = False
 HOVER_PREVIEW_SIZE = 256
 VIDEO_PREVIEW_CAPTURE_SECONDS = 1.0
@@ -91,6 +92,8 @@ DEFAULT_AUTO_COMPACT_LEFT = True
 LAUNCH_CLICK_MODE_SINGLE = "single"
 LAUNCH_CLICK_MODE_DOUBLE = "double"
 DEFAULT_LAUNCH_CLICK_MODE = LAUNCH_CLICK_MODE_DOUBLE
+DEFAULT_FOLDER_SINGLE_CLICK_BROWSE = False
+WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX = "chk_folder_single_click_browse"
 
 CANVAS_PADDING = 18
 MOVE_HOLD_DELAY_MS = 300
@@ -162,6 +165,7 @@ WIDGET_TILE_FRAME_ENABLED_CHECKBOX = "chk_tile_frame_enabled"
 WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX = "chk_image_file_preview"
 WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX = "cmb_image_file_preview_mode"
 WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX = "chk_video_file_preview"
+WIDGET_PREVIEW_OVERLAY_CHECKBOX = "chk_preview_overlay"
 WIDGET_HOVER_PREVIEW_CHECKBOX = "chk_hover_preview"
 WIDGET_FFMPEG_SOURCE_VALUE = "lbl_ffmpeg_source_value"
 WIDGET_FFMPEG_RESOLVED_PATH_VALUE = "inp_ffmpeg_resolved_path_value"
@@ -196,3 +200,19 @@ BUTTON_ADD_SECTION = "btn_add_section"
 BUTTON_LAUNCH_TOOL = "btn_launch_tool"
 BUTTON_REMOVE_TOOL = "btn_remove_tool"
 BUTTON_OPEN_CONFIG = "btn_open_config"
+
+# File associations
+WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX = "chk_file_assoc_use_system"
+WIDGET_FILE_ASSOC_AUDIO_INPUT = "inp_file_assoc_audio"
+WIDGET_FILE_ASSOC_VIDEO_INPUT = "inp_file_assoc_video"
+WIDGET_FILE_ASSOC_IMAGE_INPUT = "inp_file_assoc_image"
+WIDGET_FILE_ASSOC_PDF_INPUT = "inp_file_assoc_pdf"
+WIDGET_FILE_ASSOC_DOCUMENT_INPUT = "inp_file_assoc_document"
+
+FILE_ASSOC_AUDIO_EXTENSIONS = (".mp3", ".flac", ".ogg", ".wav", ".aac", ".m4a", ".wma", ".opus")
+FILE_ASSOC_VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".webm", ".wmv", ".m4v", ".flv", ".mpeg", ".mpg")
+FILE_ASSOC_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tif", ".tiff", ".svg")
+FILE_ASSOC_PDF_EXTENSIONS = (".pdf",)
+FILE_ASSOC_DOCUMENT_EXTENSIONS = (".doc", ".docx", ".odt", ".xls", ".xlsx", ".ods", ".ppt", ".pptx", ".odp")
+
+DEFAULT_FILE_ASSOC_USE_SYSTEM = True

@@ -200,6 +200,15 @@ ln -s \
     "$APPDIR/io.github.toolbox.Toolbox.desktop"
 ln -s usr/share/icons/hicolor/1024x1024/apps/toolbox.png "$APPDIR/toolbox.png"
 
+# Download and bundle static FFmpeg
+echo "Downloading static FFmpeg..."
+if command -v curl >/dev/null 2>&1; then
+    curl -sSL "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+else
+    wget -qO- "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+fi
+chmod +x "$APPDIR/usr/bin/ffmpeg" "$APPDIR/usr/bin/ffprobe"
+
 desktop-file-validate \
     "$APPDIR/usr/share/applications/io.github.toolbox.Toolbox.desktop"
 appstreamcli validate --no-net \
@@ -226,12 +235,8 @@ chmod +x "$OUTPUT"
     cd "$OUTPUT_DIR"
     sha256sum "$(basename "$OUTPUT")" > "$(basename "$OUTPUT").sha256"
 )
-if [ -n "${TOOLBOX_FFMPEG_BINARY:-}${TOOLBOX_FFPROBE_BINARY:-}" ]; then
-    TOOLBOX_EXPECT_BUNDLED_FFMPEG=1 \
-        "$PROJECT_ROOT/scripts/check-appimage-content.sh" "$OUTPUT"
-else
+TOOLBOX_EXPECT_BUNDLED_FFMPEG=1 \
     "$PROJECT_ROOT/scripts/check-appimage-content.sh" "$OUTPUT"
-fi
 "$PROJECT_ROOT/scripts/test-appimage.sh" "$OUTPUT"
 if [ -n "${DISPLAY:-}" ] && [ "${XDG_SESSION_TYPE:-}" = "x11" ]; then
     TOOLBOX_REQUIRE_X11_TEST=1 \

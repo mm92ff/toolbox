@@ -204,6 +204,39 @@ class MainWindowSettingsAppearanceMixin:
         self._update_ffmpeg_status_preview()
         self.status.showMessage("FFmpeg detection refreshed.", 2000)
 
+    def _download_internal_ffmpeg(self) -> None:
+        button = self.widgets["ffmpeg_download_button"]
+        progress_bar = self.widgets["ffmpeg_download_progress"]
+        
+        button.setEnabled(False)
+        progress_bar.setVisible(True)
+        progress_bar.setValue(0)
+        
+        from app.services.ffmpeg_downloader import FfmpegDownloadThread
+        self._ffmpeg_download_thread = FfmpegDownloadThread(self)
+        
+        def on_progress(downloaded: int, total: int):
+            if total > 0:
+                progress_bar.setMaximum(total)
+                progress_bar.setValue(downloaded)
+            elif total == -1:
+                progress_bar.setMaximum(0) # Indeterminate for extraction
+                
+        def on_success(path: str):
+            button.setEnabled(True)
+            progress_bar.setVisible(False)
+            self._rescan_ffmpeg_status()
+            
+        def on_error(err: str):
+            button.setEnabled(True)
+            progress_bar.setVisible(False)
+            QtWidgets.QMessageBox.warning(self, "Download Failed", f"Failed to download FFmpeg:\n{err}")
+            
+        self._ffmpeg_download_thread.progress.connect(on_progress)
+        self._ffmpeg_download_thread.finished_success.connect(on_success)
+        self._ffmpeg_download_thread.finished_error.connect(on_error)
+        self._ffmpeg_download_thread.start()
+
     def _on_layout_settings_changed(self) -> None:
         self._update_settings_value_labels()
         self._update_tile_style_controls_enabled()
@@ -212,6 +245,10 @@ class MainWindowSettingsAppearanceMixin:
         self._mark_settings_dirty()
 
     def _on_tool_launch_mode_changed(self, *_args: object) -> None:
+        self._mark_settings_dirty()
+
+    def _on_system_settings_changed(self, *_args: object) -> None:
+        """Called when any system-behavior checkbox changes state."""
         self._mark_settings_dirty()
 
     def _on_tile_frame_color_changed(self) -> None:

@@ -76,6 +76,9 @@ class _SnapshotOwner:
     def current_image_file_preview_mode(self) -> str:
         return constants.IMAGE_PREVIEW_MODE_FILL
 
+    def current_preview_overlay_enabled(self) -> bool:
+        return True
+
     def current_video_file_preview_enabled(self) -> bool:
         return True
 
@@ -126,6 +129,27 @@ class _SnapshotOwner:
 
     def current_tool_launch_mode(self) -> str:
         return constants.LAUNCH_CLICK_MODE_SINGLE
+
+    def current_file_assoc_use_system(self) -> bool:
+        return True
+
+    def current_file_assoc_audio(self) -> str:
+        return ""
+
+    def current_file_assoc_video(self) -> str:
+        return ""
+
+    def current_file_assoc_image(self) -> str:
+        return ""
+
+    def current_file_assoc_pdf(self) -> str:
+        return ""
+
+    def current_file_assoc_document(self) -> str:
+        return ""
+
+    def current_folder_single_click_browse(self) -> bool:
+        return False
 
 
 class _FakeQSettings:
@@ -254,6 +278,7 @@ def test_build_ui_settings_snapshot_contains_all_layout_and_interaction_fields()
         "tile_frame_enabled",
         "image_file_preview_enabled",
         "image_file_preview_mode",
+        "preview_overlay_enabled",
         "video_file_preview_enabled",
         "hover_preview_enabled",
         "ffmpeg_manual_path",
@@ -272,6 +297,11 @@ def test_build_ui_settings_snapshot_contains_all_layout_and_interaction_fields()
         "section_line_color",
     }
     assert snapshot["interaction"] == {"tool_launch_mode": constants.LAUNCH_CLICK_MODE_SINGLE}
+    system = snapshot["system"]
+    assert system["minimize_to_tray"] is False
+    assert system["file_assoc_use_system"] is True
+    assert system["file_assoc_audio"] == ""
+    assert system["folder_single_click_browse"] is False
     assert snapshot["tabs"]["hidden_toolbox_tab_ids"] == ["tab_hidden"]
     assert snapshot["toolbox_splitter_sizes"]["tab_a"] == [220, 640, 150]
 
@@ -312,6 +342,10 @@ def test_apply_imported_ui_settings_roundtrip_restores_all_keys(monkeypatch) -> 
     assert settings_store.values["layout/section_gap"] == 8
     assert settings_store.values["layout/section_line_color"] == "#444a57"
     assert settings_store.values["interaction/tool_launch_mode"] == constants.LAUNCH_CLICK_MODE_SINGLE
+    assert settings_store.values["system/file_assoc_use_system"] is True
+    assert settings_store.values["system/file_assoc_audio"] == ""
+    assert settings_store.values["system/file_assoc_pdf"] == ""
+    assert settings_store.values["system/folder_single_click_browse"] is False
     assert settings_store.values["toolbox/tab_a/splitter_sizes"] == [220, 640, 150]
     assert settings_store.values["toolbox/tab_b/splitter_sizes"] == [500]
 

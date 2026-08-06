@@ -47,6 +47,7 @@ class CanvasSurfaceRenderMixin:
         section_gap_below: int | None = None,
         image_file_preview_enabled: bool = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED,
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
+        preview_overlay_enabled: bool = constants.DEFAULT_PREVIEW_OVERLAY_ENABLED,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
         ffmpeg_manual_path: str = "",
@@ -58,6 +59,7 @@ class CanvasSurfaceRenderMixin:
         self._auto_compact_left = auto_compact_left
         self._image_file_preview_enabled = image_file_preview_enabled
         self._image_file_preview_mode = image_file_preview_mode
+        self._preview_overlay_enabled = preview_overlay_enabled
         self._video_file_preview_enabled = video_file_preview_enabled
         self._hover_preview_enabled = hover_preview_enabled
         self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
@@ -115,6 +117,7 @@ class CanvasSurfaceRenderMixin:
         section_gap_below: int | None = None,
         image_file_preview_enabled: bool = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED,
         image_file_preview_mode: str = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE,
+        preview_overlay_enabled: bool = constants.DEFAULT_PREVIEW_OVERLAY_ENABLED,
         video_file_preview_enabled: bool = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED,
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
         ffmpeg_manual_path: str = "",
@@ -124,6 +127,7 @@ class CanvasSurfaceRenderMixin:
         self._auto_compact_left = auto_compact_left
         self._image_file_preview_enabled = image_file_preview_enabled
         self._image_file_preview_mode = image_file_preview_mode
+        self._preview_overlay_enabled = preview_overlay_enabled
         self._video_file_preview_enabled = video_file_preview_enabled
         self._hover_preview_enabled = hover_preview_enabled
         self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
@@ -147,6 +151,9 @@ class CanvasSurfaceRenderMixin:
 
         for widget in self._widgets.values():
             if isinstance(widget, ToolTileWidget):
+                is_media = (self._image_file_preview_enabled and is_supported_image_path(widget.entry.path)) or \
+                           (self._video_file_preview_enabled and is_supported_video_path(widget.entry.path))
+                widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
                 widget.set_icon(self._icon_for_tool_entry(widget.entry))
                 widget.set_icon_size(self._layout_engine.icon_size)
                 widget.set_tile_style(
@@ -216,8 +223,18 @@ class CanvasSurfaceRenderMixin:
                 self,
             )
         else:
+            is_media = (self._image_file_preview_enabled and is_supported_image_path(entry.path)) or \
+                       (self._video_file_preview_enabled and is_supported_video_path(entry.path))
+            
             icon = self._icon_for_tool_entry(entry)
             widget = ToolTileWidget(entry, icon, self._layout_engine.icon_size, self)
+            widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
+            # Re-set icon because now it knows about overlay mode, but wait, 
+            # widget __init__ already does it, and we might need to apply overlay mode BEFORE set_icon in __init__
+            # actually we can just pass overlay mode, then set_icon_size does it.
+            widget.set_icon(self._icon_for_tool_entry(entry))
+            widget.set_icon_size(self._layout_engine.icon_size)
+            
             widget.set_tile_style(
                 frame_enabled=tile_frame_enabled,
                 frame_thickness=tile_frame_thickness,
@@ -244,10 +261,19 @@ class CanvasSurfaceRenderMixin:
         return widget
 
     def _icon_for_tool_entry(self, entry: ToolboxEntry) -> QtGui.QIcon:
+        is_media = (self._image_file_preview_enabled and is_supported_image_path(entry.path)) or \
+                   (self._video_file_preview_enabled and is_supported_video_path(entry.path))
+        target_size = self._layout_engine.tool_tile_size().width() if (self._preview_overlay_enabled and is_media) else self._layout_engine.icon_size
+        
+        if entry.custom_icon_path:
+            pixmap = QtGui.QPixmap(entry.custom_icon_path)
+            if not pixmap.isNull():
+                return QtGui.QIcon(pixmap)
+                
         if self._image_file_preview_enabled and is_supported_image_path(entry.path):
             pixmap = load_or_create_thumbnail(
                 entry.path,
-                self._layout_engine.icon_size,
+                target_size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
             )
@@ -256,7 +282,7 @@ class CanvasSurfaceRenderMixin:
         if self._video_file_preview_enabled and is_supported_video_path(entry.path):
             pixmap = load_or_create_video_thumbnail(
                 entry.path,
-                self._layout_engine.icon_size,
+                target_size,
                 self._image_file_preview_mode,
                 self._thumbnail_cache_dir,
                 manual_ffmpeg_path=self._ffmpeg_manual_path,

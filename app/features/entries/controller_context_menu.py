@@ -9,7 +9,13 @@ import sys
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.domain.tab_context import ToolboxTabContext
-from app.features.entries.controller_crud import add_section, remove_selected, rename_entry
+from app.features.entries.controller_crud import (
+    add_section,
+    remove_selected,
+    rename_entry,
+    edit_properties,
+    sort_entries_alphabetically,
+)
 
 
 def show_canvas_context_menu(
@@ -44,6 +50,7 @@ def show_canvas_context_menu(
         menu.addSeparator()
         open_path_action = menu.addAction("Open Path")
         rename_action = menu.addAction("Rename")
+        properties_action = menu.addAction("Eigenschaften bearbeiten")
         remove_action = menu.addAction("Remove Selected" if len(ctx.selected_ids) > 1 else "Remove")
         chosen = menu.exec(global_pos)
         if chosen == start_action:
@@ -69,15 +76,20 @@ def show_canvas_context_menu(
             owner._open_entry_path(entry)
         elif chosen == rename_action:
             rename_entry(owner, ctx, entry)
+        elif chosen == properties_action:
+            edit_properties(owner, ctx, entry)
         elif chosen == remove_action:
             remove_selected(owner, ctx)
         return
 
     rename_action = menu.addAction("Rename Header")
+    sort_action = menu.addAction("Alphabetisch sortieren (A-Z)")
     remove_action = menu.addAction("Remove")
     chosen = menu.exec(global_pos)
     if chosen == rename_action:
         rename_entry(owner, ctx, entry)
+    elif chosen == sort_action:
+        sort_entries_alphabetically(owner, ctx, entry)
     elif chosen == remove_action:
         remove_selected(owner, ctx)
 
@@ -103,6 +115,7 @@ def show_canvas_background_context_menu(
 ) -> None:
     menu = QtWidgets.QMenu(owner)
     add_section_action = menu.addAction("Add Section")
+    sort_action = menu.addAction("Alphabetisch sortieren (A-Z)")
     menu.addSeparator()
     insert_below_action = menu.addAction("Insert Row Below")
     insert_above_action = menu.addAction("Insert Row Above")
@@ -113,6 +126,8 @@ def show_canvas_background_context_menu(
     chosen = menu.exec(global_pos)
     if chosen == add_section_action:
         add_section(owner, ctx, preferred_y=canvas_pos.y())
+    elif chosen == sort_action:
+        sort_entries_alphabetically(owner, ctx, None)
     elif chosen == insert_below_action:
         shifted = ctx.canvas.insert_tool_row(ctx.entries, canvas_pos.y(), below=True)
         owner.persist_toolbox_state()

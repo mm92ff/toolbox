@@ -211,6 +211,14 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         ctx.launch_button.clicked.connect(lambda _=False, c=ctx: self.launch_selected(c))
         ctx.remove_button.clicked.connect(lambda _=False, c=ctx: self.remove_selected(c))
         ctx.open_config_button.clicked.connect(self._open_config_directory)
+        
+        # Wire breadcrumb back button
+        breadcrumb_bar = widgets.get("breadcrumb_bar")
+        ctx.breadcrumb_bar = breadcrumb_bar
+        back_btn = widgets.get("btn_browse_back")
+        if back_btn is not None:
+            back_btn.clicked.connect(lambda _=False, c=ctx: self._exit_folder_browse(c))
+
         ctx.search_input.textChanged.connect(lambda _text, c=ctx: self.refresh_canvas(c))
         ctx.splitter.splitterMoved.connect(lambda _pos, _index, c=ctx: self._on_splitter_moved(c))
 
@@ -335,9 +343,45 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             for ctx in self._visible_toolbox_tabs():
                 self.tab_widget.addTab(ctx.page, ctx.title)
             self._install_new_toolbox_tab_action()
+
             self.tab_widget.addTab(self.settings_tab, self._settings_title)
+            self.tab_widget.setTabVisible(self.tab_widget.indexOf(self.settings_tab), False)
             if not self._help_tab_hidden:
                 self.tab_widget.addTab(self.help_tab, self._help_title)
+                self.tab_widget.setTabVisible(self.tab_widget.indexOf(self.help_tab), False)
+
+            # Build corner widget with QToolButtons (once only)
+            if getattr(self, "_corner_widget", None) is None:
+                corner_widget = QtWidgets.QWidget(self.tab_widget)
+                corner_widget.setObjectName("corner_widget")
+                corner_layout = QtWidgets.QHBoxLayout(corner_widget)
+                corner_layout.setContentsMargins(0, 0, 0, 0)
+                corner_layout.setSpacing(0)
+
+                self._btn_settings = QtWidgets.QToolButton()
+                self._btn_settings.setObjectName("corner_btn_settings")
+                self._btn_settings.setAutoRaise(True)
+                self._btn_settings.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+                self._btn_settings.clicked.connect(lambda: self._on_corner_btn_clicked(0))
+
+                self._btn_help = QtWidgets.QToolButton()
+                self._btn_help.setObjectName("corner_btn_help")
+                self._btn_help.setAutoRaise(True)
+                self._btn_help.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+                self._btn_help.clicked.connect(lambda: self._on_corner_btn_clicked(1))
+
+                corner_layout.addWidget(self._btn_settings)
+                corner_layout.addWidget(self._btn_help)
+
+                self._corner_widget = corner_widget
+                self.tab_widget.setCornerWidget(corner_widget, QtCore.Qt.Corner.TopRightCorner)
+                self._apply_corner_button_style()
+
+            # Update button labels and visibility
+            self._btn_settings.setText(self._settings_title)
+            self._btn_help.setText(self._help_title)
+            self._btn_help.setVisible(not self._help_tab_hidden)
+            self._update_corner_button_active_state(self.tab_widget.currentWidget())
 
             target_widget = preferred_widget
             if target_widget is None or self.tab_widget.indexOf(target_widget) < 0:
@@ -347,6 +391,64 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
                 self.tab_widget.setCurrentIndex(target_index)
         finally:
             self.tab_widget.blockSignals(False)
+
+    def _apply_corner_button_style(self) -> None:
+        """Apply stylesheet to the corner buttons to match the main tab bar appearance."""
+        tab_bar = self.tab_widget.tabBar()
+        bg = tab_bar.palette().color(QtGui.QPalette.ColorRole.Window).name()
+        text = tab_bar.palette().color(QtGui.QPalette.ColorRole.WindowText).name()
+        highlight = tab_bar.palette().color(QtGui.QPalette.ColorRole.Highlight).name()
+        highlight_text = tab_bar.palette().color(QtGui.QPalette.ColorRole.HighlightedText).name()
+        mid = tab_bar.palette().color(QtGui.QPalette.ColorRole.Mid).name()
+
+        stylesheet = f"""
+            QToolButton#corner_btn_settings,
+            QToolButton#corner_btn_help {{
+                color: {text};
+                background: transparent;
+                border: none;
+                border-bottom: 2px solid transparent;
+                padding: 4px 10px;
+                margin: 0;
+                font-size: 13px;
+            }}
+            QToolButton#corner_btn_settings:hover,
+            QToolButton#corner_btn_help:hover {{
+                background: rgba(128, 128, 128, 40);
+                border-bottom: 2px solid {mid};
+            }}
+            QToolButton#corner_btn_settings[active=true],
+            QToolButton#corner_btn_help[active=true] {{
+                background: rgba(128, 128, 128, 30);
+                border-bottom: 2px solid {highlight};
+                color: {highlight_text if highlight_text != text else highlight};
+            }}
+        """
+        self._corner_widget.setStyleSheet(stylesheet)
+
+    def _update_corner_button_active_state(self, current_widget: QtWidgets.QWidget | None) -> None:
+        """Highlight the correct corner button based on the active tab."""
+        settings_active = current_widget is self.settings_tab
+        help_active = current_widget is self.help_tab
+
+        for btn, active in [
+            (self._btn_settings, settings_active),
+            (self._btn_help, help_active),
+        ]:
+            btn.setProperty("active", active)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+            btn.update()
+
+    def _on_corner_btn_clicked(self, index: int) -> None:
+        if index == 0:
+            self.tab_widget.setCurrentWidget(self.settings_tab)
+        elif index == 1 and not getattr(self, "_help_tab_hidden", False):
+            self.tab_widget.setCurrentWidget(self.help_tab)
+
+    # Keep old name as alias so _on_current_tab_changed still works
+    def _on_corner_tab_clicked(self, index: int) -> None:
+        self._on_corner_btn_clicked(index)
 
     def _install_new_toolbox_tab_action(self) -> None:
         """Insert the fixed browser-style plus action before Settings and Help."""

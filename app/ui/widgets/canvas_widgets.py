@@ -19,6 +19,88 @@ from app.services.desktop_entries import (
 )
 
 
+class ElidedTitleLabel(QtWidgets.QLabel):
+    """A label that supports multi-line text wrapping with eliding on the last line."""
+
+    def __init__(self, text: str, parent: QtWidgets.QWidget | None = None):
+        super().__init__(text, parent)
+        self.setToolTip(text)
+        self.setWordWrap(True)
+
+    def setText(self, text: str) -> None:
+        super().setText(text)
+        self.setToolTip(text)
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        painter = QtGui.QPainter(self)
+        metrics = self.fontMetrics()
+        rect = self.rect()
+
+        option = QtGui.QTextOption()
+        option.setWrapMode(QtGui.QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        option.setAlignment(self.alignment())
+
+        layout = QtGui.QTextLayout(self.text(), self.font())
+        layout.setTextOption(option)
+        layout.beginLayout()
+
+        y = 0
+        line_count = 0
+        max_lines = 2
+
+        while True:
+            line = layout.createLine()
+            if not line.isValid():
+                break
+
+            line.setLineWidth(rect.width())
+
+            if line_count == max_lines - 1:
+                remaining_text = self.text()[line.textStart():]
+                elided_string = metrics.elidedText(remaining_text, QtCore.Qt.TextElideMode.ElideRight, rect.width())
+                painter.drawText(QtCore.QRect(0, int(y), rect.width(), metrics.lineSpacing()), int(self.alignment()), elided_string)
+                break
+            else:
+                line.draw(painter, QtCore.QPointF(0, y))
+
+            y += metrics.lineSpacing()
+            line_count += 1
+
+        layout.endLayout()
+
+
+class RoundedIconLabel(QtWidgets.QLabel):
+    """A label that draws its pixmap with rounded corners."""
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._radius = 0
+
+    def set_radius(self, radius: int) -> None:
+        self._radius = max(0, radius)
+        self.update()
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        pixmap = self.pixmap()
+        if not pixmap or pixmap.isNull():
+            super().paintEvent(event)
+            return
+
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        
+        # Calculate alignment (centered)
+        x = (self.width() - pixmap.width()) // 2
+        y = (self.height() - pixmap.height()) // 2
+        
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(QtCore.QRectF(x, y, pixmap.width(), pixmap.height()), self._radius, self._radius)
+        
+        painter.setClipPath(path)
+        painter.drawPixmap(x, y, pixmap)
+
+
+
 class CanvasItemBase(QtWidgets.QFrame):
     clicked = QtCore.Signal(str)
     double_clicked = QtCore.Signal(str)
@@ -137,19 +219,17 @@ class ToolTileWidget(CanvasItemBase):
         self.setProperty("external_drop_state", "none")
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setLineWidth(0)
+        self._overlay_mode = False
 
-        self._layout = QtWidgets.QVBoxLayout(self)
-        self._layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self._layout = QtWidgets.QGridLayout(self)
 
-        self.icon_label = QtWidgets.QLabel()
+        self.icon_label = RoundedIconLabel()
         self.icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self._layout.addWidget(self.icon_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        self.title_label = QtWidgets.QLabel(entry.title)
+        self.title_label = ElidedTitleLabel(entry.custom_title or entry.title)
         self.title_label.setObjectName("tool_title")
         self.title_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.title_label.setWordWrap(True)
-        self._layout.addWidget(self.title_label)
         self.set_icon_size(icon_size)
 
     @staticmethod
@@ -237,22 +317,50 @@ class ToolTileWidget(CanvasItemBase):
         self._set_hovered(False)
         super().leaveEvent(event)
 
+    def set_overlay_mode(self, enabled: bool) -> None:
+        self._overlay_mode = enabled
+        # This will be visually applied the next time set_icon_size is called
+        # which surface_render does immediately after.
+
     def set_icon_size(self, icon_size: int) -> None:
         self._metrics = build_tile_metrics(icon_size)
         self._apply_style()
-        self._layout.setContentsMargins(
-            self._metrics.horizontal_padding,
-            self._metrics.vertical_padding,
-            self._metrics.horizontal_padding,
-            self._metrics.vertical_padding,
-        )
-        self._layout.setSpacing(self._metrics.content_spacing)
+        
+        if self._overlay_mode:
+            self._layout.setContentsMargins(0, 0, 0, 0)
+            self._layout.setSpacing(0)
+            self._layout.removeWidget(self.title_label)
+            self.title_label.setParent(self.icon_label)
+            self._layout.addWidget(self.icon_label, 0, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.title_label.setStyleSheet(f"background: rgba(0, 0, 0, 170); color: white; border-bottom-left-radius: {self._metrics.border_radius}px; border-bottom-right-radius: {self._metrics.border_radius}px; padding-top: 4px; padding-bottom: 4px;")
+            self.title_label.show()
+        else:
+            self.title_label.setParent(self)
+            self._layout.setContentsMargins(
+                self._metrics.horizontal_padding,
+                self._metrics.vertical_padding,
+                self._metrics.horizontal_padding,
+                self._metrics.vertical_padding,
+            )
+            self._layout.setSpacing(self._metrics.content_spacing)
+            self._layout.addWidget(self.icon_label, 0, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+            self._layout.addWidget(self.title_label, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.title_label.setStyleSheet("background: transparent;")
+            self.title_label.show()
 
         title_font = self.title_label.font()
         title_font.setBold(True)
         title_font.setPixelSize(self._metrics.font_pixel_size)
         self.title_label.setFont(title_font)
         self.title_label.setFixedHeight(self._metrics.title_height)
+        if self._overlay_mode:
+            self.title_label.setGeometry(
+                0,
+                self._metrics.tile_size.height() - self._metrics.title_height,
+                self._metrics.tile_size.width(),
+                self._metrics.title_height
+            )
+        
         tooltip = f"{self.entry.title}\n{self.entry.path}"
         if self.entry.path.lower().endswith(".desktop"):
             try:
@@ -266,16 +374,26 @@ class ToolTileWidget(CanvasItemBase):
         self.title_label.setToolTip(tooltip)
         self.setToolTip(tooltip)
 
-        self.icon_label.setFixedSize(self._metrics.icon_size, self._metrics.icon_size)
-        self.icon_label.setPixmap(
-            self._icon.pixmap(self._metrics.icon_size, self._metrics.icon_size)
-        )
+        if self._overlay_mode:
+            target_size = self._metrics.tile_size.width()
+            self.icon_label.setFixedSize(self._metrics.tile_size)
+            self.icon_label.set_radius(self._metrics.border_radius)
+            self.icon_label.setPixmap(
+                self._icon.pixmap(target_size, target_size)
+            )
+        else:
+            self.icon_label.setFixedSize(self._metrics.icon_size, self._metrics.icon_size)
+            self.icon_label.set_radius(max(0, self._metrics.border_radius - 4))
+            self.icon_label.setPixmap(
+                self._icon.pixmap(self._metrics.icon_size, self._metrics.icon_size)
+            )
         self.resize(self._metrics.tile_size)
 
     def set_icon(self, icon: QtGui.QIcon) -> None:
         self._icon = icon
+        target_size = self._metrics.tile_size.width() if self._overlay_mode else self._metrics.icon_size
         self.icon_label.setPixmap(
-            self._icon.pixmap(self._metrics.icon_size, self._metrics.icon_size)
+            self._icon.pixmap(target_size, target_size)
         )
 
     def _set_external_drop_state(self, state: str) -> None:

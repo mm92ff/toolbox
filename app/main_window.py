@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import sys
 import weakref
 from pathlib import Path
 from typing import Optional
@@ -73,6 +74,7 @@ class MainWindow(
         self._undo_last_state: list[dict[str, object]] | None = None
         self._undo_suspended = False
         self._undo_max_steps = 50
+        self._minimize_to_tray = False
         self._initialize_applied_settings_defaults()
 
         self.status = self.statusBar()
@@ -122,7 +124,76 @@ class MainWindow(
         tab_bar.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         tab_bar.customContextMenuRequested.connect(self._show_tab_context_menu)
 
+        self._setup_system_tray()
         self._connect_settings_widgets()
+
+    def _setup_system_tray(self) -> None:
+        if not QtWidgets.QSystemTrayIcon.isSystemTrayAvailable():
+            return
+            
+        self.tray_icon = QtWidgets.QSystemTrayIcon(self)
+        
+        tray_icon_path = None
+        # Try to find one_tray.png next to the main icon
+        app_icon_candidate = getattr(sys, "_MEIPASS", None)
+        if app_icon_candidate:
+            packaged = Path(app_icon_candidate) / "app" / "assets" / "one_tray.png"
+            if packaged.is_file():
+                tray_icon_path = packaged
+        if not tray_icon_path:
+            candidate = Path(__file__).resolve().parent / "assets" / "one_tray.png"
+            if candidate.is_file():
+                tray_icon_path = candidate
+                
+        if tray_icon_path:
+            self.tray_icon.setIcon(QtGui.QIcon(str(tray_icon_path)))
+        else:
+            app_icon = QtWidgets.QApplication.instance().windowIcon()
+            if not app_icon.isNull():
+                self.tray_icon.setIcon(app_icon)
+            else:
+                icon = QtGui.QIcon.fromTheme("applications-system", self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DesktopIcon))
+                self.tray_icon.setIcon(icon)
+        
+        tray_menu = QtWidgets.QMenu(self)
+        
+        show_action = tray_menu.addAction("Toolbox anzeigen")
+        show_action.triggered.connect(self.showNormal)
+        show_action.triggered.connect(self.activateWindow)
+        
+        tray_menu.addSeparator()
+        
+        quit_action = tray_menu.addAction("Beenden")
+        quit_action.triggered.connect(QtWidgets.QApplication.quit)
+        
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self._on_tray_activated)
+        self.tray_icon.show()
+        
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.setQuitOnLastWindowClosed(False)
+
+    def _on_tray_activated(self, reason: QtWidgets.QSystemTrayIcon.ActivationReason) -> None:
+        if reason == QtWidgets.QSystemTrayIcon.ActivationReason.Trigger:
+            if self.isVisible():
+                self.hide()
+            else:
+                self.showNormal()
+                self.activateWindow()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        if self._minimize_to_tray and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable():
+            event.ignore()
+            self.hide()
+            self.tray_icon.showMessage(
+                "Toolbox läuft im Hintergrund",
+                "Die Toolbox wurde in den Tray minimiert.",
+                QtWidgets.QSystemTrayIcon.MessageIcon.Information,
+                2000
+            )
+        else:
+            super().closeEvent(event)
 
     def _connect_settings_widgets(self) -> None:
         for widget_name in (
@@ -142,6 +213,10 @@ class MainWindow(
         image_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
         image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
         image_preview_mode_combobox.currentIndexChanged.connect(self._on_layout_settings_changed)
+        
+        preview_overlay_checkbox = self.widgets.get(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
+        if preview_overlay_checkbox:
+            preview_overlay_checkbox.toggled.connect(self._on_layout_settings_changed)
         video_preview_checkbox = self.widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX]
         video_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
         hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
@@ -152,6 +227,8 @@ class MainWindow(
         ffmpeg_manual_path_button.clicked.connect(self._choose_ffmpeg_manual_path)
         ffmpeg_rescan_button = self.widgets[constants.WIDGET_FFMPEG_RESCAN_BUTTON]
         ffmpeg_rescan_button.clicked.connect(self._rescan_ffmpeg_status)
+        ffmpeg_download_button = self.widgets["ffmpeg_download_button"]
+        ffmpeg_download_button.clicked.connect(self._download_internal_ffmpeg)
 
         auto_compact_left_checkbox = self.widgets[constants.WIDGET_AUTO_COMPACT_LEFT_CHECKBOX]
         auto_compact_left_checkbox.toggled.connect(self._on_layout_settings_changed)
@@ -266,6 +343,16 @@ class MainWindow(
         apply_settings_button = self.widgets[constants.BUTTON_APPLY_SETTINGS]
         apply_settings_button.clicked.connect(self._apply_pending_settings)
 
+        # System behavior checkboxes — must mark dirty so Apply is enabled
+        minimize_tray_cb = self.widgets.get("minimize_to_tray_checkbox")
+        if minimize_tray_cb is not None:
+            minimize_tray_cb.toggled.connect(self._on_system_settings_changed)
+
+        folder_click_cb = self.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
+        if folder_click_cb is not None:
+            folder_click_cb.toggled.connect(self._on_system_settings_changed)
+
+
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         ctx = self._drop_widget_map.get(watched)
         if ctx is not None:
@@ -323,6 +410,10 @@ class MainWindow(
             index = self.tab_widget.currentIndex()
 
         ctx: Optional[ToolboxTabContext] = self._toolbox_context_for_index(index)
+
+        if hasattr(self, "_update_corner_button_active_state"):
+            self._update_corner_button_active_state(current_widget)
+
         if ctx is not None:
             self._update_details(ctx)
             self._update_action_buttons(ctx)

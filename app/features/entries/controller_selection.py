@@ -13,6 +13,7 @@ from app.domain.tab_context import ToolboxTabContext
 
 
 def on_entry_clicked(owner: object, ctx: ToolboxTabContext, entry_id: str) -> None:
+    from pathlib import Path
     modifiers = QtWidgets.QApplication.keyboardModifiers()
     shift_pressed = bool(modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier)
     if shift_pressed:
@@ -23,12 +24,32 @@ def on_entry_clicked(owner: object, ctx: ToolboxTabContext, entry_id: str) -> No
     else:
         ctx.selected_ids = {entry_id}
     apply_selection_only(owner, ctx)
-    if shift_pressed or owner.current_tool_launch_mode() != constants.LAUNCH_CLICK_MODE_SINGLE:
+    if shift_pressed:
         return
 
-    entry = next((item for item in ctx.entries if item.entry_id == entry_id), None)
+    # Check browse entries too (in case we're in browse mode)
+    browse_entries: list = getattr(ctx, "_browse_display_entries", [])
+    entry = next(
+        (item for item in list(ctx.entries) + list(browse_entries) if item.entry_id == entry_id),
+        None,
+    )
+
     if entry is not None and entry.is_tool:
-        owner._launch_entry(ctx, entry)
+        path = Path(entry.path)
+        # Folder single-click browse: enter folder on single click if setting enabled
+        if (
+            path.is_dir()
+            and hasattr(owner, "current_folder_single_click_browse")
+            and owner.current_folder_single_click_browse()
+            and hasattr(owner, "_enter_folder_browse")
+        ):
+            owner._enter_folder_browse(ctx, path)
+            return
+        # Normal single-click tool launch
+        if owner.current_tool_launch_mode() == constants.LAUNCH_CLICK_MODE_SINGLE:
+            if not path.is_dir():
+                owner._launch_entry(ctx, entry)
+
 
 
 def on_canvas_background_clicked(owner: object, ctx: ToolboxTabContext) -> None:
@@ -55,10 +76,21 @@ def on_canvas_area_selection(
 
 
 def on_entry_activated(owner: object, ctx: ToolboxTabContext, entry_id: str) -> None:
-    entry = next((item for item in ctx.entries if item.entry_id == entry_id), None)
+    from pathlib import Path
+    # Check both persisted and browse-mode entries
+    browse_entries: list = getattr(ctx, '_browse_display_entries', [])
+    entry = next(
+        (item for item in list(ctx.entries) + list(browse_entries)
+         if item.entry_id == entry_id),
+        None,
+    )
     if entry is None:
         return
     if entry.is_tool:
+        path = Path(entry.path)
+        if path.is_dir() and hasattr(owner, '_enter_folder_browse'):
+            owner._enter_folder_browse(ctx, path)
+            return
         if owner.current_tool_launch_mode() == constants.LAUNCH_CLICK_MODE_DOUBLE:
             owner._launch_entry(ctx, entry)
     else:

@@ -30,6 +30,7 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
             "tile_frame_enabled": owner.current_tile_frame_enabled(),
             "image_file_preview_enabled": owner.current_image_file_preview_enabled(),
             "image_file_preview_mode": owner.current_image_file_preview_mode(),
+            "preview_overlay_enabled": owner.current_preview_overlay_enabled(),
             "video_file_preview_enabled": owner.current_video_file_preview_enabled(),
             "hover_preview_enabled": owner.current_hover_preview_enabled(),
             "ffmpeg_manual_path": owner.current_ffmpeg_manual_path(),
@@ -49,6 +50,16 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
         },
         "interaction": {
             "tool_launch_mode": owner.current_tool_launch_mode(),
+        },
+        "system": {
+            "minimize_to_tray": getattr(owner, "_minimize_to_tray", False),
+            "folder_single_click_browse": owner.current_folder_single_click_browse(),
+            "file_assoc_use_system": owner.current_file_assoc_use_system(),
+            "file_assoc_audio": owner.current_file_assoc_audio(),
+            "file_assoc_video": owner.current_file_assoc_video(),
+            "file_assoc_image": owner.current_file_assoc_image(),
+            "file_assoc_pdf": owner.current_file_assoc_pdf(),
+            "file_assoc_document": owner.current_file_assoc_document(),
         },
         "toolbox_splitter_sizes": {
             ctx.tab_id: [int(value) for value in ctx.splitter.sizes()] for ctx in owner.toolbox_tabs
@@ -117,6 +128,7 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("layout/tile_frame_enabled", owner.current_tile_frame_enabled())
     settings.setValue("layout/image_file_preview_enabled", owner.current_image_file_preview_enabled())
     settings.setValue("layout/image_file_preview_mode", owner.current_image_file_preview_mode())
+    settings.setValue("layout/preview_overlay_enabled", owner.current_preview_overlay_enabled())
     settings.setValue("layout/video_file_preview_enabled", owner.current_video_file_preview_enabled())
     settings.setValue("layout/hover_preview_enabled", owner.current_hover_preview_enabled())
     settings.setValue("layout/ffmpeg_manual_path", owner.current_ffmpeg_manual_path())
@@ -137,6 +149,14 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("layout/section_gap", owner.current_section_gap())
     settings.setValue("layout/section_line_color", owner.current_section_line_color())
     settings.setValue("interaction/tool_launch_mode", owner.current_tool_launch_mode())
+    settings.setValue("system/minimize_to_tray", getattr(owner, "_minimize_to_tray", False))
+    settings.setValue("system/folder_single_click_browse", owner.current_folder_single_click_browse())
+    settings.setValue("system/file_assoc_use_system", owner.current_file_assoc_use_system())
+    settings.setValue("system/file_assoc_audio", owner.current_file_assoc_audio())
+    settings.setValue("system/file_assoc_video", owner.current_file_assoc_video())
+    settings.setValue("system/file_assoc_image", owner.current_file_assoc_image())
+    settings.setValue("system/file_assoc_pdf", owner.current_file_assoc_pdf())
+    settings.setValue("system/file_assoc_document", owner.current_file_assoc_document())
 
     for ctx in owner.toolbox_tabs:
         settings.setValue(f"toolbox/{ctx.tab_id}/splitter_sizes", ctx.splitter.sizes())

@@ -15,6 +15,7 @@ from app.domain.models import ToolboxEntry
 from app.domain.tab_context import ToolboxTabContext
 from app.services.paths import resolve_supported_tool_path
 from app.services.system_utils import display_name_from_path, normalize_tool_path
+from app.ui.dialogs.tile_properties_dialog import TilePropertiesDialog
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,9 @@ def add_tools_from_dialog(owner: object, ctx: Optional[ToolboxTabContext] = None
 
 
 def add_tool_paths(owner: object, ctx: ToolboxTabContext, paths: list[str]) -> None:
+    if getattr(ctx, "browse_stack", None):
+        owner.status.showMessage("Cannot add entries while browsing a folder.", 3000)
+        return
     known_paths = {normalize_tool_path(entry.path) for entry in ctx.entries if entry.is_tool}
     added = 0
     skipped_invalid = 0
@@ -139,4 +143,47 @@ def rename_entry(owner: object, ctx: ToolboxTabContext, entry: ToolboxEntry) -> 
     entry.title = title
     owner.persist_toolbox_state()
     owner.refresh_canvas(ctx)
+
+
+def edit_properties(owner: object, ctx: ToolboxTabContext, entry: ToolboxEntry) -> None:
+    dialog = TilePropertiesDialog(entry, parent=owner)
+    if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+        entry.custom_title = dialog.custom_title
+        entry.custom_icon_path = dialog.custom_icon_path
+        owner.persist_toolbox_state()
+        owner.refresh_canvas(ctx)
+
+
+def sort_entries_alphabetically(owner: object, ctx: ToolboxTabContext, section_entry: ToolboxEntry | None = None) -> None:
+    """Sort tools alphabetically. If section_entry is given, only sort tools in that section.
+    Otherwise, sort all tools in their respective sections."""
+    # Find section bounds
+    sections = sorted([e for e in ctx.entries if e.is_section], key=lambda e: e.y)
+    
+    tools = [e for e in ctx.entries if e.is_tool]
+    
+    for tool in tools:
+        # Determine which section this tool belongs to
+        assigned_section = None
+        for sec in reversed(sections):
+            if tool.y > sec.y:
+                assigned_section = sec
+                break
+                
+        if section_entry and assigned_section != section_entry:
+            continue
+            
+        # Temporarily set x and y to identical values within the section
+        # so that the stable sort falls back to alphabetical order
+        tool.y = assigned_section.y + 1 if assigned_section else 0
+        tool.x = 0
+
+    # Ensure titles are used for sort tie-breaker in compaction
+    if owner.current_auto_compact_left():
+        ctx.canvas.compact_tools(ctx.entries)
+        owner.persist_toolbox_state()
+        owner.refresh_canvas(ctx)
+        owner.status.showMessage("Alphabetically sorted tools.", 3000)
+    else:
+        owner.status.showMessage("Auto-sort requires 'Auto-compact left' to be enabled.", 3500)
 

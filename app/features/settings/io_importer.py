@@ -77,6 +77,15 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
             ),
         )
         settings.setValue(
+            "layout/preview_overlay_enabled",
+            bool(
+                layout_settings.get(
+                    "preview_overlay_enabled",
+                    constants.DEFAULT_PREVIEW_OVERLAY_ENABLED,
+                )
+            ),
+        )
+        settings.setValue(
             "layout/video_file_preview_enabled",
             bool(
                 layout_settings.get(
@@ -202,6 +211,23 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
                 )
             ),
         )
+
+    system_settings = ui_settings.get("system")
+    if isinstance(system_settings, dict):
+        settings.setValue(
+            "system/minimize_to_tray",
+            bool(system_settings.get("minimize_to_tray", False)),
+        )
+        settings.setValue(
+            "system/folder_single_click_browse",
+            bool(system_settings.get("folder_single_click_browse", constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)),
+        )
+        settings.setValue("system/file_assoc_use_system", bool(system_settings.get("file_assoc_use_system", constants.DEFAULT_FILE_ASSOC_USE_SYSTEM)))
+        settings.setValue("system/file_assoc_audio", str(system_settings.get("file_assoc_audio", "")))
+        settings.setValue("system/file_assoc_video", str(system_settings.get("file_assoc_video", "")))
+        settings.setValue("system/file_assoc_image", str(system_settings.get("file_assoc_image", "")))
+        settings.setValue("system/file_assoc_pdf", str(system_settings.get("file_assoc_pdf", "")))
+        settings.setValue("system/file_assoc_document", str(system_settings.get("file_assoc_document", "")))
 
     splitter_sizes = ui_settings.get("toolbox_splitter_sizes")
     if isinstance(splitter_sizes, dict):

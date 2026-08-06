@@ -23,6 +23,37 @@ def create_toolbox_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget
     splitter.setObjectName(constants.WIDGET_TOOLBOX_SPLITTER)
     widgets[constants.WIDGET_TOOLBOX_SPLITTER] = splitter
 
+    # Breadcrumb bar for folder browsing (hidden by default)
+    breadcrumb_bar = QtWidgets.QWidget()
+    breadcrumb_bar.setObjectName("breadcrumb_bar")
+    breadcrumb_bar.setVisible(False)
+    breadcrumb_bar.setFixedHeight(36)
+    breadcrumb_layout = QtWidgets.QHBoxLayout(breadcrumb_bar)
+    breadcrumb_layout.setContentsMargins(8, 4, 8, 4)
+    breadcrumb_layout.setSpacing(6)
+    
+    back_btn = QtWidgets.QToolButton()
+    back_btn.setObjectName("btn_browse_back")
+    back_btn.setText("← Zurück")
+    back_btn.setAutoRaise(True)
+    back_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+    breadcrumb_layout.addWidget(back_btn)
+    
+    breadcrumb_sep = QtWidgets.QFrame()
+    breadcrumb_sep.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+    breadcrumb_sep.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+    breadcrumb_layout.addWidget(breadcrumb_sep)
+    
+    breadcrumb_path_label = QtWidgets.QLabel()
+    breadcrumb_path_label.setObjectName("lbl_breadcrumb_path")
+    breadcrumb_path_label.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+    breadcrumb_layout.addWidget(breadcrumb_path_label, 1)
+    
+    breadcrumb_layout.addStretch()
+    widgets["breadcrumb_bar"] = breadcrumb_bar
+    widgets["btn_browse_back"] = back_btn
+    widgets["lbl_breadcrumb_path"] = breadcrumb_path_label
+
     # Keep legacy controls available for controller compatibility,
     # but remove the visual top/bottom panels from the tab UI.
     top_panel = QtWidgets.QWidget(tab)
@@ -110,6 +141,7 @@ def create_toolbox_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget
     splitter.setStretchFactor(0, 1)
     splitter.setHandleWidth(0)
 
+    layout.addWidget(breadcrumb_bar)  # add before splitter
     layout.addWidget(splitter)
     widgets[constants.WIDGET_TOP_PANEL] = top_panel
     widgets[constants.WIDGET_BOTTOM_PANEL] = bottom_panel
