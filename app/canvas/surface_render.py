@@ -52,6 +52,7 @@ class CanvasSurfaceRenderMixin:
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
         ffmpeg_manual_path: str = "",
         thumbnail_cache_dir: Path | None = None,
+        folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
     ) -> None:
         self.clear()
         self._entries = entries
@@ -64,6 +65,7 @@ class CanvasSurfaceRenderMixin:
         self._hover_preview_enabled = hover_preview_enabled
         self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
         self._thumbnail_cache_dir = thumbnail_cache_dir
+        self._folder_show_file_count = folder_show_file_count
         self._selected_entry_ids = set(selected_entry_ids)
         self._hidden_entry_ids = set(hidden_entry_ids)
 
@@ -122,6 +124,7 @@ class CanvasSurfaceRenderMixin:
         hover_preview_enabled: bool = constants.DEFAULT_HOVER_PREVIEW_ENABLED,
         ffmpeg_manual_path: str = "",
         thumbnail_cache_dir: Path | None = None,
+        folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
     ) -> bool:
         self._entries = entries
         self._auto_compact_left = auto_compact_left
@@ -132,6 +135,7 @@ class CanvasSurfaceRenderMixin:
         self._hover_preview_enabled = hover_preview_enabled
         self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
         self._thumbnail_cache_dir = thumbnail_cache_dir
+        self._folder_show_file_count = folder_show_file_count
         previous_tool_cell_size = self._layout_engine.tool_cell_size()
         previous_segments = self._layout_engine.segment_ranges(self._entries)
         previous_tool_positions = {
@@ -156,6 +160,7 @@ class CanvasSurfaceRenderMixin:
                 widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
                 widget.set_icon(self._icon_for_tool_entry(widget.entry))
                 widget.set_icon_size(self._layout_engine.icon_size)
+                widget.set_folder_file_count_mode(self._folder_show_file_count)
                 widget.set_tile_style(
                     frame_enabled=tile_frame_enabled,
                     frame_thickness=tile_frame_thickness,
@@ -229,12 +234,9 @@ class CanvasSurfaceRenderMixin:
             icon = self._icon_for_tool_entry(entry)
             widget = ToolTileWidget(entry, icon, self._layout_engine.icon_size, self)
             widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
-            # Re-set icon because now it knows about overlay mode, but wait, 
-            # widget __init__ already does it, and we might need to apply overlay mode BEFORE set_icon in __init__
-            # actually we can just pass overlay mode, then set_icon_size does it.
             widget.set_icon(self._icon_for_tool_entry(entry))
             widget.set_icon_size(self._layout_engine.icon_size)
-            
+            widget.set_folder_file_count_mode(self._folder_show_file_count)
             widget.set_tile_style(
                 frame_enabled=tile_frame_enabled,
                 frame_thickness=tile_frame_thickness,

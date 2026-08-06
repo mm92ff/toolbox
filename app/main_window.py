@@ -383,6 +383,10 @@ class MainWindow(
         if folder_click_cb is not None:
             folder_click_cb.toggled.connect(self._on_system_settings_changed)
 
+        folder_file_count_cb = self.widgets.get(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX)
+        if folder_file_count_cb is not None:
+            folder_file_count_cb.toggled.connect(self._on_layout_settings_changed)
+
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         ctx = self._drop_widget_map.get(watched)

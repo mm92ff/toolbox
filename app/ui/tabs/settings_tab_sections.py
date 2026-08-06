@@ -181,6 +181,12 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     widgets[constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX] = folder_single_click
     appearance_layout.addWidget(folder_single_click, 14, 1, 1, 2)
 
+    folder_show_file_count = QtWidgets.QCheckBox("Show file count in folder tiles (line 2)")
+    folder_show_file_count.setObjectName(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX)
+    folder_show_file_count.setChecked(constants.DEFAULT_FOLDER_SHOW_FILE_COUNT)
+    widgets[constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX] = folder_show_file_count
+    appearance_layout.addWidget(folder_show_file_count, 15, 1, 1, 2)
+
     return appearance_group
 
 

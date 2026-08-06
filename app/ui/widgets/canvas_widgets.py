@@ -19,6 +19,39 @@ from app.services.desktop_entries import (
 )
 
 
+import os
+
+
+class _FolderCountWorker(QtCore.QThread):
+    """Counts total items (files + dirs) inside a folder recursively (max 1s)."""
+    finished = QtCore.Signal(int)
+
+    def __init__(self, path: str, parent=None):
+        super().__init__(parent)
+        self._path = path
+
+    def run(self) -> None:
+        import time
+        count = 0
+        deadline = time.monotonic() + 1.0
+        dirs_to_visit = [self._path]
+        while dirs_to_visit:
+            if time.monotonic() > deadline:
+                break
+            current = dirs_to_visit.pop()
+            try:
+                with os.scandir(current) as it:
+                    for entry in it:
+                        if entry.is_symlink():
+                            continue
+                        count += 1
+                        if entry.is_dir(follow_symlinks=False):
+                            dirs_to_visit.append(entry.path)
+            except OSError:
+                pass
+        self.finished.emit(count)
+
+
 class ElidedTitleLabel(QtWidgets.QLabel):
     """A label that supports multi-line text wrapping with eliding on the last line."""
 
@@ -321,6 +354,38 @@ class ToolTileWidget(CanvasItemBase):
         self._overlay_mode = enabled
         # This will be visually applied the next time set_icon_size is called
         # which surface_render does immediately after.
+
+    def set_folder_file_count_mode(self, enabled: bool) -> None:
+        """Show folder name on line 1 and file count on line 2 when enabled."""
+        import os
+        path = self.entry.path
+        if enabled and path and os.path.isdir(path):
+            display_name = self.entry.custom_title or self.entry.title
+            # Start async count; show placeholder immediately
+            self._pending_file_count_path = path
+            self._pending_file_count_name = display_name
+            self.title_label.setText(f"{display_name}\n...")
+            self._start_file_count_worker(path, display_name)
+        else:
+            self._pending_file_count_path = None
+            # Restore normal title
+            self.title_label.setText(self.entry.custom_title or self.entry.title)
+
+    def _start_file_count_worker(self, path: str, display_name: str) -> None:
+        worker = _FolderCountWorker(path, self)
+        worker.finished.connect(lambda count, p=path, n=display_name: self._on_file_count_ready(count, p, n))
+        worker.start()
+        # Keep reference so it doesn't get GC'd
+        self._file_count_worker = worker
+
+    def _on_file_count_ready(self, count: int, path: str, display_name: str) -> None:
+        if getattr(self, "_pending_file_count_path", None) == path:
+            if count == 1:
+                suffix = "1 Element"
+            else:
+                suffix = f"{count} Elemente"
+            self.title_label.setText(f"{display_name}\n{suffix}")
+
 
     def set_icon_size(self, icon_size: int) -> None:
         self._metrics = build_tile_metrics(icon_size)

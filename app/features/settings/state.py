@@ -64,6 +64,7 @@ class MainWindowSettingsStateMixin:
         self._applied_file_assoc_pdf = ""
         self._applied_file_assoc_document = ""
         self._applied_folder_single_click_browse = constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE
+        self._applied_folder_show_file_count = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT
 
     def _capture_pending_settings_from_widgets(self) -> dict[str, object]:
         icon_slider = self.widgets[constants.WIDGET_ICON_SIZE_SLIDER]
@@ -146,6 +147,7 @@ class MainWindowSettingsStateMixin:
             ),
             "minimize_to_tray": bool(minimize_tray_checkbox.isChecked()) if minimize_tray_checkbox else False,
             "folder_single_click_browse": bool(folder_click_cb.isChecked()) if folder_click_cb else False,
+            "folder_show_file_count": bool(self.widgets[constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX].isChecked()) if self.widgets.get(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX) else False,
             "file_assoc_use_system": bool(use_system_cb.isChecked()) if use_system_cb else True,
             "file_assoc_audio": audio_inp.text().strip() if audio_inp else "",
             "file_assoc_video": video_inp.text().strip() if video_inp else "",
@@ -243,6 +245,9 @@ class MainWindowSettingsStateMixin:
         self._minimize_to_tray = bool(values.get("minimize_to_tray", False))
         self._applied_folder_single_click_browse = bool(
             values.get("folder_single_click_browse", constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)
+        )
+        self._applied_folder_show_file_count = bool(
+            values.get("folder_show_file_count", constants.DEFAULT_FOLDER_SHOW_FILE_COUNT)
         )
         self._applied_file_assoc_use_system = bool(values.get("file_assoc_use_system", constants.DEFAULT_FILE_ASSOC_USE_SYSTEM))
         self._applied_file_assoc_audio = str(values.get("file_assoc_audio", ""))
@@ -378,3 +383,6 @@ class MainWindowSettingsStateMixin:
 
     def current_folder_single_click_browse(self) -> bool:
         return bool(self._applied_folder_single_click_browse)
+
+    def current_folder_show_file_count(self) -> bool:
+        return bool(self._applied_folder_show_file_count)

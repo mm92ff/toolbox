@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Toolbox
+Comment=Start Toolbox GUI
+Exec=sh -c 'cd /home/jemi/Desktop/Github/toolbox-- && .venv/bin/python main.py'
+Icon=/home/jemi/Desktop/Github/toolbox--/app/assets/one.png
+Terminal=false
+Categories=Utility;

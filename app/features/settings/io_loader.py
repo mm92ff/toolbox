@@ -139,6 +139,18 @@ def load_settings(owner: object) -> None:
         )
         folder_click_cb.blockSignals(False)
 
+    folder_file_count_cb = owner.widgets.get(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX)
+    if folder_file_count_cb:
+        folder_file_count_cb.blockSignals(True)
+        folder_file_count_cb.setChecked(
+            settings.value(
+                "system/folder_show_file_count",
+                constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
+                type=bool,
+            )
+        )
+        folder_file_count_cb.blockSignals(False)
+
     use_system_cb = owner.widgets.get(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
     if use_system_cb:
         use_system_cb.blockSignals(True)

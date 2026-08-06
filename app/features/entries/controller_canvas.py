@@ -52,6 +52,7 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
         video_file_preview_enabled=owner.current_video_file_preview_enabled(),
         hover_preview_enabled=owner.current_hover_preview_enabled(),
         ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
+        folder_show_file_count=owner.current_folder_show_file_count(),
     )
     update_details(owner, ctx)
     update_action_buttons(ctx)
@@ -84,6 +85,7 @@ def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None
                 video_file_preview_enabled=owner.current_video_file_preview_enabled(),
                 hover_preview_enabled=owner.current_hover_preview_enabled(),
                 ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
+                folder_show_file_count=owner.current_folder_show_file_count(),
             )
             if reflow_changed:
                 layout_reflow_changed_entries = True

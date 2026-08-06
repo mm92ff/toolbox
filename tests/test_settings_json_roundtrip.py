@@ -151,6 +151,9 @@ class _SnapshotOwner:
     def current_folder_single_click_browse(self) -> bool:
         return False
 
+    def current_folder_show_file_count(self) -> bool:
+        return False
+
 
 class _FakeQSettings:
     def __init__(self) -> None:

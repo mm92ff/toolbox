@@ -54,6 +54,7 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
         "system": {
             "minimize_to_tray": getattr(owner, "_minimize_to_tray", False),
             "folder_single_click_browse": owner.current_folder_single_click_browse(),
+            "folder_show_file_count": owner.current_folder_show_file_count(),
             "file_assoc_use_system": owner.current_file_assoc_use_system(),
             "file_assoc_audio": owner.current_file_assoc_audio(),
             "file_assoc_video": owner.current_file_assoc_video(),
@@ -151,6 +152,7 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("interaction/tool_launch_mode", owner.current_tool_launch_mode())
     settings.setValue("system/minimize_to_tray", getattr(owner, "_minimize_to_tray", False))
     settings.setValue("system/folder_single_click_browse", owner.current_folder_single_click_browse())
+    settings.setValue("system/folder_show_file_count", owner.current_folder_show_file_count())
     settings.setValue("system/file_assoc_use_system", owner.current_file_assoc_use_system())
     settings.setValue("system/file_assoc_audio", owner.current_file_assoc_audio())
     settings.setValue("system/file_assoc_video", owner.current_file_assoc_video())
