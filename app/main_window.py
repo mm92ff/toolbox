@@ -88,6 +88,10 @@ class MainWindow(
         self.refresh_all_canvases()
         self._initialize_undo_history()
         self._settings_ready = True
+        
+        ctx = self.current_toolbox_context()
+        if ctx is not None:
+            self._recalculate_active_tab_size(ctx)
 
     def _update_window_minimum_width(self, ctx: ToolboxTabContext) -> None:
         grid_width = ctx.config.grid.columns * ctx.config.appearance.icon_size
