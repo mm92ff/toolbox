@@ -52,6 +52,8 @@ REQUIRED_BACKUP_FILES=(
 OPTIONAL_BACKUP_FILES=(
   "_pyinstaller_venv_spec_v3.3_debug_fixed.bat"
   "start-toolbox.bat"
+  "thirdparty/ffmpeg"
+  "thirdparty/ffprobe"
 )
 
 mkdir -p "${LOG_DIR}"
