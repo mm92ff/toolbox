@@ -15,6 +15,7 @@ from app.features.entries.controller_crud import (
     rename_entry,
     edit_properties,
     sort_entries_alphabetically,
+    sort_entries_by_type,
 )
 
 
@@ -84,12 +85,15 @@ def show_canvas_context_menu(
 
     rename_action = menu.addAction("Rename Header")
     sort_action = menu.addAction("Alphabetisch sortieren (A-Z)")
+    sort_type_action = menu.addAction("Nach Typ sortieren")
     remove_action = menu.addAction("Remove")
     chosen = menu.exec(global_pos)
     if chosen == rename_action:
         rename_entry(owner, ctx, entry)
     elif chosen == sort_action:
         sort_entries_alphabetically(owner, ctx, entry)
+    elif chosen == sort_type_action:
+        sort_entries_by_type(owner, ctx, entry)
     elif chosen == remove_action:
         remove_selected(owner, ctx)
 
@@ -116,6 +120,7 @@ def show_canvas_background_context_menu(
     menu = QtWidgets.QMenu(owner)
     add_section_action = menu.addAction("Add Section")
     sort_action = menu.addAction("Alphabetisch sortieren (A-Z)")
+    sort_type_action = menu.addAction("Nach Typ sortieren")
     menu.addSeparator()
     insert_below_action = menu.addAction("Insert Row Below")
     insert_above_action = menu.addAction("Insert Row Above")
@@ -128,6 +133,8 @@ def show_canvas_background_context_menu(
         add_section(owner, ctx, preferred_y=canvas_pos.y())
     elif chosen == sort_action:
         sort_entries_alphabetically(owner, ctx, None)
+    elif chosen == sort_type_action:
+        sort_entries_by_type(owner, ctx, None)
     elif chosen == insert_below_action:
         shifted = ctx.canvas.insert_tool_row(ctx.entries, canvas_pos.y(), below=True)
         owner.persist_toolbox_state()

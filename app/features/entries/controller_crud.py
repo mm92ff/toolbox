@@ -187,3 +187,54 @@ def sort_entries_alphabetically(owner: object, ctx: ToolboxTabContext, section_e
     else:
         owner.status.showMessage("Auto-sort requires 'Auto-compact left' to be enabled.", 3500)
 
+
+def sort_entries_by_type(owner: object, ctx: ToolboxTabContext, section_entry: ToolboxEntry | None = None) -> None:
+    """Sort tools by type (Folders first, then by file extension) and then alphabetically."""
+    import os
+    from pathlib import Path
+    
+    sections = sorted([e for e in ctx.entries if e.is_section], key=lambda e: e.y)
+    tools = [e for e in ctx.entries if e.is_tool]
+    
+    extensions = set()
+    for tool in tools:
+        if tool.path and not tool.path.startswith("http"):
+            path = Path(tool.path)
+            if path.is_file():
+                ext = path.suffix.lower()
+                extensions.add(ext)
+                
+    sorted_exts = sorted(list(extensions))
+    ext_to_rank = {ext: i + 1 for i, ext in enumerate(sorted_exts)}
+    
+    for tool in tools:
+        assigned_section = None
+        for sec in reversed(sections):
+            if tool.y > sec.y:
+                assigned_section = sec
+                break
+                
+        if section_entry and assigned_section != section_entry:
+            continue
+            
+        tool.y = assigned_section.y + 1 if assigned_section else 0
+        
+        if tool.path and not tool.path.startswith("http"):
+            path = Path(tool.path)
+            if path.is_dir():
+                tool.x = 0
+            elif path.is_file():
+                ext = path.suffix.lower()
+                tool.x = ext_to_rank.get(ext, 999)
+            else:
+                tool.x = 999
+        else:
+            tool.x = 999
+
+    if owner.current_auto_compact_left():
+        ctx.canvas.compact_tools(ctx.entries)
+        owner.persist_toolbox_state()
+        owner.refresh_canvas(ctx)
+        owner.status.showMessage("Tools sorted by type.", 3000)
+    else:
+        owner.status.showMessage("Auto-sort requires 'Auto-compact left' to be enabled.", 3500)
