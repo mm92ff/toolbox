@@ -114,17 +114,8 @@ class MainWindow(
         self._size_worker.finished_calculation.connect(self._on_tab_size_calculated)
         self._size_worker.start()
         
-    def _on_tab_size_calculated(self, total_bytes: int) -> None:
-        if total_bytes < 1024:
-            size_str = f"{total_bytes} B"
-        elif total_bytes < 1024 * 1024:
-            size_str = f"{total_bytes / 1024:.1f} KB"
-        elif total_bytes < 1024 * 1024 * 1024:
-            size_str = f"{total_bytes / (1024 * 1024):.1f} MB"
-        else:
-            size_str = f"{total_bytes / (1024 * 1024 * 1024):.1f} GB"
-            
-        self.tab_size_label.setText(f"Gesamtgröße: {size_str}")
+    def _on_tab_size_calculated(self, result: str) -> None:
+        self.tab_size_label.setText(f"Gesamtgröße: {result}")
 
     def _persist_on_quit(self) -> None:
         self.desktop_process_manager.shutdown()
