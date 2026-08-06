@@ -263,6 +263,14 @@ class ToolTileWidget(CanvasItemBase):
         self.title_label.setObjectName("tool_title")
         self.title_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.title_label.setWordWrap(True)
+
+        # Second line label for folder file count (hidden by default)
+        self.file_count_label = QtWidgets.QLabel("")
+        self.file_count_label.setObjectName("tool_file_count")
+        self.file_count_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.file_count_label.hide()
+        self._folder_count_mode = False
+        self._pending_file_count_path: str | None = None
         self.set_icon_size(icon_size)
 
     @staticmethod
@@ -318,6 +326,10 @@ class ToolTileWidget(CanvasItemBase):
                 font-weight: 600;
                 background: transparent;
             }}
+            QLabel#tool_file_count {{
+                color: palette(mid);
+                background: transparent;
+            }}
             """)
 
     def set_tile_style(
@@ -359,32 +371,34 @@ class ToolTileWidget(CanvasItemBase):
         """Show folder name on line 1 and file count on line 2 when enabled."""
         import os
         path = self.entry.path
-        if enabled and path and os.path.isdir(path):
+        self._folder_count_mode = enabled and bool(path) and os.path.isdir(path)
+        if self._folder_count_mode:
             display_name = self.entry.custom_title or self.entry.title
-            # Start async count; show placeholder immediately
             self._pending_file_count_path = path
-            self._pending_file_count_name = display_name
-            self.title_label.setText(f"{display_name}\n...")
+            # Line 1: name only (single-line elided), line 2: placeholder
+            self.title_label.setWordWrap(False)
+            self.title_label.setText(display_name)
+            self.file_count_label.setText("...")
+            self.file_count_label.show()
             self._start_file_count_worker(path, display_name)
         else:
             self._pending_file_count_path = None
-            # Restore normal title
+            self._folder_count_mode = False
+            self.title_label.setWordWrap(True)
             self.title_label.setText(self.entry.custom_title or self.entry.title)
+            self.file_count_label.hide()
+            self.file_count_label.setText("")
 
     def _start_file_count_worker(self, path: str, display_name: str) -> None:
         worker = _FolderCountWorker(path, self)
         worker.finished.connect(lambda count, p=path, n=display_name: self._on_file_count_ready(count, p, n))
         worker.start()
-        # Keep reference so it doesn't get GC'd
         self._file_count_worker = worker
 
     def _on_file_count_ready(self, count: int, path: str, display_name: str) -> None:
         if getattr(self, "_pending_file_count_path", None) == path:
-            if count == 1:
-                suffix = "1 Element"
-            else:
-                suffix = f"{count} Elemente"
-            self.title_label.setText(f"{display_name}\n{suffix}")
+            suffix = "1 Element" if count == 1 else f"{count} Elemente"
+            self.file_count_label.setText(suffix)
 
 
     def set_icon_size(self, icon_size: int) -> None:
@@ -395,21 +409,35 @@ class ToolTileWidget(CanvasItemBase):
             self._layout.setContentsMargins(0, 0, 0, 0)
             self._layout.setSpacing(0)
             self._layout.removeWidget(self.title_label)
+            self._layout.removeWidget(self.file_count_label)
             self.title_label.setParent(self.icon_label)
+            self.file_count_label.setParent(self)
+            self.file_count_label.hide()
             self._layout.addWidget(self.icon_label, 0, 0, 2, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
             self.title_label.setStyleSheet(f"background: rgba(0, 0, 0, 170); color: white; border-bottom-left-radius: {self._metrics.border_radius}px; border-bottom-right-radius: {self._metrics.border_radius}px; padding-top: 4px; padding-bottom: 4px;")
             self.title_label.show()
         else:
             self.title_label.setParent(self)
+            self.file_count_label.setParent(self)
             self._layout.setContentsMargins(
                 self._metrics.horizontal_padding,
                 self._metrics.vertical_padding,
                 self._metrics.horizontal_padding,
                 self._metrics.vertical_padding,
             )
-            self._layout.setSpacing(self._metrics.content_spacing)
+            self._layout.setSpacing(0)
             self._layout.addWidget(self.icon_label, 0, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
-            self._layout.addWidget(self.title_label, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+            if self._folder_count_mode:
+                # Split title_height evenly between name (line1) and count (line2)
+                half_h = self._metrics.title_height // 2
+                self.title_label.setFixedHeight(half_h)
+                self.file_count_label.setFixedHeight(self._metrics.title_height - half_h)
+                self._layout.addWidget(self.title_label, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+                self._layout.addWidget(self.file_count_label, 2, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+                self.file_count_label.show()
+            else:
+                self._layout.addWidget(self.title_label, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+                self.file_count_label.hide()
             self.title_label.setStyleSheet("background: transparent;")
             self.title_label.show()
 
@@ -417,7 +445,14 @@ class ToolTileWidget(CanvasItemBase):
         title_font.setBold(True)
         title_font.setPixelSize(self._metrics.font_pixel_size)
         self.title_label.setFont(title_font)
-        self.title_label.setFixedHeight(self._metrics.title_height)
+        # In folder_count_mode heights are already split above; only set here for normal/overlay mode
+        if not self._folder_count_mode:
+            self.title_label.setFixedHeight(self._metrics.title_height)
+
+        # Apply same font to file_count_label (slightly smaller)
+        count_font = self.file_count_label.font()
+        count_font.setPixelSize(max(8, self._metrics.font_pixel_size - 1))
+        self.file_count_label.setFont(count_font)
         if self._overlay_mode:
             self.title_label.setGeometry(
                 0,
