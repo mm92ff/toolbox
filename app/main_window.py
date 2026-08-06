@@ -89,6 +89,39 @@ class MainWindow(
         self._initialize_undo_history()
         self._settings_ready = True
 
+    def _update_window_minimum_width(self, ctx: ToolboxTabContext) -> None:
+        grid_width = ctx.config.grid.columns * ctx.config.appearance.icon_size
+        padding = 100
+        min_width = grid_width + padding
+        
+        current_min = self.minimumWidth()
+        if min_width > current_min:
+            self.setMinimumWidth(min_width)
+
+    def _recalculate_active_tab_size(self, ctx: ToolboxTabContext) -> None:
+        if hasattr(self, '_size_worker') and self._size_worker.isRunning():
+            self._size_worker.cancel()
+            self._size_worker.wait()
+            
+        self.tab_size_label.setText("Berechne Tab-Größe...")
+        
+        from app.services.size_calculator import SizeCalculationWorker
+        self._size_worker = SizeCalculationWorker(ctx.entries, self)
+        self._size_worker.finished_calculation.connect(self._on_tab_size_calculated)
+        self._size_worker.start()
+        
+    def _on_tab_size_calculated(self, total_bytes: int) -> None:
+        if total_bytes < 1024:
+            size_str = f"{total_bytes} B"
+        elif total_bytes < 1024 * 1024:
+            size_str = f"{total_bytes / 1024:.1f} KB"
+        elif total_bytes < 1024 * 1024 * 1024:
+            size_str = f"{total_bytes / (1024 * 1024):.1f} MB"
+        else:
+            size_str = f"{total_bytes / (1024 * 1024 * 1024):.1f} GB"
+            
+        self.tab_size_label.setText(f"Gesamtgröße: {size_str}")
+
     def _persist_on_quit(self) -> None:
         self.desktop_process_manager.shutdown()
         self._shutdown_broken_entries_scan_worker()
@@ -106,6 +139,9 @@ class MainWindow(
             "new_toolbox_tab_action_page"
         )
         self._new_toolbox_tab_button: QtWidgets.QToolButton | None = None
+        
+        self.tab_size_label = QtWidgets.QLabel("")
+        self.status.addPermanentWidget(self.tab_size_label)
 
         self.tab_widget.setMovable(False)
         self.tab_widget.currentChanged.connect(self._on_current_tab_changed)
@@ -418,11 +454,21 @@ class MainWindow(
             self._update_details(ctx)
             self._update_action_buttons(ctx)
             self._update_window_minimum_width(ctx)
+            self._recalculate_active_tab_size(ctx)
         elif self.tab_widget.widget(index) is self.settings_tab:
+            self.tab_size_label.setText("")
             self._refresh_section_color_manager()
             self._update_ffmpeg_status_preview()
+        else:
+            self.tab_size_label.setText("")
+            
         self._last_tab_index = index
-        self._save_settings()
+
+    def persist_toolbox_state(self) -> None:
+        super().persist_toolbox_state()
+        ctx = self.current_toolbox_context()
+        if ctx is not None:
+            self._recalculate_active_tab_size(ctx)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self._shutdown_broken_entries_scan_worker()
