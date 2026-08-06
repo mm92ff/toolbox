@@ -200,12 +200,18 @@ ln -s \
     "$APPDIR/io.github.toolbox.Toolbox.desktop"
 ln -s usr/share/icons/hicolor/1024x1024/apps/toolbox.png "$APPDIR/toolbox.png"
 
-# Download and bundle static FFmpeg
-echo "Downloading static FFmpeg..."
-if command -v curl >/dev/null 2>&1; then
-    curl -sSL "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+# Download or bundle static FFmpeg
+if [ -x "$PROJECT_ROOT/.bin/ffmpeg" ] && [ -x "$PROJECT_ROOT/.bin/ffprobe" ]; then
+    echo "Using pre-downloaded static FFmpeg from .bin/ folder..."
+    cp "$PROJECT_ROOT/.bin/ffmpeg" "$APPDIR/usr/bin/ffmpeg"
+    cp "$PROJECT_ROOT/.bin/ffprobe" "$APPDIR/usr/bin/ffprobe"
 else
-    wget -qO- "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+    echo "Downloading static FFmpeg..."
+    if command -v curl >/dev/null 2>&1; then
+        curl -sSL "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+    else
+        wget -qO- "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+    fi
 fi
 chmod +x "$APPDIR/usr/bin/ffmpeg" "$APPDIR/usr/bin/ffprobe"
 
