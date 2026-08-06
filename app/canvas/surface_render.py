@@ -159,8 +159,8 @@ class CanvasSurfaceRenderMixin:
                            (self._video_file_preview_enabled and is_supported_video_path(widget.entry.path))
                 widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
                 widget.set_icon(self._icon_for_tool_entry(widget.entry))
-                widget.set_icon_size(self._layout_engine.icon_size)
                 widget.set_folder_file_count_mode(self._folder_show_file_count)
+                widget.set_icon_size(self._layout_engine.icon_size)
                 widget.set_tile_style(
                     frame_enabled=tile_frame_enabled,
                     frame_thickness=tile_frame_thickness,
@@ -235,8 +235,8 @@ class CanvasSurfaceRenderMixin:
             widget = ToolTileWidget(entry, icon, self._layout_engine.icon_size, self)
             widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
             widget.set_icon(self._icon_for_tool_entry(entry))
-            widget.set_icon_size(self._layout_engine.icon_size)
             widget.set_folder_file_count_mode(self._folder_show_file_count)
+            widget.set_icon_size(self._layout_engine.icon_size)
             widget.set_tile_style(
                 frame_enabled=tile_frame_enabled,
                 frame_thickness=tile_frame_thickness,

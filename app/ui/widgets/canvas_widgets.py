@@ -327,7 +327,6 @@ class ToolTileWidget(CanvasItemBase):
                 background: transparent;
             }}
             QLabel#tool_file_count {{
-                color: palette(mid);
                 background: transparent;
             }}
             """)
@@ -385,16 +384,6 @@ class ToolTileWidget(CanvasItemBase):
             # Line 2: placeholder until worker finishes
             self.file_count_label.setText("...")
 
-            # Split the reserved title_height between both labels
-            half_h = self._metrics.title_height // 2
-            self.title_label.setFixedHeight(half_h)
-            self.file_count_label.setFixedHeight(self._metrics.title_height - half_h)
-
-            # Wire into layout: row 1 = name, row 2 = count
-            self._layout.addWidget(self.title_label, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
-            self._layout.addWidget(self.file_count_label, 2, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
-            self.file_count_label.show()
-
             self._start_file_count_worker(path, display_name)
         else:
             self._pending_file_count_path = None
@@ -403,13 +392,8 @@ class ToolTileWidget(CanvasItemBase):
             # Restore normal single label layout
             self.title_label.setWordWrap(True)
             self.title_label.setText(self.entry.custom_title or self.entry.title)
-            self.title_label.setFixedHeight(self._metrics.title_height)
 
-            self.file_count_label.hide()
             self.file_count_label.setText("")
-
-            # Make sure title_label is back in row 1
-            self._layout.addWidget(self.title_label, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
 
     def _start_file_count_worker(self, path: str, display_name: str) -> None:
         worker = _FolderCountWorker(path, self)
