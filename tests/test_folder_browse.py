@@ -9,14 +9,18 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.features.entries.folder_browse import (
+    _apply_browse_layout,
     _make_browse_entries,
     _refresh_browse_view,
+    effective_folder_icon_size,
     enter_folder_browse,
     exit_folder_browse,
 )
 from app import constants
 from app.features.entries.controller_context_menu import show_canvas_context_menu
 from app.features.entries.controller_selection import entries_for_current_view
+from app.state.folder_browse_appearance import FolderBrowseAppearanceStore
+from app.ui.tabs.toolbox_tab import create_toolbox_tab
 
 
 @pytest.fixture()
@@ -123,6 +127,44 @@ def test_enter_folder_browse_calls_set_entries(tmp_folder: Path) -> None:
     ctx.canvas.set_entries.assert_called_once()
 
 
+def test_browse_refresh_uses_folder_override(tmp_folder: Path) -> None:
+    ctx = _make_mock_ctx(tmp_folder)
+    owner = _make_mock_owner()
+    owner._folder_browse_appearance_store = FolderBrowseAppearanceStore()
+    owner._folder_browse_appearance_store.set_icon_size(tmp_folder, 124)
+    ctx.browse_stack = [tmp_folder]
+
+    assert _refresh_browse_view(owner, ctx) is True
+
+    assert ctx.canvas.set_entries.call_args.args[2] == 124
+
+
+def test_effective_browse_size_follows_global_value_without_override(
+    tmp_folder: Path,
+) -> None:
+    owner = _make_mock_owner()
+    owner.current_icon_size.return_value = 88
+    owner._folder_browse_appearance_store = FolderBrowseAppearanceStore()
+
+    assert effective_folder_icon_size(owner, tmp_folder) == 88
+
+    owner.current_icon_size.return_value = 104
+    assert effective_folder_icon_size(owner, tmp_folder) == 104
+
+
+def test_toolbox_tab_contains_hidden_folder_size_controls() -> None:
+    _page, widgets = create_toolbox_tab()
+    breadcrumb = widgets[constants.WIDGET_BROWSE_BREADCRUMB_BAR]
+    slider = widgets[constants.WIDGET_BROWSE_ICON_SIZE_SLIDER]
+    reset = widgets[constants.BUTTON_BROWSE_ICON_SIZE_RESET]
+
+    assert breadcrumb.isHidden()
+    assert slider.minimum() == constants.MIN_ICON_SIZE
+    assert slider.maximum() == constants.MAX_ICON_SIZE
+    assert slider.accessibleName()
+    assert reset.isEnabled() is False
+
+
 def test_exit_folder_browse_pops_stack(tmp_folder: Path) -> None:
     ctx = _make_mock_ctx(tmp_folder)
     owner = _make_mock_owner()
@@ -170,6 +212,30 @@ def test_browse_refresh_preserves_stable_selection_and_passes_display_settings(
     kwargs = ctx.canvas.set_entries.call_args.kwargs
     assert kwargs["folder_show_file_count"] is True
     assert kwargs["show_tooltips"] is False
+
+
+@pytest.mark.parametrize(
+    ("automatic_font", "expected_font_size"),
+    ((True, None), (False, 19)),
+)
+def test_browse_layout_preserves_automatic_or_fixed_font_mode(
+    tmp_folder: Path,
+    automatic_font: bool,
+    expected_font_size: int | None,
+) -> None:
+    ctx = _make_mock_ctx(tmp_folder)
+    owner = _make_mock_owner()
+    ctx.browse_stack = [tmp_folder]
+    owner.current_tile_font_auto.return_value = automatic_font
+    owner.current_tile_font_size.return_value = 19
+
+    _apply_browse_layout(owner, ctx, icon_size=108)
+
+    assert ctx.canvas.apply_layout_settings.call_args.args[1] == 108
+    assert (
+        ctx.canvas.apply_layout_settings.call_args.kwargs["tile_font_size"]
+        == expected_font_size
+    )
 
 
 def test_entries_for_current_view_returns_browse_entries(tmp_folder: Path) -> None:

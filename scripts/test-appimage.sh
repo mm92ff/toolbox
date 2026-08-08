@@ -23,6 +23,7 @@ DROP_FIXTURE="$TEST_ROOT/input file.txt"
 APPIMAGE_ICON_ROOT="$TEST_ROOT/appimage-icon-root"
 APPIMAGE_ICON_PAYLOAD="$TEST_ROOT/appimage-icon.squashfs"
 APPIMAGE_ICON_FIXTURE="$TEST_ROOT/Static Icon Fixture.AppImage"
+FOLDER_APPEARANCE_FIXTURE="$TEST_ROOT/Folder Appearance Fixture"
 PRIMARY_CONFIG="$TEST_ROOT/primary-config"
 PRIMARY_LOG="$TEST_ROOT/primary.log"
 PRIMARY_PID=""
@@ -31,7 +32,8 @@ mkdir -p \
     "$TEST_CACHE" \
     "$PRIMARY_CONFIG" \
     "$RELOCATED_DIR" \
-    "$APPIMAGE_ICON_ROOT"
+    "$APPIMAGE_ICON_ROOT" \
+    "$FOLDER_APPEARANCE_FIXTURE"
 
 stop_primary_instance() {
     if [ -n "$PRIMARY_PID" ] && kill -0 "$PRIMARY_PID" 2>/dev/null; then
@@ -91,6 +93,8 @@ run_smoke_test() {
         TOOLBOX_SMOKE_DESKTOP_ENTRY="$DESKTOP_FIXTURE" \
         TOOLBOX_SMOKE_DROP_PATH="$DROP_FIXTURE" \
         TOOLBOX_SMOKE_APPIMAGE_ICON="$APPIMAGE_ICON_FIXTURE" \
+        TOOLBOX_SMOKE_FOLDER_APPEARANCE_PATH="${TOOLBOX_SMOKE_FOLDER_APPEARANCE_PATH:-}" \
+        TOOLBOX_SMOKE_FOLDER_ICON_SIZE="${TOOLBOX_SMOKE_FOLDER_ICON_SIZE:-}" \
         "$TEST_APPIMAGE" "$@" --smoke-test "$FORWARD_TOKEN"
 
     grep -F -- "\"$FORWARD_TOKEN\"" "$REPORT_PATH" >/dev/null
@@ -100,6 +104,10 @@ run_smoke_test() {
     grep -F -- '"icon_available": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"icon_theme_name":' "$REPORT_PATH" >/dev/null
     grep -F -- '"icon_theme_search_path_count":' "$REPORT_PATH" >/dev/null
+    grep -F -- '"folder_icon_size_slider_available": true' "$REPORT_PATH" >/dev/null
+    grep -F -- '"folder_icon_size_slider_minimum": 40' "$REPORT_PATH" >/dev/null
+    grep -F -- '"folder_icon_size_slider_maximum": 160' "$REPORT_PATH" >/dev/null
+    grep -F -- '"folder_icon_size_reset_available": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"desktop_fixture_field_code": "F"' "$REPORT_PATH" >/dev/null
     grep -F -- '"desktop_fixture_icon_available": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"desktop_fixture_mode": "direct"' "$REPORT_PATH" >/dev/null
@@ -107,14 +115,31 @@ run_smoke_test() {
     grep -F -- '"appimage_fixture_icon_available": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"appimage_fixture_icon_is_png": true' "$REPORT_PATH" >/dev/null
     grep -F -- "\"$DROP_FIXTURE\"" "$REPORT_PATH" >/dev/null
-    grep -F -- '"window_title": "Toolbox"' "$REPORT_PATH" >/dev/null
+    # Managed windows append the active toolbox-tab title. Match the stable
+    # product-name prefix while still allowing that contextual suffix.
+    grep -F -- '"window_title": "Toolbox' "$REPORT_PATH" >/dev/null
     grep -F -- "\"config_directory\": \"$TEST_CONFIG/toolbox\"" "$REPORT_PATH" >/dev/null
 }
 
+TOOLBOX_SMOKE_FOLDER_APPEARANCE_PATH="$FOLDER_APPEARANCE_FIXTURE" \
+TOOLBOX_SMOKE_FOLDER_ICON_SIZE=118 \
 run_smoke_test \
     "$APPIMAGE" \
     "$TEST_ROOT/normal.json" \
     "--normal-forwarding-token"
+grep -F -- '"folder_icon_size_browse_visible": true' "$TEST_ROOT/normal.json" >/dev/null
+grep -F -- '"folder_icon_size_effective": 118' "$TEST_ROOT/normal.json" >/dev/null
+grep -F -- '"folder_icon_size_override": 118' "$TEST_ROOT/normal.json" >/dev/null
+
+TOOLBOX_SMOKE_FOLDER_APPEARANCE_PATH="$FOLDER_APPEARANCE_FIXTURE" \
+run_smoke_test \
+    "$APPIMAGE" \
+    "$TEST_ROOT/folder-appearance-restart.json" \
+    "--folder-appearance-restart-token"
+grep -F -- '"folder_icon_size_effective": 118' \
+    "$TEST_ROOT/folder-appearance-restart.json" >/dev/null
+grep -F -- '"folder_icon_size_override": 118' \
+    "$TEST_ROOT/folder-appearance-restart.json" >/dev/null
 
 # A smoke run must stay isolated even while the real single-instance server is active.
 env -u PYTHONPATH \

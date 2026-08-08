@@ -18,6 +18,12 @@ from app.features.settings.schema import (
 def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
     geometry_base64 = bytes(owner.saveGeometry().toBase64()).decode("ascii")
     schema_sections = snapshot_schema_sections(owner)
+    folder_appearance_store = getattr(owner, "_folder_browse_appearance_store", None)
+    folder_browse_settings = (
+        folder_appearance_store.build_snapshot()
+        if callable(getattr(folder_appearance_store, "build_snapshot", None))
+        else {"icon_size_overrides": {}}
+    )
     return {
         "window": {
             "width": owner.width(),
@@ -58,6 +64,7 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
         },
         "interaction": schema_sections["interaction"],
         "system": schema_sections["system"],
+        "folder_browse": folder_browse_settings,
         "toolbox_splitter_sizes": {
             ctx.tab_id: [int(value) for value in ctx.splitter.sizes()] for ctx in owner.toolbox_tabs
         },
@@ -106,6 +113,54 @@ def persist_ui_settings_json(owner: object) -> None:
         "ui_settings": owner._build_ui_settings_snapshot(),
     }
     owner._write_json_atomic(owner._ui_settings_json_path(), payload)
+
+
+def persist_imported_ui_settings_json(
+    owner: object, ui_settings: dict[str, object]
+) -> None:
+    """Persist a validated profile snapshot before runtime widgets reload it."""
+
+    payload = {
+        "schema_version": 1,
+        "saved_at_utc": QtCore.QDateTime.currentDateTimeUtc().toString(
+            QtCore.Qt.DateFormat.ISODate
+        ),
+        "ui_settings": ui_settings,
+    }
+    owner._write_json_atomic(owner._ui_settings_json_path(), payload)
+
+
+def persist_folder_browse_settings_json(owner: object) -> None:
+    """Update only folder-browse settings without rewriting stale window state."""
+
+    settings_path = owner._ui_settings_json_path()
+    folder_snapshot = owner._build_ui_settings_snapshot()["folder_browse"]
+    try:
+        existing = owner._read_json_atomic(settings_path)
+    except FileNotFoundError:
+        existing = None
+
+    if existing is None:
+        ui_settings = owner._build_ui_settings_snapshot()
+        payload: dict[str, object] = {"schema_version": 1, "ui_settings": ui_settings}
+    elif not isinstance(existing, dict):
+        raise OSError("UI settings root is not a JSON object")
+    elif isinstance(existing.get("ui_settings"), dict):
+        payload = dict(existing)
+        ui_settings = dict(existing["ui_settings"])
+        ui_settings["folder_browse"] = folder_snapshot
+        payload["ui_settings"] = ui_settings
+        payload["schema_version"] = 1
+    else:
+        # Upgrade the legacy direct-snapshot representation to the wrapped format.
+        ui_settings = dict(existing)
+        ui_settings["folder_browse"] = folder_snapshot
+        payload = {"schema_version": 1, "ui_settings": ui_settings}
+
+    payload["saved_at_utc"] = QtCore.QDateTime.currentDateTimeUtc().toString(
+        QtCore.Qt.DateFormat.ISODate
+    )
+    owner._write_json_atomic(settings_path, payload)
 
 
 def save_settings(owner: object, logger: Logger) -> None:

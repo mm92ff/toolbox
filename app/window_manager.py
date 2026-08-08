@@ -10,6 +10,7 @@ from app.main_window import MainWindow
 from app.services.appimage_icons import AppImageIconService
 from app.services.folder_count import FolderCountService
 from app.state.settings_controller import SharedSettingsController
+from app.state.folder_browse_appearance import FolderBrowseAppearanceStore
 from app.state.toolbox_repository import ToolboxStateRepository
 from app.tray_controller import ApplicationTrayController
 
@@ -32,6 +33,7 @@ class WindowManager(QtCore.QObject):
         self.repository = ToolboxStateRepository(self.config_dir, self)
         self.repository.persistence_failed.connect(self._on_persistence_failed)
         self.settings = SharedSettingsController(self)
+        self.folder_browse_appearance = FolderBrowseAppearanceStore(self)
         self.folder_count_service = FolderCountService(self, max_workers=2)
         self.appimage_icon_service = AppImageIconService(self)
         self.tray = ApplicationTrayController(self._tray_icon_path(), self)
@@ -61,6 +63,7 @@ class WindowManager(QtCore.QObject):
             config_dir=self.config_dir,
             state_repository=self.repository,
             settings_controller=self.settings,
+            folder_browse_appearance_store=self.folder_browse_appearance,
             folder_count_service=self.folder_count_service,
             appimage_icon_service=self.appimage_icon_service,
             managed=True,

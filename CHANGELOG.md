@@ -33,6 +33,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   live preview, persistence, and backward-compatible defaults
 - Separate system-tray visibility and minimize-on-close settings, with the tray
   icon visible by default for existing profiles
+- Per-folder icon-size controls in the folder breadcrumb, including persistent
+  overrides, global fallback, reset, and path-local multi-window synchronization
 
 ### Changed
 
@@ -56,6 +58,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 - Linux builds now package the dedicated tray icon instead of silently falling
   back to the main application image
+- AppImage acceptance tests now recognize managed-window titles that include the
+  active toolbox tab
+- Fresh multi-window profiles now persist their default toolbox state on shutdown
 
 - Executable Linux `.desktop` shortcuts are parsed and launched as safe argument
   arrays instead of being passed directly to the kernel and failing with

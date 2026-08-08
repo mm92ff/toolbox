@@ -176,7 +176,13 @@ class MainWindowSettingsProfileMixin:
                     settings_controller.import_from(self, ui_settings)
                 else:
                     self._apply_imported_ui_settings(ui_settings)
-                    self._persist_ui_settings_json()
+                    persist_imported = getattr(
+                        self, "_persist_imported_ui_settings_json", None
+                    )
+                    if callable(persist_imported):
+                        persist_imported(ui_settings)
+                    else:
+                        self._persist_ui_settings_json()
         except (OSError, ValueError, TypeError) as exc:
             QtWidgets.QMessageBox.critical(self, "Import failed", str(exc))
             self.status.showMessage("Import failed.", 3000)

@@ -72,7 +72,8 @@ printf '%s\n' "$WINDOW_LINE" | grep -F 'Toolbox' >/dev/null
 
 WINDOW_PROPERTIES=$(xprop -id "$WINDOW_ID" WM_CLASS _NET_WM_NAME _NET_WM_ICON)
 printf '%s\n' "$WINDOW_PROPERTIES" | grep -F 'WM_CLASS(STRING) = "toolbox", "Toolbox"' >/dev/null
-printf '%s\n' "$WINDOW_PROPERTIES" | grep -F '_NET_WM_NAME(UTF8_STRING) = "Toolbox"' >/dev/null
+printf '%s\n' "$WINDOW_PROPERTIES" \
+    | grep -F '_NET_WM_NAME(UTF8_STRING) = "Toolbox' >/dev/null
 printf '%s\n' "$WINDOW_PROPERTIES" | grep -F '_NET_WM_ICON(CARDINAL)' >/dev/null
 
 # A second AppImage start must ask the existing process for another window.

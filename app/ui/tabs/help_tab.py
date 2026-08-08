@@ -94,6 +94,11 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "a new toolbox tile."
                 ),
                 "Alternatively, use 'Add Apps' to select apps manually.",
+                (
+                    "When a folder is open, its breadcrumb bar provides a Symbolgröße "
+                    "slider. The value is remembered for that folder; reset restores "
+                    "the current global icon size."
+                ),
                 "Use right-click on empty canvas space to add a section at that position.",
                 "Launch behavior can be switched globally between single-click and double-click in Settings.",
             ),

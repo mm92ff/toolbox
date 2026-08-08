@@ -13,6 +13,12 @@ from app.features.settings.schema import import_schema_settings
 def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) -> None:
     settings = QtCore.QSettings()
 
+    folder_browse_settings = ui_settings.get("folder_browse")
+    folder_appearance_store = getattr(owner, "_folder_browse_appearance_store", None)
+    load_folder_snapshot = getattr(folder_appearance_store, "load_snapshot", None)
+    if isinstance(folder_browse_settings, dict) and callable(load_folder_snapshot):
+        load_folder_snapshot(folder_browse_settings)
+
     window_settings = ui_settings.get("window")
     if isinstance(window_settings, dict):
         settings.setValue(

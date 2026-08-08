@@ -129,6 +129,15 @@ WIDGET_TOOL_CANVAS = "canvas_tools"
 WIDGET_BOTTOM_PANEL = "panel_bottom"
 WIDGET_TOOL_DETAILS = "lbl_tool_details"
 
+WIDGET_BROWSE_BREADCRUMB_BAR = "breadcrumb_bar"
+BUTTON_BROWSE_BACK = "btn_browse_back"
+WIDGET_BROWSE_PATH_LABEL = "lbl_breadcrumb_path"
+WIDGET_BROWSE_ICON_SIZE_SLIDER = "sld_browse_icon_size"
+WIDGET_BROWSE_ICON_SIZE_VALUE = "lbl_browse_icon_size_value"
+BUTTON_BROWSE_ICON_SIZE_RESET = "btn_browse_icon_size_reset"
+BROWSE_ICON_SIZE_LAYOUT_INTERVAL_MS = 60
+BROWSE_ICON_SIZE_PERSIST_DEBOUNCE_MS = 400
+
 WIDGET_ICON_SIZE_SLIDER = "sld_icon_size"
 WIDGET_ICON_SIZE_VALUE = "lbl_icon_size_value"
 WIDGET_ICON_SIZE_LIVE_PREVIEW = "wgt_icon_size_live_preview"

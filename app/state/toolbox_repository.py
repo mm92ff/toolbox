@@ -11,7 +11,7 @@ from PySide6 import QtCore
 
 from app import constants
 from app.domain.models import ToolboxEntry, ToolboxTabData
-from app.services.storage import load_toolbox_tabs, save_toolbox_tabs
+from app.services.storage import get_tools_file_path, load_toolbox_tabs, save_toolbox_tabs
 
 
 class StaleToolboxStateError(RuntimeError):
@@ -51,7 +51,9 @@ class ToolboxStateRepository(QtCore.QObject):
         self._undo_stack: list[list[dict[str, object]]] = []
         self._redo_stack: list[list[dict[str, object]]] = []
         self._tabs = self._normalize_tabs(load_toolbox_tabs(self.config_dir))
-        self._last_persisted = self._state_dicts()
+        self._last_persisted = (
+            self._state_dicts() if get_tools_file_path(self.config_dir).is_file() else []
+        )
         self._write_timer = QtCore.QTimer(self)
         self._write_timer.setSingleShot(True)
         self._write_timer.setInterval(max(0, int(debounce_ms)))

@@ -106,6 +106,58 @@ def _write_smoke_test_report(
         "qt_platform": app.platformName(),
         "window_title": window.windowTitle(),
     }
+    toolbox_context = window.toolbox_tabs[0] if window.toolbox_tabs else None
+    folder_size_slider = (
+        toolbox_context.browse_icon_size_slider
+        if toolbox_context is not None
+        else None
+    )
+    folder_size_reset = (
+        toolbox_context.browse_icon_size_reset_button
+        if toolbox_context is not None
+        else None
+    )
+    report.update(
+        {
+            "folder_icon_size_slider_available": folder_size_slider is not None,
+            "folder_icon_size_slider_minimum": (
+                folder_size_slider.minimum() if folder_size_slider is not None else None
+            ),
+            "folder_icon_size_slider_maximum": (
+                folder_size_slider.maximum() if folder_size_slider is not None else None
+            ),
+            "folder_icon_size_reset_available": folder_size_reset is not None,
+        }
+    )
+    folder_appearance_fixture = os.environ.get(
+        "TOOLBOX_SMOKE_FOLDER_APPEARANCE_PATH", ""
+    ).strip()
+    if folder_appearance_fixture and toolbox_context is not None:
+        fixture_path = Path(folder_appearance_fixture).expanduser().resolve(strict=False)
+        window._enter_folder_browse(toolbox_context, fixture_path)
+        requested_size = os.environ.get(
+            "TOOLBOX_SMOKE_FOLDER_ICON_SIZE", ""
+        ).strip()
+        if requested_size and toolbox_context.browse_icon_size_slider is not None:
+            toolbox_context.browse_icon_size_slider.setValue(int(requested_size))
+            window._commit_folder_icon_size_change(toolbox_context)
+        app.processEvents()
+        report.update(
+            {
+                "folder_icon_size_browse_visible": bool(
+                    toolbox_context.breadcrumb_bar is not None
+                    and toolbox_context.breadcrumb_bar.isVisible()
+                ),
+                "folder_icon_size_effective": (
+                    toolbox_context.browse_icon_size_slider.value()
+                    if toolbox_context.browse_icon_size_slider is not None
+                    else None
+                ),
+                "folder_icon_size_override": (
+                    window._folder_browse_appearance_store.get_override(fixture_path)
+                ),
+            }
+        )
     desktop_fixture = os.environ.get("TOOLBOX_SMOKE_DESKTOP_ENTRY", "").strip()
     if desktop_fixture:
         from app.services.desktop_entries import (

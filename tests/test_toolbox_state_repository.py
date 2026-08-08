@@ -65,6 +65,15 @@ def test_repository_debounces_writes_and_flushes(tmp_path, monkeypatch) -> None:
     assert len(writes) == 1
 
 
+def test_repository_shutdown_persists_fresh_default_state(tmp_path) -> None:
+    _application()
+    repository = ToolboxStateRepository(tmp_path, debounce_ms=10_000)
+
+    repository.shutdown()
+
+    assert (tmp_path / "tools.json").is_file()
+
+
 def test_persistence_failure_is_reported_without_losing_memory_state(
     tmp_path, monkeypatch
 ) -> None:

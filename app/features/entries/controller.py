@@ -42,7 +42,17 @@ from app.features.entries.controller_selection import (
     update_details,
 )
 from app.features.entries.diagnostics import MainWindowEntryDiagnosticsMixin
-from app.features.entries.folder_browse import enter_folder_browse, exit_folder_browse
+from app.features.entries.folder_browse import (
+    apply_folder_icon_size_preview,
+    commit_folder_icon_size_change,
+    enter_folder_browse,
+    exit_folder_browse,
+    flush_pending_folder_icon_size_changes,
+    folder_icon_size_change_pending,
+    handle_folder_icon_size_store_change,
+    reset_folder_icon_size,
+    schedule_folder_icon_size_change,
+)
 from app.features.entries.launching import MainWindowEntryLaunchingMixin
 
 
@@ -139,3 +149,28 @@ class MainWindowEntriesMixin(MainWindowEntryLaunchingMixin, MainWindowEntryDiagn
     def _exit_folder_browse(self, ctx: ToolboxTabContext) -> None:
         exit_folder_browse(self, ctx)
 
+    def _schedule_folder_icon_size_change(
+        self, ctx: ToolboxTabContext, value: int
+    ) -> None:
+        schedule_folder_icon_size_change(self, ctx, value)
+
+    def _commit_folder_icon_size_change(self, ctx: ToolboxTabContext) -> None:
+        commit_folder_icon_size_change(self, ctx)
+
+    def _apply_folder_icon_size_preview(self, ctx: ToolboxTabContext) -> None:
+        apply_folder_icon_size_preview(self, ctx)
+
+    def _reset_folder_icon_size(self, ctx: ToolboxTabContext) -> None:
+        reset_folder_icon_size(self, ctx)
+
+    def _on_folder_browse_appearance_changed(
+        self, normalized_path: str, size: object
+    ) -> None:
+        handle_folder_icon_size_store_change(self, normalized_path, size)
+
+    def _flush_pending_folder_icon_size_changes(self) -> None:
+        flush_pending_folder_icon_size_changes(self)
+
+    @staticmethod
+    def _folder_icon_size_change_pending(ctx: ToolboxTabContext) -> bool:
+        return folder_icon_size_change_pending(ctx)

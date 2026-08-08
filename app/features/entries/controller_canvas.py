@@ -74,6 +74,16 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
 def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None:
     layout_reflow_changed_entries = False
     for ctx in owner.toolbox_tabs:
+        if apply_layout_only and ctx.browse_stack:
+            from app.features.entries.folder_browse import (
+                _apply_browse_layout,
+                _sync_browse_size_controls,
+            )
+
+            current_folder = ctx.browse_stack[-1]
+            _sync_browse_size_controls(owner, ctx, current_folder)
+            _apply_browse_layout(owner, ctx)
+            continue
         if apply_layout_only and ctx.canvas.surface._widgets:
             reflow_changed = ctx.canvas.apply_layout_settings(
                 ctx.entries,

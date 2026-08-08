@@ -11,6 +11,7 @@ from app.features.settings import io_importer as io_importer_module
 from app.features.settings import profile as profile_module
 from app.features.settings.io_snapshot import build_ui_settings_snapshot
 from app.features.settings.profile import MainWindowSettingsProfileMixin
+from app.state.folder_browse_appearance import FolderBrowseAppearanceStore
 
 
 class _FakeByteArray:
@@ -328,6 +329,43 @@ def test_build_ui_settings_snapshot_contains_all_layout_and_interaction_fields()
     assert system["folder_single_click_browse"] is False
     assert snapshot["tabs"]["hidden_toolbox_tab_ids"] == ["tab_hidden"]
     assert snapshot["toolbox_splitter_sizes"]["tab_a"] == [220, 640, 150]
+    assert snapshot["folder_browse"] == {"icon_size_overrides": {}}
+
+
+def test_apply_imported_ui_settings_restores_folder_icon_sizes(
+    monkeypatch, tmp_path: Path
+) -> None:
+    settings_store = _FakeQSettings()
+    owner = _ImporterOwner()
+    owner._folder_browse_appearance_store = FolderBrowseAppearanceStore()
+    monkeypatch.setattr(io_importer_module.QtCore, "QSettings", lambda: settings_store)
+
+    io_importer_module.apply_imported_ui_settings(
+        owner,
+        {
+            "folder_browse": {
+                "icon_size_overrides": {
+                    str(tmp_path): {
+                        "size": 108,
+                        "last_used_utc": "2026-08-08T10:00:00Z",
+                    }
+                }
+            }
+        },
+    )
+
+    assert owner._folder_browse_appearance_store.get_override(tmp_path) == 108
+
+
+def test_ui_settings_snapshot_exports_folder_icon_size_override(tmp_path: Path) -> None:
+    owner = _SnapshotOwner()
+    owner._folder_browse_appearance_store = FolderBrowseAppearanceStore()
+    owner._folder_browse_appearance_store.set_icon_size(tmp_path, 120)
+
+    snapshot = build_ui_settings_snapshot(owner)
+
+    overrides = snapshot["folder_browse"]["icon_size_overrides"]
+    assert overrides[str(tmp_path.resolve())]["size"] == 120
 
 
 def test_apply_imported_ui_settings_roundtrip_restores_all_keys(monkeypatch) -> None:

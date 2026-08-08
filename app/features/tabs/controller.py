@@ -124,6 +124,8 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             reconciled_contexts.append(restored)
 
         for removed in existing_by_id.values():
+            if self._folder_icon_size_change_pending(removed):
+                self._commit_folder_icon_size_change(removed)
             for widget in (
                 removed.drop_zone,
                 removed.canvas.viewport(),
@@ -256,6 +258,8 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
 
     def _clear_toolbox_tabs(self) -> None:
         for ctx in list(self.toolbox_tabs):
+            if self._folder_icon_size_change_pending(ctx):
+                self._commit_folder_icon_size_change(ctx)
             for widget in (ctx.drop_zone, ctx.canvas.viewport(), ctx.canvas.surface):
                 self._drop_widget_map.pop(widget, None)
                 widget.removeEventFilter(self)
@@ -310,11 +314,48 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         ctx.open_config_button.clicked.connect(self._open_config_directory)
 
         # Wire breadcrumb back button
-        breadcrumb_bar = widgets.get("breadcrumb_bar")
+        breadcrumb_bar = widgets.get(constants.WIDGET_BROWSE_BREADCRUMB_BAR)
         ctx.breadcrumb_bar = breadcrumb_bar
-        back_btn = widgets.get("btn_browse_back")
+        ctx.browse_path_label = widgets.get(constants.WIDGET_BROWSE_PATH_LABEL)  # type: ignore[assignment]
+        ctx.browse_icon_size_slider = widgets.get(  # type: ignore[assignment]
+            constants.WIDGET_BROWSE_ICON_SIZE_SLIDER
+        )
+        ctx.browse_icon_size_value_label = widgets.get(  # type: ignore[assignment]
+            constants.WIDGET_BROWSE_ICON_SIZE_VALUE
+        )
+        ctx.browse_icon_size_reset_button = widgets.get(  # type: ignore[assignment]
+            constants.BUTTON_BROWSE_ICON_SIZE_RESET
+        )
+        back_btn = widgets.get(constants.BUTTON_BROWSE_BACK)
         if back_btn is not None:
             back_btn.clicked.connect(lambda _=False, c=ctx: self._exit_folder_browse(c))
+        if ctx.browse_icon_size_slider is not None:
+            ctx.browse_icon_size_timer = QtCore.QTimer(ctx.page)
+            ctx.browse_icon_size_timer.setSingleShot(True)
+            ctx.browse_icon_size_timer.setInterval(
+                constants.BROWSE_ICON_SIZE_LAYOUT_INTERVAL_MS
+            )
+            ctx.browse_icon_size_timer.timeout.connect(
+                lambda c=ctx: self._apply_folder_icon_size_preview(c)
+            )
+            ctx.browse_icon_size_persist_timer = QtCore.QTimer(ctx.page)
+            ctx.browse_icon_size_persist_timer.setSingleShot(True)
+            ctx.browse_icon_size_persist_timer.setInterval(
+                constants.BROWSE_ICON_SIZE_PERSIST_DEBOUNCE_MS
+            )
+            ctx.browse_icon_size_persist_timer.timeout.connect(
+                lambda c=ctx: self._commit_folder_icon_size_change(c)
+            )
+            ctx.browse_icon_size_slider.valueChanged.connect(
+                lambda value, c=ctx: self._schedule_folder_icon_size_change(c, value)
+            )
+            ctx.browse_icon_size_slider.sliderReleased.connect(
+                lambda c=ctx: self._commit_folder_icon_size_change(c)
+            )
+        if ctx.browse_icon_size_reset_button is not None:
+            ctx.browse_icon_size_reset_button.clicked.connect(
+                lambda _=False, c=ctx: self._reset_folder_icon_size(c)
+            )
 
         ctx.search_input.textChanged.connect(lambda _text, c=ctx: self.refresh_canvas(c))
         ctx.splitter.splitterMoved.connect(lambda _pos, _index, c=ctx: self._on_splitter_moved(c))
@@ -735,6 +776,9 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         tab_index = self._toolbox_tab_index(ctx)
         if tab_index < 0:
             return
+
+        if self._folder_icon_size_change_pending(ctx):
+            self._commit_folder_icon_size_change(ctx)
 
         for widget in (ctx.drop_zone, ctx.canvas.viewport(), ctx.canvas.surface):
             self._drop_widget_map.pop(widget, None)

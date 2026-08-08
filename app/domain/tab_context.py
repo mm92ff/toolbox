@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from app.canvas.toolbox_canvas import ToolboxCanvas
 from app.domain.models import ToolboxEntry
@@ -36,4 +36,11 @@ class ToolboxTabContext:
     # Browse state (not persisted)
     browse_stack: list[Path] = field(default_factory=list)  # stack of visited paths
     breadcrumb_bar: Optional[QtWidgets.QWidget] = field(default=None)  # injected after construction
+    browse_path_label: Optional[QtWidgets.QLabel] = field(default=None)
+    browse_icon_size_slider: Optional[QtWidgets.QSlider] = field(default=None)
+    browse_icon_size_value_label: Optional[QtWidgets.QLabel] = field(default=None)
+    browse_icon_size_reset_button: Optional[QtWidgets.QToolButton] = field(default=None)
+    browse_icon_size_timer: Optional[QtCore.QTimer] = field(default=None)
+    browse_icon_size_persist_timer: Optional[QtCore.QTimer] = field(default=None)
+    _browse_icon_size_persist_pending: bool = field(default=False)
     _browse_display_entries: list[ToolboxEntry] = field(default_factory=list)

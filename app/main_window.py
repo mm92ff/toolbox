@@ -22,6 +22,7 @@ from app.services.desktop_entry_launch import DesktopProcessManager
 from app.services.folder_count import FolderCountService
 from app.services.size_calculator import TabSizeCalculationService
 from app.services.system_utils import get_config_directory
+from app.state.folder_browse_appearance import FolderBrowseAppearanceStore
 from app.ui.layouts import UIBuilder
 
 
@@ -43,6 +44,7 @@ class MainWindow(
         *,
         state_repository: object | None = None,
         settings_controller: object | None = None,
+        folder_browse_appearance_store: FolderBrowseAppearanceStore | None = None,
         folder_count_service: FolderCountService | None = None,
         appimage_icon_service: AppImageIconService | None = None,
         managed: bool = False,
@@ -54,6 +56,11 @@ class MainWindow(
         self._state_repository = state_repository
         self._shared_state_revision = 0
         self._settings_controller = settings_controller
+        self._folder_browse_appearance_store = (
+            folder_browse_appearance_store
+            if folder_browse_appearance_store is not None
+            else FolderBrowseAppearanceStore(self)
+        )
         self._shared_settings_conflict = False
         self._shared_settings_revision = 0
         self._owns_shared_services = (
@@ -144,6 +151,9 @@ class MainWindow(
             self._settings_controller.settings_changed.connect(
                 self._on_shared_settings_changed
             )
+        self._folder_browse_appearance_store.icon_size_changed.connect(
+            self._on_folder_browse_appearance_changed
+        )
 
         ctx = self.current_toolbox_context()
         if ctx is not None:
@@ -228,6 +238,7 @@ class MainWindow(
         self._shutdown_complete = True
         self._closing = True
         self._size_recalc_timer.stop()
+        self._flush_pending_folder_icon_size_changes()
         self._size_service.shutdown()
         ffmpeg_task = getattr(self, "_ffmpeg_download_task", None)
         if ffmpeg_task is not None:
@@ -253,6 +264,12 @@ class MainWindow(
                 )
             except (RuntimeError, TypeError):
                 pass
+        try:
+            self._folder_browse_appearance_store.icon_size_changed.disconnect(
+                self._on_folder_browse_appearance_changed
+            )
+        except (RuntimeError, TypeError):
+            pass
 
     def _setup_ui(self) -> None:
         central_widget, self.widgets = UIBuilder.create_main_layout()

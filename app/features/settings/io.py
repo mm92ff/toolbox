@@ -12,6 +12,8 @@ from app.features.settings.io_importer import apply_imported_ui_settings
 from app.features.settings.io_loader import load_settings
 from app.features.settings.io_snapshot import (
     build_ui_settings_snapshot,
+    persist_folder_browse_settings_json,
+    persist_imported_ui_settings_json,
     persist_ui_settings_json,
     read_persisted_ui_settings,
     save_settings,
@@ -53,6 +55,25 @@ class MainWindowSettingsIOMixin:
 
     def _persist_ui_settings_json(self) -> None:
         persist_ui_settings_json(self)
+
+    def _persist_folder_browse_settings(self) -> bool:
+        controller = getattr(self, "_settings_controller", None)
+        if controller is not None:
+            return bool(controller.persist_folder_browse_from(self))
+        try:
+            persist_folder_browse_settings_json(self)
+        except (OSError, ValueError) as exc:
+            logger.warning("Could not persist folder appearance settings: %s", exc)
+            self.status.showMessage(
+                f"Ordner-Symbolgröße konnte nicht gespeichert werden: {exc}", 6000
+            )
+            return False
+        return True
+
+    def _persist_imported_ui_settings_json(
+        self, ui_settings: dict[str, object]
+    ) -> None:
+        persist_imported_ui_settings_json(self, ui_settings)
 
     def _apply_imported_ui_settings(self, ui_settings: dict[str, object]) -> None:
         apply_imported_ui_settings(self, ui_settings)

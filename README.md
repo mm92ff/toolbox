@@ -25,6 +25,7 @@ Desktop toolbox launcher built with Python and PySide6.
 - Configurable separator spacing with separate `Gap Above` and `Gap Below`
 - Per-tab canvas background color via right-click menu
 - Automatic or manually adjustable tile-title font size in Settings
+- Persistent per-folder icon sizes directly in the open folder's breadcrumb bar
 - Independently configurable system-tray visibility and minimize-on-close behavior
 - Tool launch options (args, working dir, wait mode, admin)
 - Image-file thumbnail previews with `Fit` / `Fill and crop`
@@ -154,6 +155,10 @@ $env:PYTHONPATH='.'
 - Most layout/style changes in `Settings` apply after `Save & Apply`.
 - Tile-title text follows the icon size by default. Disable the automatic option
   in `Settings > Appearance & Layout` to select a fixed size from 8 to 24 pixels.
+- While browsing a folder, use the `Symbolgröße` slider in the breadcrumb bar to
+  set a size only for that folder. The reset button restores the current global
+  icon size; folder-specific sizes are shared by synchronized windows and survive
+  application restarts.
 - If you leave `Settings` with unsaved changes and switch to a toolbox tab, pending settings are auto-applied.
 - Create a new toolbox tab with the `+` action in the top tab bar or with
   `Ctrl+T`; the existing tab context-menu action remains available.
