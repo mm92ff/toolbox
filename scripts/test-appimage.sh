@@ -14,15 +14,24 @@ fi
 
 TEST_ROOT=$(mktemp -d)
 TEST_CONFIG="$TEST_ROOT/config"
+TEST_CACHE="$TEST_ROOT/cache"
 RELOCATED_DIR="$TEST_ROOT/Download Folder"
 RELOCATED_APPIMAGE="$RELOCATED_DIR/Renamed Toolbox.AppImage"
 SYMLINKED_APPIMAGE="$TEST_ROOT/Toolbox Link.AppImage"
 DESKTOP_FIXTURE="$TEST_ROOT/Frozen Drop.desktop"
 DROP_FIXTURE="$TEST_ROOT/input file.txt"
+APPIMAGE_ICON_ROOT="$TEST_ROOT/appimage-icon-root"
+APPIMAGE_ICON_PAYLOAD="$TEST_ROOT/appimage-icon.squashfs"
+APPIMAGE_ICON_FIXTURE="$TEST_ROOT/Static Icon Fixture.AppImage"
 PRIMARY_CONFIG="$TEST_ROOT/primary-config"
 PRIMARY_LOG="$TEST_ROOT/primary.log"
 PRIMARY_PID=""
-mkdir -p "$TEST_CONFIG" "$PRIMARY_CONFIG" "$RELOCATED_DIR"
+mkdir -p \
+    "$TEST_CONFIG" \
+    "$TEST_CACHE" \
+    "$PRIMARY_CONFIG" \
+    "$RELOCATED_DIR" \
+    "$APPIMAGE_ICON_ROOT"
 
 stop_primary_instance() {
     if [ -n "$PRIMARY_PID" ] && kill -0 "$PRIMARY_PID" 2>/dev/null; then
@@ -50,6 +59,22 @@ printf '%s\n' \
     > "$DESKTOP_FIXTURE"
 : > "$DROP_FIXTURE"
 
+if ! command -v mksquashfs >/dev/null 2>&1 || \
+   ! command -v unsquashfs >/dev/null 2>&1; then
+    echo "ERROR: squashfs-tools are required for the static AppImage icon test." >&2
+    exit 1
+fi
+cp "$PROJECT_ROOT/app/assets/one.png" "$APPIMAGE_ICON_ROOT/fixture.png"
+ln -s fixture.png "$APPIMAGE_ICON_ROOT/.DirIcon"
+mksquashfs \
+    "$APPIMAGE_ICON_ROOT" \
+    "$APPIMAGE_ICON_PAYLOAD" \
+    -noappend \
+    -processors 1 \
+    -quiet
+cp "$APPIMAGE_ICON_PAYLOAD" "$APPIMAGE_ICON_FIXTURE"
+chmod +x "$APPIMAGE_ICON_FIXTURE"
+
 run_smoke_test() {
     TEST_APPIMAGE=$1
     REPORT_PATH=$2
@@ -61,9 +86,11 @@ run_smoke_test() {
         PYTHONNOUSERSITE=1 \
         QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}" \
         XDG_CONFIG_HOME="$TEST_CONFIG" \
+        XDG_CACHE_HOME="$TEST_CACHE" \
         TOOLBOX_SMOKE_REPORT="$REPORT_PATH" \
         TOOLBOX_SMOKE_DESKTOP_ENTRY="$DESKTOP_FIXTURE" \
         TOOLBOX_SMOKE_DROP_PATH="$DROP_FIXTURE" \
+        TOOLBOX_SMOKE_APPIMAGE_ICON="$APPIMAGE_ICON_FIXTURE" \
         "$TEST_APPIMAGE" "$@" --smoke-test "$FORWARD_TOKEN"
 
     grep -F -- "\"$FORWARD_TOKEN\"" "$REPORT_PATH" >/dev/null
@@ -77,6 +104,8 @@ run_smoke_test() {
     grep -F -- '"desktop_fixture_icon_available": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"desktop_fixture_mode": "direct"' "$REPORT_PATH" >/dev/null
     grep -F -- '"desktop_fixture_name": "Eingefrorene Desktop-Probe"' "$REPORT_PATH" >/dev/null
+    grep -F -- '"appimage_fixture_icon_available": true' "$REPORT_PATH" >/dev/null
+    grep -F -- '"appimage_fixture_icon_is_png": true' "$REPORT_PATH" >/dev/null
     grep -F -- "\"$DROP_FIXTURE\"" "$REPORT_PATH" >/dev/null
     grep -F -- '"window_title": "Toolbox"' "$REPORT_PATH" >/dev/null
     grep -F -- "\"config_directory\": \"$TEST_CONFIG/toolbox\"" "$REPORT_PATH" >/dev/null

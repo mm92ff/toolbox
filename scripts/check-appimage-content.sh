@@ -26,6 +26,7 @@ for REQUIRED_PATH in \
     io.github.toolbox.Toolbox.desktop \
     toolbox.png \
     usr/lib/toolbox/toolbox \
+    usr/lib/toolbox/_internal/app/assets/one_tray.png \
     usr/share/doc/toolbox/LICENSE \
     usr/share/doc/toolbox/THIRD_PARTY_NOTICES.md \
     usr/share/doc/toolbox/licenses/APPIMAGE-RUNTIME-LICENSE.txt \

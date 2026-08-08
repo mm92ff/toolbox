@@ -9,6 +9,7 @@ import os
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app import constants
+from app.canvas.layout_engine import build_tile_metrics
 from app.services.video_thumbnails import (
     FFMPEG_SOURCE_ENV,
     FFMPEG_SOURCE_INTERNAL,
@@ -42,6 +43,8 @@ class MainWindowSettingsAppearanceMixin:
         if preview is None or not hasattr(preview, "update_preview"):
             return
         icon_slider = self.widgets[constants.WIDGET_ICON_SIZE_SLIDER]
+        tile_font_auto = self.widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX]
+        tile_font_slider = self.widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER]
         frame_enabled_checkbox = self.widgets[constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX]
         frame_thickness_slider = self.widgets[constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER]
         frame_color_input = self.widgets[constants.WIDGET_TILE_FRAME_COLOR_INPUT]
@@ -56,6 +59,9 @@ class MainWindowSettingsAppearanceMixin:
         )
         preview.update_preview(
             icon_size=int(icon_slider.value()),
+            tile_font_size=(
+                None if tile_font_auto.isChecked() else int(tile_font_slider.value())
+            ),
             frame_enabled=bool(frame_enabled_checkbox.isChecked()),
             frame_thickness=int(frame_thickness_slider.value()),
             frame_color=self._normalize_tile_frame_color(frame_color_input.text()),
@@ -83,7 +89,24 @@ class MainWindowSettingsAppearanceMixin:
             slider = self.widgets[slider_name]
             label = self.widgets[label_name]
             label.setText(str(slider.value()))
+        tile_font_auto = self.widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX].isChecked()
+        tile_font_slider = self.widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER]
+        tile_font_label = self.widgets[constants.WIDGET_TILE_FONT_SIZE_VALUE]
+        if tile_font_auto:
+            icon_size = self.widgets[constants.WIDGET_ICON_SIZE_SLIDER].value()
+            effective_size = build_tile_metrics(icon_size).font_pixel_size
+            tile_font_label.setText(f"Auto ({effective_size})")
+        else:
+            tile_font_label.setText(str(tile_font_slider.value()))
         self._update_icon_size_live_preview()
+
+    def _update_tile_font_controls_enabled(self) -> None:
+        automatic = self.widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX].isChecked()
+        self.widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER].setEnabled(not automatic)
+
+    def _on_tile_font_auto_changed(self, _checked: bool) -> None:
+        self._update_tile_font_controls_enabled()
+        self._on_layout_settings_changed()
 
     def _update_section_color_preview(self) -> None:
         preview = self.widgets[constants.WIDGET_SECTION_LINE_COLOR_PREVIEW]

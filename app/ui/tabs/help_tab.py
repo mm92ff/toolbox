@@ -183,12 +183,12 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "for easier navigation."
                 ),
                 (
-                    "In the System settings, you can enable 'Minimize to Tray' to keep the app running in the background "
-                    "when the main window is closed."
+                    "The System settings control whether the tray icon remains visible and, "
+                    "independently, whether closing the window minimizes Toolbox to the tray."
                 ),
                 (
-                    "In the Settings tab, you can fine-tune icon size, grid, "
-                    "compaction, separator style, and tile colors."
+                    "In the Settings tab, you can fine-tune icon size, tile-title "
+                    "font size, grid, compaction, separator style, and tile colors."
                 ),
                 "Separator spacing can be adjusted separately with 'Gap Above' and 'Gap Below'.",
                 (

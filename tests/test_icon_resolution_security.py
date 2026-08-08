@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -71,3 +71,20 @@ def test_sidecar_lookup_is_case_insensitive_and_invalidates_negative_cache(
 
     assert isinstance(first, QtGui.QIcon)
     assert second.pixmap(24, 24).toImage().pixelColor(12, 12).name() == "#44aa66"
+
+
+def test_appimage_cache_miss_schedules_background_static_extraction(tmp_path: Path) -> None:
+    _app()
+    target = tmp_path / "New.AppImage"
+    target.write_bytes(b"not a squashfs payload")
+    provider = QtWidgets.QFileIconProvider()
+    service = MagicMock()
+
+    desktop_icon_for_path(
+        target,
+        provider,
+        QtGui.QIcon(),
+        service,
+    )
+
+    service.request.assert_called_once_with(target)

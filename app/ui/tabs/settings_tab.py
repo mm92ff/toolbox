@@ -17,6 +17,7 @@ from app.ui.tabs.settings_tab_sections import (
     build_maintenance_group,
     build_section_colors_group,
     build_section_separator_group,
+    build_system_tray_group,
     build_tabs_group,
     build_file_associations_group,
 )
@@ -69,6 +70,7 @@ def create_settings_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidge
     sub_tabs.addTab(tab_sections, "Sections & Colors")
 
     tab_system = create_scrollable_tab([
+        build_system_tray_group(widgets),
         build_tabs_group(widgets),
         build_file_associations_group(widgets),
         build_maintenance_group(widgets),

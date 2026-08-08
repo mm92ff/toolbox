@@ -1,12 +1,12 @@
 # Umsetzungs- und Release-Validierung
 
 Stand: 8. August 2026  
-Geprüfter Git-HEAD vor einem Abschluss-Commit: `39a88c166fdb29df2536930a77e1523aa67670bc`
+Geprüfter Git-HEAD vor einem Abschluss-Commit: `e7c3e3aa21eecf8223395711578e21b18cb861b8`
 
 ## Ergebnis
 
 Die technischen Aufgaben der Sprints 0 bis 7 und die automatisierbaren Aufgaben aus Sprint 8
-sind umgesetzt. Beim abschließenden Soll-Ist-Abgleich wurden noch drei Lücken gefunden und
+sind umgesetzt. Beim abschließenden Soll-Ist-Abgleich wurden noch mehrere Lücken gefunden und
 geschlossen:
 
 1. Der Ordnerzähler verwendet nun einen einzigen, fensterweiten `FolderCountService`. Damit gilt
@@ -15,6 +15,14 @@ geschlossen:
    Pflichtdateien beim Probe-Restore.
 3. Der AppImage-Test startet zusätzlich eine normale Toolbox-Instanz und führt währenddessen einen
    isolierten Smoke-Test aus.
+4. AppImage-Icons werden mit einem begrenzten Hintergrunddienst statisch aus `.DirIcon` gelesen,
+   als PNG normalisiert und gecacht. Das AppImage selbst wird dabei nicht ausgeführt.
+5. Die Schriftgröße der Kacheltitel kann wahlweise automatisch aus der Icon-Größe abgeleitet oder
+   manuell von 8 bis 24 Pixel eingestellt werden. Vorschau, Kachelgeometrie, QSettings und
+   JSON-Import/-Export verwenden dieselbe Einstellung; ältere Profile bleiben im Automatikmodus.
+6. Tray-Icon-Sichtbarkeit und Minimieren beim Schließen sind getrennt konfigurierbar. Das Icon ist
+   für bestehende Profile standardmäßig sichtbar, wird auf 64 Pixel normalisiert und das dedizierte
+   `one_tray.png` ist als verpflichtender Bestandteil des AppImage abgesichert.
 
 Zusätzlich wurden fehlende Fehlerpfadtests für Berechtigungsfehler und Symlink-Schleifen ergänzt.
 
@@ -48,7 +56,7 @@ Folgende Prüfungen waren erfolgreich:
 
 ```text
 env -u LD_LIBRARY_PATH QT_QPA_PLATFORM=offscreen ./.venv/bin/python -m pytest -q
-297 passed
+311 passed
 
 env -u LD_LIBRARY_PATH ./.venv/bin/python -m compileall -q app main.py tests
 ./.venv/bin/ruff check app main.py tests
@@ -67,14 +75,14 @@ und den Smoke-Test bei parallel laufender Normalinstanz ab.
 Zwei vollständige Builds mit denselben Eingaben erzeugten denselben SHA-256-Wert:
 
 ```text
-772e42e68ccbd666096f3763d625335fdb7aa7cfa427cd3f2f6ec5e2719234e4
+a5535f1f9020c72c1500b9506256187c9be9a3bb17dcb757abc15d102eeb184f
 ```
 
 Finales Artefakt:
 
 ```text
 dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
-Größe: 120423616 Byte
+Größe: 120960192 Byte
 ```
 
 ## Noch erforderliche manuelle Freigabe

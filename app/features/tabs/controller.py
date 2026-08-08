@@ -206,6 +206,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             selected_ids=set(),
         )
         ctx.canvas.surface.set_folder_count_service(self._folder_count_service)
+        ctx.canvas.surface.set_appimage_icon_service(self._appimage_icon_service)
         ctx.canvas.set_thumbnail_cache_dir(self.config_dir / "thumbnail_cache")
 
         ctx.add_tool_button.clicked.connect(lambda _=False, c=ctx: self.add_tools_from_dialog(c))

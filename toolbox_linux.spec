@@ -5,10 +5,11 @@ from pathlib import Path
 
 
 project_root = Path(globals().get("SPECPATH", os.getcwd())).resolve()
-app_icon_png = project_root / "app" / "assets" / "one.png"
 datas: list[tuple[str, str]] = []
-if app_icon_png.is_file():
-    datas.append((str(app_icon_png), "app/assets"))
+for icon_name in ("one.png", "one_tray.png"):
+    icon_path = project_root / "app" / "assets" / icon_name
+    if icon_path.is_file():
+        datas.append((str(icon_path), "app/assets"))
 
 
 def _explicit_optional_binary(env_var: str, binary_name: str) -> list[tuple[str, str]]:

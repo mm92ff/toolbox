@@ -54,6 +54,22 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
             owner._coerce_int(layout_settings.get("icon_size"), constants.DEFAULT_ICON_SIZE),
         )
         settings.setValue(
+            "layout/tile_font_auto",
+            bool(
+                layout_settings.get(
+                    "tile_font_auto",
+                    constants.DEFAULT_TILE_FONT_AUTO,
+                )
+            ),
+        )
+        settings.setValue(
+            "layout/tile_font_size",
+            owner._coerce_int(
+                layout_settings.get("tile_font_size"),
+                constants.DEFAULT_TILE_FONT_SIZE,
+            ),
+        )
+        settings.setValue(
             "layout/tile_frame_enabled",
             bool(layout_settings.get("tile_frame_enabled", constants.DEFAULT_TILE_FRAME_ENABLED)),
         )

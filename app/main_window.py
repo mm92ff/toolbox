@@ -16,6 +16,7 @@ from app.domain.tab_context import ToolboxTabContext
 from app.features.entries.controller import MainWindowEntriesMixin
 from app.features.settings.controller import MainWindowSettingsMixin
 from app.features.tabs.controller import MainWindowTabsMixin
+from app.services.appimage_icons import AppImageIconService
 from app.services.desktop_entry_launch import DesktopProcessManager
 from app.services.folder_count import FolderCountService
 from app.services.size_calculator import TabSizeCalculationService
@@ -76,7 +77,8 @@ class MainWindow(
         self._undo_last_state: list[dict[str, object]] | None = None
         self._undo_suspended = False
         self._undo_max_steps = 50
-        self._minimize_to_tray = False
+        self._show_tray_icon = constants.DEFAULT_SHOW_TRAY_ICON
+        self._minimize_to_tray = constants.DEFAULT_MINIMIZE_TO_TRAY
         self._force_quit = False
         self.tray_icon: QtWidgets.QSystemTrayIcon | None = None
         self._closing = False
@@ -86,6 +88,7 @@ class MainWindow(
         self._size_service = TabSizeCalculationService(self)
         self._size_service.result_ready.connect(self._on_tab_size_calculated)
         self._folder_count_service = FolderCountService(self, max_workers=2)
+        self._appimage_icon_service = AppImageIconService(self)
         self._size_recalc_timer = QtCore.QTimer(self)
         self._size_recalc_timer.setSingleShot(True)
         self._size_recalc_timer.setInterval(180)
@@ -153,6 +156,7 @@ class MainWindow(
         if ffmpeg_task is not None:
             ffmpeg_task.cancel()
         self._folder_count_service.shutdown()
+        self._appimage_icon_service.shutdown()
         self.desktop_process_manager.shutdown()
         self._shutdown_broken_entries_scan_worker()
         self.persist_toolbox_state()
@@ -212,14 +216,14 @@ class MainWindow(
                 tray_icon_path = candidate
 
         if tray_icon_path:
-            self.tray_icon.setIcon(QtGui.QIcon(str(tray_icon_path)))
+            self.tray_icon.setIcon(self._tray_sized_icon(QtGui.QIcon(str(tray_icon_path))))
         else:
             app_icon = QtWidgets.QApplication.instance().windowIcon()
             if not app_icon.isNull():
-                self.tray_icon.setIcon(app_icon)
+                self.tray_icon.setIcon(self._tray_sized_icon(app_icon))
             else:
                 icon = QtGui.QIcon.fromTheme("applications-system", self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DesktopIcon))
-                self.tray_icon.setIcon(icon)
+                self.tray_icon.setIcon(self._tray_sized_icon(icon))
 
         tray_menu = QtWidgets.QMenu(self)
 
@@ -235,17 +239,42 @@ class MainWindow(
         self.tray_icon.activated.connect(self._on_tray_activated)
         self.tray_icon.hide()
 
+    @staticmethod
+    def _tray_sized_icon(icon: QtGui.QIcon) -> QtGui.QIcon:
+        pixmap = icon.pixmap(64, 64)
+        return QtGui.QIcon(pixmap) if not pixmap.isNull() else icon
+
     def _sync_tray_state(self) -> None:
         app = QtWidgets.QApplication.instance()
-        tray_enabled = bool(
-            self._minimize_to_tray
-            and self.tray_icon is not None
+        tray_available = bool(
+            self.tray_icon is not None
             and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable()
         )
         if self.tray_icon is not None:
-            self.tray_icon.setVisible(tray_enabled)
+            self.tray_icon.setVisible(self._show_tray_icon and tray_available)
         if app is not None:
-            app.setQuitOnLastWindowClosed(not tray_enabled)
+            minimize_enabled = bool(
+                self._show_tray_icon and self._minimize_to_tray and tray_available
+            )
+            app.setQuitOnLastWindowClosed(not minimize_enabled)
+
+    def _update_tray_settings_controls_enabled(self) -> None:
+        show_checkbox = self.widgets.get(constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX)
+        minimize_checkbox = self.widgets.get(
+            constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX
+        )
+        if show_checkbox is None or minimize_checkbox is None:
+            return
+        show_enabled = bool(show_checkbox.isChecked())
+        if not show_enabled and minimize_checkbox.isChecked():
+            minimize_checkbox.blockSignals(True)
+            minimize_checkbox.setChecked(False)
+            minimize_checkbox.blockSignals(False)
+        minimize_checkbox.setEnabled(show_enabled)
+
+    def _on_show_tray_icon_changed(self, _checked: bool) -> None:
+        self._update_tray_settings_controls_enabled()
+        self._on_system_settings_changed()
 
     def _show_from_tray(self) -> None:
         self.showNormal()
@@ -268,6 +297,7 @@ class MainWindow(
     def _connect_settings_widgets(self) -> None:
         for widget_name in (
             constants.WIDGET_ICON_SIZE_SLIDER,
+            constants.WIDGET_TILE_FONT_SIZE_SLIDER,
             constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER,
             constants.WIDGET_GRID_SPACING_X_SLIDER,
             constants.WIDGET_GRID_SPACING_Y_SLIDER,
@@ -276,6 +306,9 @@ class MainWindow(
         ):
             slider = self.widgets[widget_name]
             slider.valueChanged.connect(self._on_layout_settings_changed)
+
+        tile_font_auto = self.widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX]
+        tile_font_auto.toggled.connect(self._on_tile_font_auto_changed)
 
         frame_checkbox = self.widgets[constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX]
         frame_checkbox.toggled.connect(self._on_layout_settings_changed)
@@ -416,7 +449,11 @@ class MainWindow(
         apply_settings_button.clicked.connect(self._apply_pending_settings)
 
         # System behavior checkboxes — must mark dirty so Apply is enabled
-        minimize_tray_cb = self.widgets.get("minimize_to_tray_checkbox")
+        show_tray_icon_cb = self.widgets.get(constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX)
+        if show_tray_icon_cb is not None:
+            show_tray_icon_cb.toggled.connect(self._on_show_tray_icon_changed)
+
+        minimize_tray_cb = self.widgets.get(constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX)
         if minimize_tray_cb is not None:
             minimize_tray_cb.toggled.connect(self._on_system_settings_changed)
 
@@ -521,6 +558,7 @@ class MainWindow(
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         tray_enabled = bool(
             not self._force_quit
+            and self._show_tray_icon
             and self._minimize_to_tray
             and self.tray_icon is not None
             and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable()

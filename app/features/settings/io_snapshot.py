@@ -33,6 +33,8 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
         },
         "layout": {
             "icon_size": owner.current_icon_size(),
+            "tile_font_auto": owner.current_tile_font_auto(),
+            "tile_font_size": owner.current_tile_font_size(),
             "tile_frame_enabled": owner.current_tile_frame_enabled(),
             "image_file_preview_enabled": owner.current_image_file_preview_enabled(),
             "image_file_preview_mode": owner.current_image_file_preview_mode(),
@@ -120,6 +122,8 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("tabs/help_tab_hidden", owner._help_tab_hidden)
 
     settings.setValue("layout/icon_size", owner.current_icon_size())
+    settings.setValue("layout/tile_font_auto", owner.current_tile_font_auto())
+    settings.setValue("layout/tile_font_size", owner.current_tile_font_size())
     settings.setValue("layout/tile_frame_enabled", owner.current_tile_frame_enabled())
     settings.setValue("layout/image_file_preview_enabled", owner.current_image_file_preview_enabled())
     settings.setValue("layout/image_file_preview_mode", owner.current_image_file_preview_mode())

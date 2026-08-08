@@ -15,6 +15,11 @@ from typing import Mapping
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from app.services.appimage_icons import (
+    AppImageIconService,
+    cached_appimage_icon_path,
+    is_appimage_path,
+)
 from app.services.desktop_entries import DesktopEntryError, read_desktop_entry
 
 
@@ -234,6 +239,7 @@ def desktop_icon_for_path(
     filepath: str | Path,
     icon_provider: QtWidgets.QFileIconProvider,
     fallback: QtGui.QIcon | None = None,
+    appimage_icon_service: AppImageIconService | None = None,
 ) -> QtGui.QIcon:
     """Resolve a desktop entry's declared icon with safe fallbacks."""
 
@@ -276,6 +282,15 @@ def desktop_icon_for_path(
         sidecar_icon = QtGui.QIcon(sidecar_path)
         if not sidecar_icon.isNull():
             return sidecar_icon
+
+    if is_appimage_path(path):
+        cached_icon_path = cached_appimage_icon_path(path)
+        if cached_icon_path:
+            cached_icon = QtGui.QIcon(cached_icon_path)
+            if not cached_icon.isNull():
+                return cached_icon
+        if appimage_icon_service is not None:
+            appimage_icon_service.request(path)
 
     icon = icon_provider.icon(QtCore.QFileInfo(str(path)))
     if not icon.isNull():

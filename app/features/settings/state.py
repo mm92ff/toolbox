@@ -35,6 +35,8 @@ class MainWindowSettingsStateMixin:
 
     def _initialize_applied_settings_defaults(self) -> None:
         self._applied_icon_size = constants.DEFAULT_ICON_SIZE
+        self._applied_tile_font_auto = constants.DEFAULT_TILE_FONT_AUTO
+        self._applied_tile_font_size = constants.DEFAULT_TILE_FONT_SIZE
         self._applied_tile_frame_enabled = constants.DEFAULT_TILE_FRAME_ENABLED
         self._applied_image_file_preview_enabled = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
         self._applied_image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
@@ -69,6 +71,8 @@ class MainWindowSettingsStateMixin:
 
     def _capture_pending_settings_from_widgets(self) -> dict[str, object]:
         icon_slider = self.widgets[constants.WIDGET_ICON_SIZE_SLIDER]
+        tile_font_auto = self.widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX]
+        tile_font_slider = self.widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER]
         frame_enabled_checkbox = self.widgets[constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX]
         image_preview_checkbox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX]
         image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
@@ -95,7 +99,10 @@ class MainWindowSettingsStateMixin:
         section_gap_spinbox = self.widgets.get(constants.WIDGET_SECTION_GAP_SPINBOX)
         section_color_input = self.widgets[constants.WIDGET_SECTION_LINE_COLOR_INPUT]
         launch_mode_combo = self.widgets[constants.WIDGET_TOOL_LAUNCH_MODE_COMBOBOX]
-        minimize_tray_checkbox = self.widgets.get("minimize_to_tray_checkbox")
+        show_tray_icon_checkbox = self.widgets.get(constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX)
+        minimize_tray_checkbox = self.widgets.get(
+            constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX
+        )
         folder_click_cb = self.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
         use_system_cb = self.widgets.get(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
         audio_inp = self.widgets.get(constants.WIDGET_FILE_ASSOC_AUDIO_INPUT)
@@ -111,6 +118,8 @@ class MainWindowSettingsStateMixin:
 
         return {
             "icon_size": int(icon_slider.value()),
+            "tile_font_auto": bool(tile_font_auto.isChecked()),
+            "tile_font_size": int(tile_font_slider.value()),
             "tile_frame_enabled": bool(frame_enabled_checkbox.isChecked()),
             "image_file_preview_enabled": bool(image_preview_checkbox.isChecked()),
             "image_file_preview_mode": self._normalize_image_file_preview_mode(
@@ -152,7 +161,16 @@ class MainWindowSettingsStateMixin:
             "tool_launch_mode": self._normalize_tool_launch_mode(
                 str(launch_mode_combo.currentData())
             ),
-            "minimize_to_tray": bool(minimize_tray_checkbox.isChecked()) if minimize_tray_checkbox else False,
+            "show_tray_icon": (
+                bool(show_tray_icon_checkbox.isChecked())
+                if show_tray_icon_checkbox
+                else constants.DEFAULT_SHOW_TRAY_ICON
+            ),
+            "minimize_to_tray": (
+                bool(minimize_tray_checkbox.isChecked())
+                if minimize_tray_checkbox
+                else constants.DEFAULT_MINIMIZE_TO_TRAY
+            ),
             "folder_single_click_browse": bool(folder_click_cb.isChecked()) if folder_click_cb else False,
             "folder_show_file_count": bool(self.widgets[constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX].isChecked()) if self.widgets.get(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX) else False,
             "file_assoc_use_system": bool(use_system_cb.isChecked()) if use_system_cb else True,
@@ -166,6 +184,12 @@ class MainWindowSettingsStateMixin:
     def _set_applied_settings(self, values: dict[str, object]) -> None:
         self._applied_icon_size = self._coerce_int(
             values.get("icon_size"), constants.DEFAULT_ICON_SIZE
+        )
+        self._applied_tile_font_auto = bool(
+            values.get("tile_font_auto", constants.DEFAULT_TILE_FONT_AUTO)
+        )
+        self._applied_tile_font_size = self._coerce_int(
+            values.get("tile_font_size"), constants.DEFAULT_TILE_FONT_SIZE
         )
         self._applied_tile_frame_enabled = bool(
             values.get("tile_frame_enabled", constants.DEFAULT_TILE_FRAME_ENABLED)
@@ -252,7 +276,12 @@ class MainWindowSettingsStateMixin:
         self._applied_tool_launch_mode = self._normalize_tool_launch_mode(
             str(values.get("tool_launch_mode", ""))
         )
-        self._minimize_to_tray = bool(values.get("minimize_to_tray", False))
+        self._show_tray_icon = bool(
+            values.get("show_tray_icon", constants.DEFAULT_SHOW_TRAY_ICON)
+        )
+        self._minimize_to_tray = bool(
+            values.get("minimize_to_tray", constants.DEFAULT_MINIMIZE_TO_TRAY)
+        )
         self._applied_folder_single_click_browse = bool(
             values.get("folder_single_click_browse", constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)
         )
@@ -271,6 +300,12 @@ class MainWindowSettingsStateMixin:
 
     def current_icon_size(self) -> int:
         return int(self._applied_icon_size)
+
+    def current_tile_font_auto(self) -> bool:
+        return bool(self._applied_tile_font_auto)
+
+    def current_tile_font_size(self) -> int:
+        return int(self._applied_tile_font_size)
 
     def current_tile_frame_enabled(self) -> bool:
         return bool(self._applied_tile_frame_enabled)
@@ -341,6 +376,9 @@ class MainWindowSettingsStateMixin:
 
     def current_minimize_to_tray(self) -> bool:
         return bool(self._minimize_to_tray)
+
+    def current_show_tray_icon(self) -> bool:
+        return bool(self._show_tray_icon)
 
     def _normalize_section_line_color(self, value: str) -> str:
         color = QtGui.QColor((value or "").strip())

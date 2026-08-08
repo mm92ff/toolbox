@@ -31,6 +31,14 @@ def test_tabs_and_layout_settings_survive_full_window_restart() -> None:
             if target_icon_size == slider.value():
                 target_icon_size = max(slider.minimum(), slider.value() - 9)
             slider.setValue(target_icon_size)
+            auto_font: QtWidgets.QCheckBox = first.widgets[
+                constants.WIDGET_TILE_FONT_AUTO_CHECKBOX
+            ]  # type: ignore[assignment]
+            font_slider: QtWidgets.QSlider = first.widgets[
+                constants.WIDGET_TILE_FONT_SIZE_SLIDER
+            ]  # type: ignore[assignment]
+            auto_font.setChecked(False)
+            font_slider.setValue(21)
             first._apply_pending_settings()
             first.persist_toolbox_state()
             first._save_settings()
@@ -44,6 +52,9 @@ def test_tabs_and_layout_settings_survive_full_window_restart() -> None:
                 for context in second.toolbox_tabs
             )
             assert second.current_icon_size() == target_icon_size
+            assert second.current_tile_font_auto() is False
+            assert second.current_tile_font_size() == 21
+            assert second.widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER].isEnabled()
             assert (config_dir / constants.TOOL_CONFIG_FILENAME).is_file()
             assert (config_dir / constants.UI_SETTINGS_FILENAME).is_file()
         finally:

@@ -119,6 +119,11 @@ def _refresh_browse_view(owner: object, ctx: ToolboxTabContext) -> bool:
         ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
         folder_show_file_count=owner.current_folder_show_file_count(),
         show_tooltips=owner.current_show_tooltips(),
+        tile_font_size=(
+            None
+            if owner.current_tile_font_auto()
+            else owner.current_tile_font_size()
+        ),
     )
     owner._update_details(ctx)
     owner._update_action_buttons(ctx)

@@ -146,6 +146,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         ffmpeg_manual_path: str = "",
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
+        tile_font_size: int | None = None,
     ) -> None:
         self._hover_preview_enabled = bool(hover_preview_enabled)
         self._hide_hover_preview()
@@ -178,6 +179,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             thumbnail_cache_dir=self._thumbnail_cache_dir,
             folder_show_file_count=folder_show_file_count,
             show_tooltips=show_tooltips,
+            tile_font_size=tile_font_size,
         )
 
     def apply_layout_settings(
@@ -205,6 +207,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         ffmpeg_manual_path: str = "",
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
+        tile_font_size: int | None = None,
     ) -> bool:
         self._hover_preview_enabled = bool(hover_preview_enabled)
         self._hide_hover_preview()
@@ -233,6 +236,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             thumbnail_cache_dir=self._thumbnail_cache_dir,
             folder_show_file_count=folder_show_file_count,
             show_tooltips=show_tooltips,
+            tile_font_size=tile_font_size,
         )
 
     def select_entries(self, entry_ids: set[str]) -> None:

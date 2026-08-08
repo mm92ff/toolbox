@@ -35,58 +35,85 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     widgets[constants.WIDGET_ICON_SIZE_VALUE] = icon_value
     appearance_layout.addWidget(icon_value, 0, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Launch Trigger:"), 1, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Tile Text:"), 1, 0)
+    tile_font_auto = QtWidgets.QCheckBox("Automatically follow icon size")
+    tile_font_auto.setObjectName(constants.WIDGET_TILE_FONT_AUTO_CHECKBOX)
+    tile_font_auto.setChecked(constants.DEFAULT_TILE_FONT_AUTO)
+    widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX] = tile_font_auto
+    appearance_layout.addWidget(tile_font_auto, 1, 1, 1, 2)
+
+    appearance_layout.addWidget(QtWidgets.QLabel("Text Size:"), 2, 0)
+    tile_font_slider = NoWheelSlider(QtCore.Qt.Orientation.Horizontal)
+    tile_font_slider.setObjectName(constants.WIDGET_TILE_FONT_SIZE_SLIDER)
+    tile_font_slider.setRange(
+        constants.MIN_TILE_FONT_SIZE,
+        constants.MAX_TILE_FONT_SIZE,
+    )
+    tile_font_slider.setSingleStep(1)
+    tile_font_slider.setPageStep(2)
+    tile_font_slider.setValue(constants.DEFAULT_TILE_FONT_SIZE)
+    tile_font_slider.setEnabled(not constants.DEFAULT_TILE_FONT_AUTO)
+    widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER] = tile_font_slider
+    appearance_layout.addWidget(tile_font_slider, 2, 1)
+
+    tile_font_value = QtWidgets.QLabel(str(constants.DEFAULT_TILE_FONT_SIZE))
+    tile_font_value.setObjectName(constants.WIDGET_TILE_FONT_SIZE_VALUE)
+    tile_font_value.setMinimumWidth(72)
+    widgets[constants.WIDGET_TILE_FONT_SIZE_VALUE] = tile_font_value
+    appearance_layout.addWidget(tile_font_value, 2, 2)
+
+    appearance_layout.addWidget(QtWidgets.QLabel("Launch Trigger:"), 3, 0)
     launch_mode_combobox = NoWheelComboBox()
     launch_mode_combobox.setObjectName(constants.WIDGET_TOOL_LAUNCH_MODE_COMBOBOX)
     launch_mode_combobox.addItem("Double-click", constants.LAUNCH_CLICK_MODE_DOUBLE)
     launch_mode_combobox.addItem("Single-click", constants.LAUNCH_CLICK_MODE_SINGLE)
     widgets[constants.WIDGET_TOOL_LAUNCH_MODE_COMBOBOX] = launch_mode_combobox
-    appearance_layout.addWidget(launch_mode_combobox, 1, 1, 1, 2)
+    appearance_layout.addWidget(launch_mode_combobox, 3, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Icon Frame:"), 2, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Icon Frame:"), 4, 0)
     tile_frame_enabled = QtWidgets.QCheckBox("Show frame")
     tile_frame_enabled.setObjectName(constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX)
     tile_frame_enabled.setChecked(constants.DEFAULT_TILE_FRAME_ENABLED)
     widgets[constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX] = tile_frame_enabled
-    appearance_layout.addWidget(tile_frame_enabled, 2, 1, 1, 2)
+    appearance_layout.addWidget(tile_frame_enabled, 4, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Image Files:"), 3, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Image Files:"), 5, 0)
     image_preview_enabled = QtWidgets.QCheckBox("Use image preview thumbnails")
     image_preview_enabled.setObjectName(constants.WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX)
     image_preview_enabled.setChecked(constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED)
     widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_CHECKBOX] = image_preview_enabled
-    appearance_layout.addWidget(image_preview_enabled, 3, 1, 1, 2)
+    appearance_layout.addWidget(image_preview_enabled, 5, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Preview Mode:"), 4, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Preview Mode:"), 6, 0)
     image_preview_mode = NoWheelComboBox()
     image_preview_mode.setObjectName(constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX)
     image_preview_mode.addItem("Fit (show full image)", constants.IMAGE_PREVIEW_MODE_FIT)
     image_preview_mode.addItem("Fill and crop", constants.IMAGE_PREVIEW_MODE_FILL)
     widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX] = image_preview_mode
-    appearance_layout.addWidget(image_preview_mode, 4, 1, 1, 2)
+    appearance_layout.addWidget(image_preview_mode, 6, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Video Files:"), 5, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Video Files:"), 7, 0)
     video_preview_enabled = QtWidgets.QCheckBox("Use video preview thumbnails (ffmpeg)")
     video_preview_enabled.setObjectName(constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX)
     video_preview_enabled.setChecked(constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED)
     widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX] = video_preview_enabled
-    appearance_layout.addWidget(video_preview_enabled, 5, 1, 1, 2)
+    appearance_layout.addWidget(video_preview_enabled, 7, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Hover Preview:"), 6, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Hover Preview:"), 8, 0)
     hover_preview_enabled = QtWidgets.QCheckBox("Enlarge image/video preview on mouse hover")
     hover_preview_enabled.setObjectName(constants.WIDGET_HOVER_PREVIEW_CHECKBOX)
     hover_preview_enabled.setChecked(constants.DEFAULT_HOVER_PREVIEW_ENABLED)
     widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX] = hover_preview_enabled
-    appearance_layout.addWidget(hover_preview_enabled, 6, 1, 1, 2)
+    appearance_layout.addWidget(hover_preview_enabled, 8, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Tooltips:"), 7, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Tooltips:"), 9, 0)
     show_tooltips_enabled = QtWidgets.QCheckBox("Show tooltips on hover")
     show_tooltips_enabled.setObjectName(constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX)
     show_tooltips_enabled.setChecked(constants.DEFAULT_SHOW_TOOLTIPS)
     widgets[constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX] = show_tooltips_enabled
-    appearance_layout.addWidget(show_tooltips_enabled, 7, 1, 1, 2)
+    appearance_layout.addWidget(show_tooltips_enabled, 9, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Frame Thickness:"), 8, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Frame Thickness:"), 10, 0)
     tile_frame_thickness_slider = NoWheelSlider(QtCore.Qt.Orientation.Horizontal)
     tile_frame_thickness_slider.setObjectName(constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER)
     tile_frame_thickness_slider.setRange(
@@ -95,15 +122,15 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     tile_frame_thickness_slider.setSingleStep(1)
     tile_frame_thickness_slider.setPageStep(1)
     widgets[constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER] = tile_frame_thickness_slider
-    appearance_layout.addWidget(tile_frame_thickness_slider, 8, 1)
+    appearance_layout.addWidget(tile_frame_thickness_slider, 10, 1)
 
     tile_frame_thickness_value = QtWidgets.QLabel(str(constants.DEFAULT_TILE_FRAME_THICKNESS))
     tile_frame_thickness_value.setObjectName(constants.WIDGET_TILE_FRAME_THICKNESS_VALUE)
     tile_frame_thickness_value.setMinimumWidth(40)
     widgets[constants.WIDGET_TILE_FRAME_THICKNESS_VALUE] = tile_frame_thickness_value
-    appearance_layout.addWidget(tile_frame_thickness_value, 8, 2)
+    appearance_layout.addWidget(tile_frame_thickness_value, 10, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Frame Color:"), 9, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Frame Color:"), 11, 0)
     frame_color_row = QtWidgets.QHBoxLayout()
     tile_frame_color_input = QtWidgets.QLineEdit(constants.DEFAULT_TILE_FRAME_COLOR)
     tile_frame_color_input.setObjectName(constants.WIDGET_TILE_FRAME_COLOR_INPUT)
@@ -121,9 +148,9 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     tile_frame_color_button.setObjectName(constants.WIDGET_TILE_FRAME_COLOR_BUTTON)
     widgets[constants.WIDGET_TILE_FRAME_COLOR_BUTTON] = tile_frame_color_button
     frame_color_row.addWidget(tile_frame_color_button, 0)
-    appearance_layout.addLayout(frame_color_row, 9, 1, 1, 2)
+    appearance_layout.addLayout(frame_color_row, 11, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Highlight Color:"), 10, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Highlight Color:"), 12, 0)
     highlight_color_row = QtWidgets.QHBoxLayout()
     tile_highlight_color_input = QtWidgets.QLineEdit(constants.DEFAULT_TILE_HIGHLIGHT_COLOR)
     tile_highlight_color_input.setObjectName(constants.WIDGET_TILE_HIGHLIGHT_COLOR_INPUT)
@@ -141,9 +168,9 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     tile_highlight_color_button.setObjectName(constants.WIDGET_TILE_HIGHLIGHT_COLOR_BUTTON)
     widgets[constants.WIDGET_TILE_HIGHLIGHT_COLOR_BUTTON] = tile_highlight_color_button
     highlight_color_row.addWidget(tile_highlight_color_button)
-    appearance_layout.addLayout(highlight_color_row, 10, 1, 1, 2)
+    appearance_layout.addLayout(highlight_color_row, 12, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Preview Background:"), 11, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Preview Background:"), 13, 0)
     preview_bg_row = QtWidgets.QHBoxLayout()
     icon_preview_bg_input = QtWidgets.QLineEdit(constants.DEFAULT_ICON_PREVIEW_BACKGROUND_COLOR)
     icon_preview_bg_input.setObjectName(constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT)
@@ -161,38 +188,39 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     icon_preview_bg_button.setObjectName(constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_BUTTON)
     widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_BUTTON] = icon_preview_bg_button
     preview_bg_row.addWidget(icon_preview_bg_button)
-    appearance_layout.addLayout(preview_bg_row, 11, 1, 1, 2)
+    appearance_layout.addLayout(preview_bg_row, 13, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Live Preview:"), 12, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Live Preview:"), 14, 0)
     icon_size_preview = IconSizeLivePreview()
     icon_size_preview.setObjectName(constants.WIDGET_ICON_SIZE_LIVE_PREVIEW)
     widgets[constants.WIDGET_ICON_SIZE_LIVE_PREVIEW] = icon_size_preview
-    appearance_layout.addWidget(icon_size_preview, 12, 1, 1, 2)
+    appearance_layout.addWidget(icon_size_preview, 14, 1, 1, 2)
 
     appearance_hint = QtWidgets.QLabel(
-        "Font size, tile size, and inner paddings automatically follow the selected icon size."
+        "Tile size and inner paddings follow the selected icon size. Text can follow "
+        "automatically or use the manual size above."
     )
     appearance_hint.setWordWrap(True)
-    appearance_layout.addWidget(appearance_hint, 13, 0, 1, 3)
-    appearance_layout.addWidget(QtWidgets.QLabel("Tile Overlay:"), 14, 0)
+    appearance_layout.addWidget(appearance_hint, 15, 0, 1, 3)
+    appearance_layout.addWidget(QtWidgets.QLabel("Tile Overlay:"), 16, 0)
     preview_overlay_enabled = QtWidgets.QCheckBox("Full tile image preview (title as overlay)")
     preview_overlay_enabled.setObjectName(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
     preview_overlay_enabled.setChecked(constants.DEFAULT_PREVIEW_OVERLAY_ENABLED)
     widgets[constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX] = preview_overlay_enabled
-    appearance_layout.addWidget(preview_overlay_enabled, 14, 1, 1, 2)
+    appearance_layout.addWidget(preview_overlay_enabled, 16, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Folders:"), 15, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Folders:"), 17, 0)
     folder_single_click = QtWidgets.QCheckBox("Open folders with a single click")
     folder_single_click.setObjectName(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
     folder_single_click.setChecked(constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)
     widgets[constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX] = folder_single_click
-    appearance_layout.addWidget(folder_single_click, 15, 1, 1, 2)
+    appearance_layout.addWidget(folder_single_click, 17, 1, 1, 2)
 
     folder_show_file_count = QtWidgets.QCheckBox("Show file count in folder tiles (line 2)")
     folder_show_file_count.setObjectName(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX)
     folder_show_file_count.setChecked(constants.DEFAULT_FOLDER_SHOW_FILE_COUNT)
     widgets[constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX] = folder_show_file_count
-    appearance_layout.addWidget(folder_show_file_count, 16, 1, 1, 2)
+    appearance_layout.addWidget(folder_show_file_count, 18, 1, 1, 2)
 
     return appearance_group
 
@@ -607,6 +635,32 @@ def build_tabs_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGroupB
     tab_buttons.addStretch(1)
     tabs_layout.addLayout(tab_buttons)
     return tabs_group
+
+
+def build_system_tray_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGroupBox:
+    tray_group = QtWidgets.QGroupBox("System Tray")
+    tray_layout = QtWidgets.QVBoxLayout(tray_group)
+    tray_layout.setSpacing(8)
+
+    show_tray_icon = QtWidgets.QCheckBox("Show icon in the system tray")
+    show_tray_icon.setObjectName(constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX)
+    show_tray_icon.setChecked(constants.DEFAULT_SHOW_TRAY_ICON)
+    widgets[constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX] = show_tray_icon
+    tray_layout.addWidget(show_tray_icon)
+
+    minimize_to_tray = QtWidgets.QCheckBox("Minimize to tray when closing the window")
+    minimize_to_tray.setObjectName(constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX)
+    minimize_to_tray.setChecked(constants.DEFAULT_MINIMIZE_TO_TRAY)
+    widgets[constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX] = minimize_to_tray
+    tray_layout.addWidget(minimize_to_tray)
+
+    tray_hint = QtWidgets.QLabel(
+        "The tray icon can stay visible without changing the normal close behavior. "
+        "Minimize-to-tray requires the tray icon."
+    )
+    tray_hint.setWordWrap(True)
+    tray_layout.addWidget(tray_hint)
+    return tray_group
 
 
 def build_maintenance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGroupBox:

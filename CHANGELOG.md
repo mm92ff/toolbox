@@ -25,6 +25,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   immediately opening new toolbox tabs
 - Toolbox-specific Linux code-backup launcher and verified 7z backup workflow
   with Git-history restoration checks and AppImage/build exclusions
+- Optional 8–24 px tile-title font-size slider with automatic icon-size scaling,
+  live preview, persistence, and backward-compatible defaults
+- Separate system-tray visibility and minimize-on-close settings, with the tray
+  icon visible by default for existing profiles
 
 ### Changed
 
@@ -45,6 +49,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   through XDG/Cinnamon icon themes before falling back to generic file icons
 
 ### Fixed
+
+- Linux builds now package the dedicated tray icon instead of silently falling
+  back to the main application image
 
 - Executable Linux `.desktop` shortcuts are parsed and launched as safe argument
   arrays instead of being passed directly to the kernel and failing with

@@ -1,0 +1,16 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Toolbox
+Name[de]=Toolbox
+Comment=Start the Toolbox GUI from this project checkout
+Comment[de]=Startet die Toolbox-GUI aus diesem Projektordner
+TryExec=/home/jemi/Desktop/Github/toolbox--/.venv/bin/python
+Exec=/home/jemi/Desktop/Github/toolbox--/.venv/bin/python /home/jemi/Desktop/Github/toolbox--/main.py
+Path=/home/jemi/Desktop/Github/toolbox--
+Icon=/home/jemi/Desktop/Github/toolbox--/app/assets/one.png
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+StartupWMClass=Toolbox

@@ -31,6 +31,7 @@ def test_schema_keys_survive_real_qsettings_restart(tmp_path: Path) -> None:
     settings.clear()
     try:
         first.widgets[constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX].setChecked(False)
+        first.widgets[constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX].setChecked(False)
         first.widgets[constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX].setChecked(True)
         first.widgets[constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX].setChecked(False)
         first.widgets[constants.WIDGET_FILE_ASSOC_AUDIO_INPUT].setText(
@@ -43,6 +44,11 @@ def test_schema_keys_survive_real_qsettings_restart(tmp_path: Path) -> None:
         second = _create_window(app_name, config_dir)
         try:
             assert second.current_show_tooltips() is False
+            assert second.current_show_tray_icon() is False
+            assert second.current_minimize_to_tray() is False
+            assert not second.widgets[
+                constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX
+            ].isEnabled()
             assert second.current_folder_show_file_count() is True
             assert second.current_file_assoc_use_system() is False
             assert second.current_file_assoc_audio() == "flatpak run org.videolan.VLC"
@@ -58,6 +64,8 @@ def test_every_schema_field_has_one_unique_qsettings_key() -> None:
 
     assert len(keys) == len(set(keys))
     assert "interaction/show_tooltips" in keys
+    assert "system/show_tray_icon" in keys
+    assert "system/minimize_to_tray" in keys
     assert "system/folder_show_file_count" in keys
     assert {
         "system/file_assoc_use_system",
@@ -67,6 +75,55 @@ def test_every_schema_field_has_one_unique_qsettings_key() -> None:
         "system/file_assoc_pdf",
         "system/file_assoc_document",
     }.issubset(keys)
+
+
+def test_old_profile_without_tile_font_keys_keeps_automatic_scaling(
+    tmp_path: Path,
+) -> None:
+    app_name = f"ToolboxFontMigration-{uuid.uuid4().hex}"
+    app = QtWidgets.QApplication.instance()
+    assert app is not None
+    app.setOrganizationName(app_name)
+    app.setApplicationName(app_name)
+    settings = QtCore.QSettings()
+    settings.clear()
+    settings.setValue("layout/icon_size", constants.MAX_ICON_SIZE)
+    settings.sync()
+
+    window = _create_window(app_name, tmp_path / "config")
+    try:
+        assert window.current_tile_font_auto() is True
+        assert window.current_tile_font_size() == constants.DEFAULT_TILE_FONT_SIZE
+        assert not window.widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER].isEnabled()
+    finally:
+        window._force_quit = True
+        window.close()
+        QtCore.QSettings().clear()
+
+
+def test_old_profile_without_tray_visibility_key_restores_visible_icon_default(
+    tmp_path: Path,
+) -> None:
+    app_name = f"ToolboxTrayMigration-{uuid.uuid4().hex}"
+    app = QtWidgets.QApplication.instance()
+    assert app is not None
+    app.setOrganizationName(app_name)
+    app.setApplicationName(app_name)
+    settings = QtCore.QSettings()
+    settings.clear()
+    settings.setValue("system/minimize_to_tray", False)
+    settings.sync()
+
+    window = _create_window(app_name, tmp_path / "config")
+    try:
+        assert window.current_show_tray_icon() is True
+        assert window.current_minimize_to_tray() is False
+        assert window.widgets[constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX].isChecked()
+        assert window.widgets[constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX].isEnabled()
+    finally:
+        window._force_quit = True
+        window.close()
+        QtCore.QSettings().clear()
 
 
 def test_reverting_file_association_widgets_clears_dirty_state(tmp_path: Path) -> None:

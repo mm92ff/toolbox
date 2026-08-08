@@ -67,6 +67,12 @@ class _SnapshotOwner:
     def current_icon_size(self) -> int:
         return 84
 
+    def current_tile_font_auto(self) -> bool:
+        return False
+
+    def current_tile_font_size(self) -> int:
+        return 21
+
     def current_tile_frame_enabled(self) -> bool:
         return True
 
@@ -159,6 +165,9 @@ class _SnapshotOwner:
 
     def current_minimize_to_tray(self) -> bool:
         return False
+
+    def current_show_tray_icon(self) -> bool:
+        return True
 
 
 class _FakeQSettings:
@@ -284,6 +293,8 @@ def test_build_ui_settings_snapshot_contains_all_layout_and_interaction_fields()
     layout = snapshot["layout"]
     assert set(layout.keys()) == {
         "icon_size",
+        "tile_font_auto",
+        "tile_font_size",
         "tile_frame_enabled",
         "image_file_preview_enabled",
         "image_file_preview_mode",
@@ -310,6 +321,7 @@ def test_build_ui_settings_snapshot_contains_all_layout_and_interaction_fields()
         "show_tooltips": True,
     }
     system = snapshot["system"]
+    assert system["show_tray_icon"] is True
     assert system["minimize_to_tray"] is False
     assert system["file_assoc_use_system"] is True
     assert system["file_assoc_audio"] == ""
@@ -334,6 +346,8 @@ def test_apply_imported_ui_settings_roundtrip_restores_all_keys(monkeypatch) -> 
     assert settings_store.values["tabs/help_tab_hidden"] is True
 
     assert settings_store.values["layout/icon_size"] == 84
+    assert settings_store.values["layout/tile_font_auto"] is False
+    assert settings_store.values["layout/tile_font_size"] == 21
     assert settings_store.values["layout/tile_frame_enabled"] is True
     assert settings_store.values["layout/image_file_preview_enabled"] is True
     assert settings_store.values["layout/image_file_preview_mode"] == constants.IMAGE_PREVIEW_MODE_FILL
@@ -355,6 +369,8 @@ def test_apply_imported_ui_settings_roundtrip_restores_all_keys(monkeypatch) -> 
     assert settings_store.values["layout/section_line_color"] == "#444a57"
     assert settings_store.values["interaction/tool_launch_mode"] == constants.LAUNCH_CLICK_MODE_SINGLE
     assert settings_store.values["interaction/show_tooltips"] is True
+    assert settings_store.values["system/show_tray_icon"] is True
+    assert settings_store.values["system/minimize_to_tray"] is False
     assert settings_store.values["system/file_assoc_use_system"] is True
     assert settings_store.values["system/file_assoc_audio"] == ""
     assert settings_store.values["system/file_assoc_pdf"] == ""

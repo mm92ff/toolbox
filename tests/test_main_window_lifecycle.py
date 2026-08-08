@@ -46,6 +46,7 @@ def test_close_without_available_tray_performs_shutdown(tmp_path) -> None:
 def test_close_with_enabled_tray_hides_without_shutdown(tmp_path) -> None:
     window = _window(tmp_path)
     window.show()
+    window._show_tray_icon = True
     window._minimize_to_tray = True
     tray = MagicMock()
     window.tray_icon = tray
@@ -72,7 +73,8 @@ def test_tray_sync_controls_visibility_and_last_window_policy(tmp_path) -> None:
     window = _window(tmp_path)
     tray = MagicMock()
     window.tray_icon = tray
-    window._minimize_to_tray = True
+    window._show_tray_icon = True
+    window._minimize_to_tray = False
 
     with patch.object(
         QtWidgets.QSystemTrayIcon,
@@ -82,14 +84,48 @@ def test_tray_sync_controls_visibility_and_last_window_policy(tmp_path) -> None:
         window._sync_tray_state()
 
     tray.setVisible.assert_called_once_with(True)
+    assert app.quitOnLastWindowClosed() is True
+
+    window._minimize_to_tray = True
+    with patch.object(
+        QtWidgets.QSystemTrayIcon,
+        "isSystemTrayAvailable",
+        return_value=True,
+    ):
+        window._sync_tray_state()
+    assert tray.setVisible.call_args.args == (True,)
     assert app.quitOnLastWindowClosed() is False
 
-    window._minimize_to_tray = False
-    window._sync_tray_state()
+    window._show_tray_icon = False
+    with patch.object(
+        QtWidgets.QSystemTrayIcon,
+        "isSystemTrayAvailable",
+        return_value=True,
+    ):
+        window._sync_tray_state()
     assert tray.setVisible.call_args.args == (False,)
     assert app.quitOnLastWindowClosed() is True
     window._force_quit = True
     window.close()
+
+
+def test_close_does_not_minimize_when_tray_icon_is_disabled(tmp_path) -> None:
+    window = _window(tmp_path)
+    window._show_tray_icon = False
+    window._minimize_to_tray = True
+    window.tray_icon = MagicMock()
+    event = QtGui.QCloseEvent()
+
+    with patch.object(
+        QtWidgets.QSystemTrayIcon,
+        "isSystemTrayAvailable",
+        return_value=True,
+    ):
+        window.closeEvent(event)
+
+    assert event.isAccepted()
+    assert window._shutdown_complete is True
+    window.tray_icon.showMessage.assert_not_called()
 
 
 def test_force_quit_bypasses_enabled_tray(tmp_path) -> None:
@@ -117,6 +153,7 @@ def test_shutdown_managers_and_persistence_run_only_once(tmp_path) -> None:
     window._save_settings = MagicMock()
     window._size_service = MagicMock()
     window._folder_count_service = MagicMock()
+    window._appimage_icon_service = MagicMock()
     window.desktop_process_manager = MagicMock()
     window._shutdown_broken_entries_scan_worker = MagicMock()
 
@@ -125,6 +162,7 @@ def test_shutdown_managers_and_persistence_run_only_once(tmp_path) -> None:
 
     window._size_service.shutdown.assert_called_once()
     window._folder_count_service.shutdown.assert_called_once()
+    window._appimage_icon_service.shutdown.assert_called_once()
     window.desktop_process_manager.shutdown.assert_called_once()
     window.persist_toolbox_state.assert_called_once()
     window._save_settings.assert_called_once()

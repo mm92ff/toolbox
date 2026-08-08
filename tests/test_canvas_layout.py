@@ -1,7 +1,7 @@
 import unittest
 
 from app import constants
-from app.canvas.layout_engine import CanvasLayoutEngine
+from app.canvas.layout_engine import CanvasLayoutEngine, build_tile_metrics
 from app.domain.models import ToolboxEntry
 
 
@@ -35,6 +35,22 @@ class CanvasLayoutEngineTests(unittest.TestCase):
         next_x, next_y = self.engine.find_next_free_tool_position(entries)
 
         self.assertNotIn((next_x, next_y), {(first_x, y), (second_x, y)})
+
+    def test_manual_tile_font_size_changes_typography_and_geometry(self) -> None:
+        automatic = build_tile_metrics(constants.DEFAULT_ICON_SIZE)
+        manual = build_tile_metrics(constants.DEFAULT_ICON_SIZE, 22)
+
+        self.assertEqual(13, automatic.font_pixel_size)
+        self.assertEqual(22, manual.font_pixel_size)
+        self.assertGreater(manual.title_height, automatic.title_height)
+        self.assertGreater(manual.tile_height, automatic.tile_height)
+
+    def test_manual_tile_font_size_is_clamped(self) -> None:
+        too_small = build_tile_metrics(constants.DEFAULT_ICON_SIZE, -100)
+        too_large = build_tile_metrics(constants.DEFAULT_ICON_SIZE, 100)
+
+        self.assertEqual(constants.MIN_TILE_FONT_SIZE, too_small.font_pixel_size)
+        self.assertEqual(constants.MAX_TILE_FONT_SIZE, too_large.font_pixel_size)
 
     def test_snap_section_position_avoids_existing_rows(self) -> None:
         entries = [

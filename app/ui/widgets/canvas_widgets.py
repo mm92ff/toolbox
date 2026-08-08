@@ -221,10 +221,11 @@ class ToolTileWidget(CanvasItemBase):
         icon_size: int,
         parent=None,
         folder_count_service: FolderCountService | None = None,
+        tile_font_size: int | None = None,
     ) -> None:
         super().__init__(entry, parent)
         self._icon = icon
-        self._metrics = build_tile_metrics(icon_size)
+        self._metrics = build_tile_metrics(icon_size, tile_font_size)
         self._frame_enabled = constants.DEFAULT_TILE_FRAME_ENABLED
         self._frame_thickness = constants.DEFAULT_TILE_FRAME_THICKNESS
         self._frame_color = constants.DEFAULT_TILE_FRAME_COLOR
@@ -257,11 +258,14 @@ class ToolTileWidget(CanvasItemBase):
         self._folder_count_service = folder_count_service
         if self._folder_count_service is not None:
             self._folder_count_service.result_ready.connect(self._on_file_count_ready)
-        self.set_icon_size(icon_size)
+        self.set_icon_size(icon_size, tile_font_size)
 
     @staticmethod
-    def calculate_tile_size(icon_size: int) -> QtCore.QSize:
-        return build_tile_metrics(icon_size).tile_size
+    def calculate_tile_size(
+        icon_size: int,
+        tile_font_size: int | None = None,
+    ) -> QtCore.QSize:
+        return build_tile_metrics(icon_size, tile_font_size).tile_size
 
     def _apply_style(self) -> None:
         frame_color = QtGui.QColor(self._frame_color)
@@ -398,8 +402,12 @@ class ToolTileWidget(CanvasItemBase):
                 self.file_count_label.setToolTip("")
 
 
-    def set_icon_size(self, icon_size: int) -> None:
-        self._metrics = build_tile_metrics(icon_size)
+    def set_icon_size(
+        self,
+        icon_size: int,
+        tile_font_size: int | None = None,
+    ) -> None:
+        self._metrics = build_tile_metrics(icon_size, tile_font_size)
         self._apply_style()
         
         if self._overlay_mode:

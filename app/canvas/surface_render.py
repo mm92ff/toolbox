@@ -4,9 +4,10 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from app import constants
 from app.canvas.section_conflicts import (
@@ -54,6 +55,7 @@ class CanvasSurfaceRenderMixin:
         thumbnail_cache_dir: Path | None = None,
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
+        tile_font_size: int | None = None,
     ) -> None:
         self.clear()
         self._entries = entries
@@ -80,6 +82,7 @@ class CanvasSurfaceRenderMixin:
             section_line_thickness,
             section_gap,
             section_line_color,
+            tile_font_size=tile_font_size,
             section_gap_above=section_gap_above,
             section_gap_below=section_gap_below,
         )
@@ -128,6 +131,7 @@ class CanvasSurfaceRenderMixin:
         thumbnail_cache_dir: Path | None = None,
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
+        tile_font_size: int | None = None,
     ) -> bool:
         self._entries = entries
         self._auto_compact_left = auto_compact_left
@@ -153,6 +157,7 @@ class CanvasSurfaceRenderMixin:
             section_line_thickness,
             section_gap,
             section_line_color,
+            tile_font_size=tile_font_size,
             section_gap_above=section_gap_above,
             section_gap_below=section_gap_below,
         )
@@ -164,7 +169,10 @@ class CanvasSurfaceRenderMixin:
                 widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
                 widget.set_icon(self._icon_for_tool_entry(widget.entry))
                 widget.set_folder_file_count_mode(self._folder_show_file_count)
-                widget.set_icon_size(self._layout_engine.icon_size)
+                widget.set_icon_size(
+                    self._layout_engine.icon_size,
+                    self._layout_engine.tile_font_size,
+                )
                 widget.set_show_tooltips(self._show_tooltips)
                 widget.set_tile_style(
                     frame_enabled=tile_frame_enabled,
@@ -250,11 +258,15 @@ class CanvasSurfaceRenderMixin:
                 self._layout_engine.icon_size,
                 self,
                 folder_count_service=self._folder_count_service,
+                tile_font_size=self._layout_engine.tile_font_size,
             )
             widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
             widget.set_icon(icon)
             widget.set_folder_file_count_mode(self._folder_show_file_count)
-            widget.set_icon_size(self._layout_engine.icon_size)
+            widget.set_icon_size(
+                self._layout_engine.icon_size,
+                self._layout_engine.tile_font_size,
+            )
             widget.set_show_tooltips(self._show_tooltips)
             widget.set_tile_style(
                 frame_enabled=tile_frame_enabled,
@@ -314,7 +326,27 @@ class CanvasSurfaceRenderMixin:
         fallback = self.style().standardIcon(
             QtWidgets.QStyle.StandardPixmap.SP_DesktopIcon
         )
-        return desktop_icon_for_path(entry.path, self._icon_provider, fallback)
+        return desktop_icon_for_path(
+            entry.path,
+            self._icon_provider,
+            fallback,
+            self._appimage_icon_service,
+        )
+
+    @QtCore.Slot(str, str)
+    def _on_appimage_icon_ready(self, path: str, icon_path: str) -> None:
+        icon = QtGui.QIcon(icon_path)
+        if icon.isNull():
+            return
+        normalized = os.path.abspath(os.path.expanduser(path))
+        for entry in self._entries:
+            if not entry.is_tool or entry.custom_icon_path:
+                continue
+            if os.path.abspath(os.path.expanduser(entry.path)) != normalized:
+                continue
+            widget = self._widgets.get(entry.entry_id)
+            if isinstance(widget, ToolTileWidget):
+                widget.set_icon(icon)
 
     def _section_line_color_for_entry(self, entry: ToolboxEntry) -> str:
         custom_color = (entry.section_line_color or "").strip()

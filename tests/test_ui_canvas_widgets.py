@@ -26,3 +26,17 @@ def test_tool_tile_widget_overlay_mode():
     assert widget._overlay_mode is True
     # The title_label should now be reparented to icon_label
     assert widget.title_label.parent() == widget.icon_label
+
+
+def test_tool_tile_widget_uses_manual_title_font_size():
+    entry = ToolboxEntry(entry_id="font-test", title="Large Text", path="/tmp/test")
+    icon = QtGui.QIcon(QtGui.QPixmap(64, 64))
+    widget = ToolTileWidget(
+        entry,
+        icon,
+        icon_size=64,
+        tile_font_size=22,
+    )
+
+    assert widget.title_label.font().pixelSize() == 22
+    assert widget.file_count_label.font().pixelSize() == 21

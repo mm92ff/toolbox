@@ -17,6 +17,7 @@ def test_linux_spec_is_onedir_and_does_not_autodetect_ffmpeg() -> None:
     assert "exclude_system_libraries()" in spec_text
     assert "shutil.which" not in spec_text
     assert "TOOLBOX_FFMPEG_BINARY" in spec_text
+    assert '"one_tray.png"' in spec_text
 
 
 def test_apprun_and_build_scripts_are_executable() -> None:
@@ -170,6 +171,12 @@ def test_appimage_acceptance_covers_content_relocation_and_xcb() -> None:
     assert "read-only-directory-token" in image_test
     assert "running-instance-forwarding-token" in image_test
     assert "PRIMARY_PID" in image_test
+    assert "TOOLBOX_SMOKE_APPIMAGE_ICON" in image_test
+    assert "appimage_fixture_icon_available" in (PROJECT_ROOT / "main.py").read_text(
+        encoding="utf-8"
+    )
+    assert "mksquashfs" in image_test
+    assert "unsquashfs" in image_test
     assert "QT_SCALE_FACTOR=2" in image_test
     assert "QT_QPA_PLATFORM=xcb" in image_test
     assert "test-x11-desktop.sh" in build_script
@@ -179,6 +186,7 @@ def test_appimage_acceptance_covers_content_relocation_and_xcb() -> None:
     assert "libc.so" in content_test
     assert "EXPECTED_FFMPEG_SHA256" in content_test
     assert "EXPECTED_FFPROBE_SHA256" in content_test
+    assert "app/assets/one_tray.png" in content_test
 
 
 def test_reproducibility_check_compares_content_modes_and_symlinks() -> None:

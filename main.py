@@ -138,6 +138,36 @@ def _write_smoke_test_report(
                 "desktop_fixture_name": metadata.name,
             }
         )
+    appimage_fixture = os.environ.get("TOOLBOX_SMOKE_APPIMAGE_ICON", "").strip()
+    if appimage_fixture:
+        normalized_fixture = os.path.abspath(os.path.expanduser(appimage_fixture))
+        extracted_icon_path = ""
+        loop = QtCore.QEventLoop()
+
+        def collect_appimage_icon(result_path: str, icon_result: str) -> None:
+            nonlocal extracted_icon_path
+            if os.path.abspath(os.path.expanduser(result_path)) != normalized_fixture:
+                return
+            extracted_icon_path = icon_result
+            loop.quit()
+
+        window._appimage_icon_service.result_ready.connect(collect_appimage_icon)
+        timeout = QtCore.QTimer()
+        timeout.setSingleShot(True)
+        timeout.timeout.connect(loop.quit)
+        timeout.start(6000)
+        window._appimage_icon_service.request(normalized_fixture)
+        loop.exec()
+        window._appimage_icon_service.result_ready.disconnect(collect_appimage_icon)
+        extracted_icon = QtGui.QIcon(extracted_icon_path)
+        report.update(
+            {
+                "appimage_fixture_icon_available": bool(
+                    extracted_icon_path and not extracted_icon.isNull()
+                ),
+                "appimage_fixture_icon_is_png": extracted_icon_path.endswith(".png"),
+            }
+        )
     screenshot_path = os.environ.get("TOOLBOX_SMOKE_SCREENSHOT", "").strip()
     if screenshot_path:
         if (

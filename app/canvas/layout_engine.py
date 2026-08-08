@@ -45,20 +45,36 @@ def clamp(value: int, minimum: int, maximum: int) -> int:
     return max(minimum, min(maximum, value))
 
 
-def build_tile_metrics(icon_size: int) -> TileMetrics:
+def build_tile_metrics(
+    icon_size: int,
+    tile_font_size: int | None = None,
+) -> TileMetrics:
     """Derive tile geometry and typography metrics from the requested icon size."""
     safe_icon_size = clamp(icon_size, constants.MIN_ICON_SIZE, constants.MAX_ICON_SIZE)
-    font_pixel_size = clamp(round(safe_icon_size * 0.18), 9, 18)
+    automatic_font_size = tile_font_size is None
+    font_pixel_size = (
+        clamp(round(safe_icon_size * 0.18), 9, 18)
+        if automatic_font_size
+        else clamp(
+            int(tile_font_size),
+            constants.MIN_TILE_FONT_SIZE,
+            constants.MAX_TILE_FONT_SIZE,
+        )
+    )
     horizontal_padding = clamp(round(safe_icon_size * 0.16), 6, 22)
     vertical_padding = clamp(round(safe_icon_size * 0.14), 5, 20)
     content_spacing = clamp(round(safe_icon_size * 0.10), 3, 14)
-    title_height = clamp(round(font_pixel_size * 2.7), 22, 50)
+    title_height = clamp(
+        round(font_pixel_size * 2.7),
+        22,
+        50 if automatic_font_size else 68,
+    )
     tile_height = safe_icon_size + title_height + (2 * vertical_padding) + content_spacing
-    
+
     # Make the tile square based on its natural height
-    tile_width = clamp(tile_height, 96, 240)
+    tile_width = clamp(tile_height, 96, 240 if automatic_font_size else 280)
     tile_height = tile_width
-    
+
     border_radius = clamp(round(safe_icon_size * 0.18), 10, 24)
     return TileMetrics(
         icon_size=safe_icon_size,
@@ -102,6 +118,7 @@ class CanvasLayoutEngine:
 
     def __init__(self) -> None:
         self._icon_size = constants.DEFAULT_ICON_SIZE
+        self._tile_font_size: int | None = None
         self._grid_spacing_x = constants.DEFAULT_GRID_SPACING_X
         self._grid_spacing_y = constants.DEFAULT_GRID_SPACING_Y
         self._section_font_size = constants.DEFAULT_SECTION_FONT_SIZE
@@ -114,6 +131,10 @@ class CanvasLayoutEngine:
     @property
     def icon_size(self) -> int:
         return self._icon_size
+
+    @property
+    def tile_font_size(self) -> int | None:
+        return self._tile_font_size
 
     @property
     def section_font_size(self) -> int:
@@ -140,10 +161,20 @@ class CanvasLayoutEngine:
         section_gap: int,
         section_line_color: str,
         *,
+        tile_font_size: int | None = None,
         section_gap_above: int | None = None,
         section_gap_below: int | None = None,
     ) -> None:
         self._icon_size = clamp(icon_size, constants.MIN_ICON_SIZE, constants.MAX_ICON_SIZE)
+        self._tile_font_size = (
+            None
+            if tile_font_size is None
+            else clamp(
+                int(tile_font_size),
+                constants.MIN_TILE_FONT_SIZE,
+                constants.MAX_TILE_FONT_SIZE,
+            )
+        )
         self._grid_spacing_x = clamp(
             grid_spacing_x, constants.MIN_GRID_SPACING, constants.MAX_GRID_SPACING
         )
@@ -184,7 +215,7 @@ class CanvasLayoutEngine:
         )
 
     def tool_tile_size(self) -> QtCore.QSize:
-        return build_tile_metrics(self._icon_size).tile_size
+        return build_tile_metrics(self._icon_size, self._tile_font_size).tile_size
 
     def section_height(self) -> int:
         return build_section_metrics(self._section_font_size, self._section_line_thickness).height

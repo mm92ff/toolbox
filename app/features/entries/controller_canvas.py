@@ -54,6 +54,11 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
         ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
         folder_show_file_count=owner.current_folder_show_file_count(),
         show_tooltips=owner.current_show_tooltips(),
+        tile_font_size=(
+            None
+            if owner.current_tile_font_auto()
+            else owner.current_tile_font_size()
+        ),
     )
     update_details(owner, ctx)
     update_action_buttons(ctx)
@@ -94,6 +99,11 @@ def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None
                 ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
                 folder_show_file_count=owner.current_folder_show_file_count(),
                 show_tooltips=owner.current_show_tooltips(),
+                tile_font_size=(
+                    None
+                    if owner.current_tile_font_auto()
+                    else owner.current_tile_font_size()
+                ),
             )
             if reflow_changed:
                 layout_reflow_changed_entries = True

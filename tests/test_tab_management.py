@@ -104,6 +104,15 @@ class TabManagementTests(unittest.TestCase):
                 window._folder_count_service,
             )
             self.assertEqual(2, window._folder_count_service.max_workers)
+            self.assertIs(
+                window.toolbox_tabs[0].canvas.surface._appimage_icon_service,
+                window._appimage_icon_service,
+            )
+            self.assertIs(
+                ctx.canvas.surface._appimage_icon_service,
+                window._appimage_icon_service,
+            )
+            self.assertEqual(1, window._appimage_icon_service.max_workers)
 
             with patch.object(
                 QtWidgets.QMessageBox,
@@ -233,6 +242,61 @@ class TabManagementTests(unittest.TestCase):
 
             new_width = preview_tiles[0].width()
             self.assertNotEqual(old_width, new_width)
+        finally:
+            config_dir = window.config_dir
+            window.close()
+            shutil.rmtree(config_dir, ignore_errors=True)
+
+    def test_manual_tile_font_slider_updates_live_preview(self) -> None:
+        window = self._create_window()
+        try:
+            auto_checkbox: QtWidgets.QCheckBox = window.widgets[
+                constants.WIDGET_TILE_FONT_AUTO_CHECKBOX
+            ]  # type: ignore[assignment]
+            font_slider: QtWidgets.QSlider = window.widgets[
+                constants.WIDGET_TILE_FONT_SIZE_SLIDER
+            ]  # type: ignore[assignment]
+            font_value: QtWidgets.QLabel = window.widgets[
+                constants.WIDGET_TILE_FONT_SIZE_VALUE
+            ]  # type: ignore[assignment]
+            preview = window.widgets[constants.WIDGET_ICON_SIZE_LIVE_PREVIEW]
+
+            self.assertTrue(auto_checkbox.isChecked())
+            self.assertFalse(font_slider.isEnabled())
+            self.assertTrue(font_value.isEnabled())
+            self.assertTrue(font_value.text().startswith("Auto ("))
+
+            auto_checkbox.setChecked(False)
+            font_slider.setValue(22)
+            QtWidgets.QApplication.processEvents()
+
+            self.assertTrue(font_slider.isEnabled())
+            self.assertEqual("22", font_value.text())
+            self.assertEqual(22, preview._tiles[0].title_label.font().pixelSize())
+            self.assertTrue(window._settings_dirty)
+        finally:
+            config_dir = window.config_dir
+            window.close()
+            shutil.rmtree(config_dir, ignore_errors=True)
+
+    def test_disabling_tray_icon_also_disables_minimize_to_tray(self) -> None:
+        window = self._create_window()
+        try:
+            show_tray: QtWidgets.QCheckBox = window.widgets[
+                constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX
+            ]  # type: ignore[assignment]
+            minimize: QtWidgets.QCheckBox = window.widgets[
+                constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX
+            ]  # type: ignore[assignment]
+
+            self.assertTrue(show_tray.isChecked())
+            self.assertTrue(minimize.isEnabled())
+            minimize.setChecked(True)
+            show_tray.setChecked(False)
+
+            self.assertFalse(minimize.isChecked())
+            self.assertFalse(minimize.isEnabled())
+            self.assertTrue(window._settings_dirty)
         finally:
             config_dir = window.config_dir
             window.close()

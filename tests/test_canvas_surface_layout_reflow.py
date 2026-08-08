@@ -17,7 +17,12 @@ class CanvasSurfaceLayoutReflowTests(unittest.TestCase):
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     @staticmethod
-    def _tool_cell_size(icon_size: int, grid_spacing_x: int, grid_spacing_y: int) -> tuple[int, int]:
+    def _tool_cell_size(
+        icon_size: int,
+        grid_spacing_x: int,
+        grid_spacing_y: int,
+        tile_font_size: int | None = None,
+    ) -> tuple[int, int]:
         engine = CanvasLayoutEngine()
         engine.configure(
             icon_size=icon_size,
@@ -27,8 +32,71 @@ class CanvasSurfaceLayoutReflowTests(unittest.TestCase):
             section_line_thickness=constants.DEFAULT_SECTION_LINE_THICKNESS,
             section_gap=constants.DEFAULT_SECTION_PROTECTED_GAP,
             section_line_color=constants.DEFAULT_SECTION_LINE_COLOR,
+            tile_font_size=tile_font_size,
         )
         return engine.tool_cell_size()
+
+    def test_apply_layout_settings_reflows_for_manual_tile_font_size(self) -> None:
+        icon_size = constants.DEFAULT_ICON_SIZE
+        old_cell_w, _old_cell_h = self._tool_cell_size(
+            icon_size,
+            constants.DEFAULT_GRID_SPACING_X,
+            constants.DEFAULT_GRID_SPACING_Y,
+        )
+        entries = [
+            ToolboxEntry(
+                title="A",
+                kind=constants.ENTRY_KIND_TOOL,
+                path="/tmp/a",
+                x=constants.CANVAS_PADDING,
+                y=constants.CANVAS_PADDING,
+                entry_id="font-a",
+            ),
+            ToolboxEntry(
+                title="B",
+                kind=constants.ENTRY_KIND_TOOL,
+                path="/tmp/b",
+                x=constants.CANVAS_PADDING + old_cell_w,
+                y=constants.CANVAS_PADDING,
+                entry_id="font-b",
+            ),
+        ]
+        surface = CanvasSurface()
+        common = dict(
+            entries=entries,
+            icon_size=icon_size,
+            tile_frame_enabled=constants.DEFAULT_TILE_FRAME_ENABLED,
+            tile_frame_thickness=constants.DEFAULT_TILE_FRAME_THICKNESS,
+            tile_frame_color=constants.DEFAULT_TILE_FRAME_COLOR,
+            tile_highlight_color=constants.DEFAULT_TILE_HIGHLIGHT_COLOR,
+            grid_spacing_x=constants.DEFAULT_GRID_SPACING_X,
+            grid_spacing_y=constants.DEFAULT_GRID_SPACING_Y,
+            auto_compact_left=constants.DEFAULT_AUTO_COMPACT_LEFT,
+            section_font_size=constants.DEFAULT_SECTION_FONT_SIZE,
+            section_line_thickness=constants.DEFAULT_SECTION_LINE_THICKNESS,
+            section_gap=constants.DEFAULT_SECTION_PROTECTED_GAP,
+            section_line_color=constants.DEFAULT_SECTION_LINE_COLOR,
+        )
+        surface.set_entries(
+            **common,
+            icon_provider=QtWidgets.QFileIconProvider(),
+            selected_entry_ids=set(),
+            hidden_entry_ids=set(),
+            viewport_width=1200,
+        )
+
+        changed = surface.apply_layout_settings(**common, tile_font_size=24)
+        new_cell_w, _new_cell_h = self._tool_cell_size(
+            icon_size,
+            constants.DEFAULT_GRID_SPACING_X,
+            constants.DEFAULT_GRID_SPACING_Y,
+            24,
+        )
+
+        self.assertTrue(changed)
+        self.assertGreater(new_cell_w, old_cell_w)
+        self.assertEqual(constants.CANVAS_PADDING + new_cell_w, entries[1].x)
+        self.assertEqual(24, surface._widgets["font-a"].title_label.font().pixelSize())
 
     def test_apply_layout_settings_reflows_tool_grid_for_icon_size_change(self) -> None:
         old_icon_size = constants.DEFAULT_ICON_SIZE

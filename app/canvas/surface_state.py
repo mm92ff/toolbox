@@ -12,6 +12,7 @@ from PySide6 import QtCore, QtWidgets
 from app import constants
 from app.canvas.layout_engine import CanvasLayoutEngine
 from app.domain.models import ToolboxEntry
+from app.services.appimage_icons import AppImageIconService
 from app.services.folder_count import FolderCountService
 from app.ui.widgets.canvas_widgets import CanvasItemBase
 
@@ -24,6 +25,8 @@ class CanvasSurfaceStateMixin:
         self._icon_provider = QtWidgets.QFileIconProvider()
         self._layout_engine = CanvasLayoutEngine()
         self._folder_count_service = FolderCountService(self)
+        self._appimage_icon_service = AppImageIconService(self)
+        self._appimage_icon_service.result_ready.connect(self._on_appimage_icon_ready)
         self._auto_compact_left = constants.DEFAULT_AUTO_COMPACT_LEFT
         self._image_file_preview_enabled = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
         self._image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
@@ -52,6 +55,18 @@ class CanvasSurfaceStateMixin:
             return
         old_service = self._folder_count_service
         self._folder_count_service = service
+        old_service.shutdown()
+        old_service.deleteLater()
+
+    def set_appimage_icon_service(self, service: AppImageIconService) -> None:
+        """Use the window-wide bounded AppImage icon extraction service."""
+
+        if service is self._appimage_icon_service:
+            return
+        old_service = self._appimage_icon_service
+        old_service.result_ready.disconnect(self._on_appimage_icon_ready)
+        self._appimage_icon_service = service
+        service.result_ready.connect(self._on_appimage_icon_ready)
         old_service.shutdown()
         old_service.deleteLater()
 

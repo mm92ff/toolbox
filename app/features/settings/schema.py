@@ -36,7 +36,18 @@ SETTING_SPECS = (
         constants.DEFAULT_SHOW_TOOLTIPS,
         "current_show_tooltips",
     ),
-    SettingSpec("system", "minimize_to_tray", False, "current_minimize_to_tray"),
+    SettingSpec(
+        "system",
+        "show_tray_icon",
+        constants.DEFAULT_SHOW_TRAY_ICON,
+        "current_show_tray_icon",
+    ),
+    SettingSpec(
+        "system",
+        "minimize_to_tray",
+        constants.DEFAULT_MINIMIZE_TO_TRAY,
+        "current_minimize_to_tray",
+    ),
     SettingSpec(
         "system",
         "folder_single_click_browse",

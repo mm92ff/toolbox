@@ -150,12 +150,13 @@ class _PreviewTile(QtWidgets.QFrame):
         self,
         *,
         icon_size: int,
+        tile_font_size: int | None = None,
         frame_enabled: bool,
         frame_thickness: int,
         frame_color: str,
         highlight_color: str,
     ) -> None:
-        self._metrics = build_tile_metrics(icon_size)
+        self._metrics = build_tile_metrics(icon_size, tile_font_size)
         self._frame_enabled = bool(frame_enabled)
         self._frame_thickness = max(
             constants.MIN_TILE_FRAME_THICKNESS,
@@ -278,6 +279,7 @@ class IconSizeLivePreview(QtWidgets.QWidget):
         self,
         *,
         icon_size: int,
+        tile_font_size: int | None = None,
         frame_enabled: bool,
         frame_thickness: int,
         frame_color: str,
@@ -298,6 +300,7 @@ class IconSizeLivePreview(QtWidgets.QWidget):
         for tile in self._tiles:
             tile.apply_style(
                 icon_size=icon_size,
+                tile_font_size=tile_font_size,
                 frame_enabled=frame_enabled,
                 frame_thickness=frame_thickness,
                 frame_color=frame_color,

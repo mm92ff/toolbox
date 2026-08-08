@@ -48,6 +48,24 @@ def load_settings(owner: object) -> None:
         settings.value("layout/icon_size", constants.DEFAULT_ICON_SIZE, type=int),
     )
     owner._set_slider_value(
+        constants.WIDGET_TILE_FONT_SIZE_SLIDER,
+        settings.value(
+            "layout/tile_font_size",
+            constants.DEFAULT_TILE_FONT_SIZE,
+            type=int,
+        ),
+    )
+    tile_font_auto = owner.widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX]
+    tile_font_auto.blockSignals(True)
+    tile_font_auto.setChecked(
+        settings.value(
+            "layout/tile_font_auto",
+            constants.DEFAULT_TILE_FONT_AUTO,
+            type=bool,
+        )
+    )
+    tile_font_auto.blockSignals(False)
+    owner._set_slider_value(
         constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER,
         settings.value("layout/tile_frame_thickness", constants.DEFAULT_TILE_FRAME_THICKNESS, type=int),
     )
@@ -122,7 +140,18 @@ def load_settings(owner: object) -> None:
     )
     video_preview_checkbox.blockSignals(False)
 
-    minimize_tray_checkbox = owner.widgets.get("minimize_to_tray_checkbox")
+    show_tray_icon_checkbox = owner.widgets.get(constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX)
+    if show_tray_icon_checkbox:
+        spec = SETTING_SPEC_BY_NAME["show_tray_icon"]
+        show_tray_icon_checkbox.blockSignals(True)
+        show_tray_icon_checkbox.setChecked(
+            settings.value(spec.qsettings_key, spec.default, type=bool)
+        )
+        show_tray_icon_checkbox.blockSignals(False)
+
+    minimize_tray_checkbox = owner.widgets.get(
+        constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX
+    )
     if minimize_tray_checkbox:
         spec = SETTING_SPEC_BY_NAME["minimize_to_tray"]
         minimize_tray_checkbox.blockSignals(True)
@@ -130,6 +159,7 @@ def load_settings(owner: object) -> None:
             settings.value(spec.qsettings_key, spec.default, type=bool)
         )
         minimize_tray_checkbox.blockSignals(False)
+    owner._update_tray_settings_controls_enabled()
 
     folder_click_cb = owner.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
     if folder_click_cb:
@@ -279,6 +309,7 @@ def load_settings(owner: object) -> None:
     launch_mode_combobox.blockSignals(False)
 
     owner._update_settings_value_labels()
+    owner._update_tile_font_controls_enabled()
     owner._update_tile_style_controls_enabled()
     owner._update_tile_color_previews()
     owner._update_section_color_preview()
