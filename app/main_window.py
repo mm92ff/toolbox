@@ -17,6 +17,8 @@ from app.features.entries.controller import MainWindowEntriesMixin
 from app.features.settings.controller import MainWindowSettingsMixin
 from app.features.tabs.controller import MainWindowTabsMixin
 from app.services.desktop_entry_launch import DesktopProcessManager
+from app.services.folder_count import FolderCountService
+from app.services.size_calculator import TabSizeCalculationService
 from app.services.system_utils import get_config_directory
 from app.ui.layouts import UIBuilder
 
@@ -75,6 +77,19 @@ class MainWindow(
         self._undo_suspended = False
         self._undo_max_steps = 50
         self._minimize_to_tray = False
+        self._force_quit = False
+        self.tray_icon: QtWidgets.QSystemTrayIcon | None = None
+        self._closing = False
+        self._shutdown_complete = False
+        self._pending_size_request: tuple[str, tuple[str, ...]] | None = None
+        self._last_size_signatures: dict[str, tuple[str, ...]] = {}
+        self._size_service = TabSizeCalculationService(self)
+        self._size_service.result_ready.connect(self._on_tab_size_calculated)
+        self._folder_count_service = FolderCountService(self, max_workers=2)
+        self._size_recalc_timer = QtCore.QTimer(self)
+        self._size_recalc_timer.setSingleShot(True)
+        self._size_recalc_timer.setInterval(180)
+        self._size_recalc_timer.timeout.connect(self._start_pending_tab_size_calculation)
         self._initialize_applied_settings_defaults()
 
         self.status = self.statusBar()
@@ -88,36 +103,56 @@ class MainWindow(
         self.refresh_all_canvases()
         self._initialize_undo_history()
         self._settings_ready = True
-        
+
         ctx = self.current_toolbox_context()
         if ctx is not None:
-            self._recalculate_active_tab_size(ctx)
+            self._schedule_active_tab_size(ctx, force=True)
 
     def _update_window_minimum_width(self, ctx: ToolboxTabContext) -> None:
-        grid_width = ctx.config.grid.columns * ctx.config.appearance.icon_size
-        padding = 100
-        min_width = grid_width + padding
-        
-        current_min = self.minimumWidth()
-        if min_width > current_min:
-            self.setMinimumWidth(min_width)
+        del ctx
+        self.setMinimumWidth(self.minimumSizeHint().width())
+
+    def _schedule_active_tab_size(self, ctx: ToolboxTabContext, force: bool = False) -> None:
+        if self._closing:
+            return
+        paths = tuple(sorted(entry.path for entry in ctx.entries if entry.is_tool and entry.path))
+        if not force and self._last_size_signatures.get(ctx.tab_id) == paths:
+            return
+        self._pending_size_request = (ctx.tab_id, paths)
+        self.tab_size_label.setText("Berechne Tab-Größe...")
+        self._size_recalc_timer.start()
 
     def _recalculate_active_tab_size(self, ctx: ToolboxTabContext) -> None:
-        if hasattr(self, '_size_worker') and self._size_worker.isRunning():
-            self._size_worker.cancel()
-            self._size_worker.wait()
-            
-        self.tab_size_label.setText("Berechne Tab-Größe...")
-        
-        from app.services.size_calculator import SizeCalculationWorker
-        self._size_worker = SizeCalculationWorker(ctx.entries, self)
-        self._size_worker.finished_calculation.connect(self._on_tab_size_calculated)
-        self._size_worker.start()
-        
-    def _on_tab_size_calculated(self, result: str) -> None:
-        self.tab_size_label.setText(f"Gesamtgröße: {result}")
+        self._schedule_active_tab_size(ctx, force=True)
+
+    def _start_pending_tab_size_calculation(self) -> None:
+        request = self._pending_size_request
+        self._pending_size_request = None
+        if self._closing or request is None:
+            return
+        tab_id, paths = request
+        self._last_size_signatures[tab_id] = paths
+        self._size_service.request(tab_id, paths)
+
+    def _on_tab_size_calculated(self, tab_id: str, result: str) -> None:
+        ctx = self.current_toolbox_context()
+        if not self._closing and ctx is not None and ctx.tab_id == tab_id:
+            self.tab_size_label.setText(f"Gesamtgröße: {result}")
 
     def _persist_on_quit(self) -> None:
+        self._begin_shutdown()
+
+    def _begin_shutdown(self) -> None:
+        if self._shutdown_complete:
+            return
+        self._shutdown_complete = True
+        self._closing = True
+        self._size_recalc_timer.stop()
+        self._size_service.shutdown()
+        ffmpeg_task = getattr(self, "_ffmpeg_download_task", None)
+        if ffmpeg_task is not None:
+            ffmpeg_task.cancel()
+        self._folder_count_service.shutdown()
         self.desktop_process_manager.shutdown()
         self._shutdown_broken_entries_scan_worker()
         self.persist_toolbox_state()
@@ -161,9 +196,9 @@ class MainWindow(
     def _setup_system_tray(self) -> None:
         if not QtWidgets.QSystemTrayIcon.isSystemTrayAvailable():
             return
-            
+
         self.tray_icon = QtWidgets.QSystemTrayIcon(self)
-        
+
         tray_icon_path = None
         # Try to find one_tray.png next to the main icon
         app_icon_candidate = getattr(sys, "_MEIPASS", None)
@@ -175,7 +210,7 @@ class MainWindow(
             candidate = Path(__file__).resolve().parent / "assets" / "one_tray.png"
             if candidate.is_file():
                 tray_icon_path = candidate
-                
+
         if tray_icon_path:
             self.tray_icon.setIcon(QtGui.QIcon(str(tray_icon_path)))
         else:
@@ -185,46 +220,50 @@ class MainWindow(
             else:
                 icon = QtGui.QIcon.fromTheme("applications-system", self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DesktopIcon))
                 self.tray_icon.setIcon(icon)
-        
+
         tray_menu = QtWidgets.QMenu(self)
-        
+
         show_action = tray_menu.addAction("Toolbox anzeigen")
-        show_action.triggered.connect(self.showNormal)
-        show_action.triggered.connect(self.activateWindow)
-        
+        show_action.triggered.connect(self._show_from_tray)
+
         tray_menu.addSeparator()
-        
+
         quit_action = tray_menu.addAction("Beenden")
-        quit_action.triggered.connect(QtWidgets.QApplication.quit)
-        
+        quit_action.triggered.connect(self._quit_from_tray)
+
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.activated.connect(self._on_tray_activated)
-        self.tray_icon.show()
-        
+        self.tray_icon.hide()
+
+    def _sync_tray_state(self) -> None:
+        app = QtWidgets.QApplication.instance()
+        tray_enabled = bool(
+            self._minimize_to_tray
+            and self.tray_icon is not None
+            and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable()
+        )
+        if self.tray_icon is not None:
+            self.tray_icon.setVisible(tray_enabled)
+        if app is not None:
+            app.setQuitOnLastWindowClosed(not tray_enabled)
+
+    def _show_from_tray(self) -> None:
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def _quit_from_tray(self) -> None:
+        self._force_quit = True
         app = QtWidgets.QApplication.instance()
         if app is not None:
-            app.setQuitOnLastWindowClosed(False)
+            app.quit()
 
     def _on_tray_activated(self, reason: QtWidgets.QSystemTrayIcon.ActivationReason) -> None:
         if reason == QtWidgets.QSystemTrayIcon.ActivationReason.Trigger:
             if self.isVisible():
                 self.hide()
             else:
-                self.showNormal()
-                self.activateWindow()
-
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        if self._minimize_to_tray and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable():
-            event.ignore()
-            self.hide()
-            self.tray_icon.showMessage(
-                "Toolbox läuft im Hintergrund",
-                "Die Toolbox wurde in den Tray minimiert.",
-                QtWidgets.QSystemTrayIcon.MessageIcon.Information,
-                2000
-            )
-        else:
-            super().closeEvent(event)
+                self._show_from_tray()
 
     def _connect_settings_widgets(self) -> None:
         for widget_name in (
@@ -252,6 +291,8 @@ class MainWindow(
         video_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
         hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
         hover_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
+        show_tooltips_checkbox = self.widgets[constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX]
+        show_tooltips_checkbox.toggled.connect(self._on_layout_settings_changed)
         ffmpeg_manual_path_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
         ffmpeg_manual_path_input.editingFinished.connect(self._on_ffmpeg_manual_path_changed)
         ffmpeg_manual_path_button = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_BUTTON]
@@ -387,6 +428,20 @@ class MainWindow(
         if folder_file_count_cb is not None:
             folder_file_count_cb.toggled.connect(self._on_layout_settings_changed)
 
+        file_assoc_system_cb = self.widgets.get(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
+        if file_assoc_system_cb is not None:
+            file_assoc_system_cb.toggled.connect(self._on_system_settings_changed)
+        for widget_name in (
+            constants.WIDGET_FILE_ASSOC_AUDIO_INPUT,
+            constants.WIDGET_FILE_ASSOC_VIDEO_INPUT,
+            constants.WIDGET_FILE_ASSOC_IMAGE_INPUT,
+            constants.WIDGET_FILE_ASSOC_PDF_INPUT,
+            constants.WIDGET_FILE_ASSOC_DOCUMENT_INPUT,
+        ):
+            association_input = self.widgets.get(widget_name)
+            if association_input is not None:
+                association_input.textChanged.connect(self._on_system_settings_changed)
+
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         ctx = self._drop_widget_map.get(watched)
@@ -463,14 +518,24 @@ class MainWindow(
             
         self._last_tab_index = index
 
-    def persist_toolbox_state(self) -> None:
-        super().persist_toolbox_state()
-        ctx = self.current_toolbox_context()
-        if ctx is not None:
-            self._recalculate_active_tab_size(ctx)
-
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self._shutdown_broken_entries_scan_worker()
-        self.persist_toolbox_state()
-        self._save_settings()
+        tray_enabled = bool(
+            not self._force_quit
+            and self._minimize_to_tray
+            and self.tray_icon is not None
+            and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable()
+        )
+        if tray_enabled:
+            event.ignore()
+            self.persist_toolbox_state()
+            self._save_settings()
+            self.hide()
+            self.tray_icon.showMessage(
+                "Toolbox läuft im Hintergrund",
+                "Die Toolbox wurde in den Tray minimiert.",
+                QtWidgets.QSystemTrayIcon.MessageIcon.Information,
+                2000,
+            )
+            return
+        self._begin_shutdown()
         super().closeEvent(event)

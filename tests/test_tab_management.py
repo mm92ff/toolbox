@@ -3,6 +3,7 @@ import shutil
 import unittest
 import uuid
 import weakref
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -84,6 +85,35 @@ class TabManagementTests(unittest.TestCase):
             stored = load_toolbox_tabs(window.config_dir)
             self.assertEqual(initial_count + 1, len(stored))
             self.assertEqual(created.tab_id, stored[-1].tab_id)
+        finally:
+            config_dir = window.config_dir
+            window.close()
+            shutil.rmtree(config_dir, ignore_errors=True)
+
+    def test_all_tabs_share_one_bounded_folder_service(self) -> None:
+        window = self._create_window()
+        try:
+            ctx = window._create_toolbox_tab("Temporary", entries=[], is_primary=False)
+
+            self.assertIs(
+                window.toolbox_tabs[0].canvas.surface._folder_count_service,
+                window._folder_count_service,
+            )
+            self.assertIs(
+                ctx.canvas.surface._folder_count_service,
+                window._folder_count_service,
+            )
+            self.assertEqual(2, window._folder_count_service.max_workers)
+
+            with patch.object(
+                QtWidgets.QMessageBox,
+                "question",
+                return_value=QtWidgets.QMessageBox.StandardButton.Yes,
+            ):
+                window._delete_toolbox_tab(ctx)
+
+            self.assertNotIn(ctx, window.toolbox_tabs)
+            self.assertTrue(window._folder_count_service._accept_results)
         finally:
             config_dir = window.config_dir
             window.close()

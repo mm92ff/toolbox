@@ -38,11 +38,15 @@ REQUIRED_BACKUP_FILES=(
   "packaging/linux/AppRun"
   "packaging/linux/toolbox.desktop"
   "packaging/linux/io.github.toolbox.Toolbox.appdata.xml"
+  "packaging/linux/ffmpeg-archive-x86_64.sha256"
+  "packaging/linux/ffmpeg-x86_64.sha256"
   "scripts/build-appimage.sh"
   "scripts/create_code_backup.sh"
   "scripts/verify-linux-release.sh"
   "app/constants.py"
+  "app/application_controller.py"
   "app/main_window.py"
+  "app/services/folder_count.py"
   "app/services/desktop_entries.py"
   "app/services/desktop_entry_launch.py"
   "tests/test_appimage_packaging.py"
@@ -52,8 +56,6 @@ REQUIRED_BACKUP_FILES=(
 OPTIONAL_BACKUP_FILES=(
   "_pyinstaller_venv_spec_v3.3_debug_fixed.bat"
   "start-toolbox.bat"
-  "thirdparty/ffmpeg"
-  "thirdparty/ffprobe"
 )
 
 mkdir -p "${LOG_DIR}"
@@ -251,6 +253,8 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
     '-xr!dist' \
     '-xr!dist-appimage' \
     '-xr!Toolbox.AppDir' \
+    '-xr!thirdparty' \
+    '-xr!.bin' \
     '-xr!*.egg-info' \
     '-xr!node_modules' \
     '-xr!.toolbox-backup-tmp-*' \
@@ -304,6 +308,8 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
       -name 'dist' -o \
       -name 'dist-appimage' -o \
       -name 'Toolbox.AppDir' \
+      -o -name 'thirdparty' \
+      -o -name '.bin' \
     \) -print -quit | grep -q .; then
     printf 'Probe-Restore enthaelt einen ausgeschlossenen Build- oder Cacheordner.\n'
     exit 1

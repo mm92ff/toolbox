@@ -36,3 +36,4 @@ class ToolboxTabContext:
     # Browse state (not persisted)
     browse_stack: list[Path] = field(default_factory=list)  # stack of visited paths
     breadcrumb_bar: Optional[QtWidgets.QWidget] = field(default=None)  # injected after construction
+    _browse_display_entries: list[ToolboxEntry] = field(default_factory=list)

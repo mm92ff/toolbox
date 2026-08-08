@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtWidgets
 
 from app.domain.models import ToolboxEntry
 

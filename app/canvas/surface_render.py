@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from app import constants
 from app.canvas.section_conflicts import (
@@ -53,6 +53,7 @@ class CanvasSurfaceRenderMixin:
         ffmpeg_manual_path: str = "",
         thumbnail_cache_dir: Path | None = None,
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
+        show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
     ) -> None:
         self.clear()
         self._entries = entries
@@ -66,6 +67,7 @@ class CanvasSurfaceRenderMixin:
         self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
         self._thumbnail_cache_dir = thumbnail_cache_dir
         self._folder_show_file_count = folder_show_file_count
+        self._show_tooltips = show_tooltips
         self._selected_entry_ids = set(selected_entry_ids)
         self._hidden_entry_ids = set(hidden_entry_ids)
 
@@ -125,6 +127,7 @@ class CanvasSurfaceRenderMixin:
         ffmpeg_manual_path: str = "",
         thumbnail_cache_dir: Path | None = None,
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
+        show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
     ) -> bool:
         self._entries = entries
         self._auto_compact_left = auto_compact_left
@@ -133,6 +136,7 @@ class CanvasSurfaceRenderMixin:
         self._preview_overlay_enabled = preview_overlay_enabled
         self._video_file_preview_enabled = video_file_preview_enabled
         self._hover_preview_enabled = hover_preview_enabled
+        self._show_tooltips = show_tooltips
         self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
         self._thumbnail_cache_dir = thumbnail_cache_dir
         self._folder_show_file_count = folder_show_file_count
@@ -161,6 +165,7 @@ class CanvasSurfaceRenderMixin:
                 widget.set_icon(self._icon_for_tool_entry(widget.entry))
                 widget.set_folder_file_count_mode(self._folder_show_file_count)
                 widget.set_icon_size(self._layout_engine.icon_size)
+                widget.set_show_tooltips(self._show_tooltips)
                 widget.set_tile_style(
                     frame_enabled=tile_frame_enabled,
                     frame_thickness=tile_frame_thickness,
@@ -168,6 +173,13 @@ class CanvasSurfaceRenderMixin:
                     highlight_color=tile_highlight_color,
                 )
             elif isinstance(widget, SectionWidget):
+                widget.set_show_tooltips(self._show_tooltips)
+                widget.set_section_style(
+                    self._layout_engine.section_font_size,
+                    self._layout_engine.section_line_thickness,
+                    self._section_line_color_for_entry(widget.entry),
+                    self._section_title_color_for_entry(widget.entry),
+                )
                 section_entry = next(
                     (
                         item
@@ -232,11 +244,18 @@ class CanvasSurfaceRenderMixin:
                        (self._video_file_preview_enabled and is_supported_video_path(entry.path))
             
             icon = self._icon_for_tool_entry(entry)
-            widget = ToolTileWidget(entry, icon, self._layout_engine.icon_size, self)
+            widget = ToolTileWidget(
+                entry,
+                icon,
+                self._layout_engine.icon_size,
+                self,
+                folder_count_service=self._folder_count_service,
+            )
             widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
-            widget.set_icon(self._icon_for_tool_entry(entry))
+            widget.set_icon(icon)
             widget.set_folder_file_count_mode(self._folder_show_file_count)
             widget.set_icon_size(self._layout_engine.icon_size)
+            widget.set_show_tooltips(self._show_tooltips)
             widget.set_tile_style(
                 frame_enabled=tile_frame_enabled,
                 frame_thickness=tile_frame_thickness,

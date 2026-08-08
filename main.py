@@ -18,9 +18,14 @@ if sys.platform == "win32":
     if getattr(sys.stderr, "buffer", None) is not None:
         sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from app import constants
+from app.application_controller import (
+    InstanceStartResult,
+    SingleInstanceController,
+    single_instance_server_name,
+)
 from app.main_window import MainWindow
 from app.services.system_utils import get_config_directory
 from app.services.linux_icon_theme import initialize_linux_icon_theme
@@ -176,17 +181,37 @@ def main() -> int:
         )
         return 1
 
-    window = MainWindow(app_name, config_dir=config_dir)
-    if icon_path is not None:
-        window.setWindowIcon(QtGui.QIcon(str(icon_path)))
-    window.show()
     smoke_test_requested = (
         "--smoke-test" in sys.argv
         or os.environ.get("TOOLBOX_SMOKE_TEST", "").strip() == "1"
     )
+    instance_controller = None
+
+    if not smoke_test_requested:
+        instance_suffix = os.environ.get("TOOLBOX_INSTANCE_KEY", "").strip()
+        instance_controller = SingleInstanceController(
+            single_instance_server_name(instance_suffix),
+            app,
+        )
+        instance_result = instance_controller.start()
+        if instance_result is InstanceStartResult.SECONDARY:
+            return 0
+        if instance_result is InstanceStartResult.FAILED:
+            return 1
+
+    window = MainWindow(app_name, config_dir=config_dir)
+    if icon_path is not None:
+        window.setWindowIcon(QtGui.QIcon(str(icon_path)))
+    window.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+
+    if instance_controller is not None:
+        instance_controller.activation_requested.connect(window._show_from_tray)
+
+    window.show()
     if smoke_test_requested:
         app.processEvents()
         _write_smoke_test_report(app, window, config_dir, icon_path)
+        window._force_quit = True
         window.close()
         app.processEvents()
         return 0

@@ -144,10 +144,12 @@ class MainWindowEntryLaunchingMixin:
         ctx = ctx or self.current_toolbox_context()
         if ctx is None or not ctx.selected_ids:
             return
+        from app.features.entries.controller_selection import entries_for_current_view
+
         first_entry = next(
             (
                 entry
-                for entry in ctx.entries
+                for entry in entries_for_current_view(ctx)
                 if entry.entry_id in ctx.selected_ids and entry.is_tool
             ),
             None,
@@ -179,14 +181,27 @@ class MainWindowEntryLaunchingMixin:
             window_style = (
                 entry.launch_window_style if sys.platform == "win32" else "normal"
             )
-            launch_path(
-                entry.path,
-                run_as_admin=run_as_admin,
-                arguments=entry.launch_arguments,
-                working_directory=entry.launch_working_directory,
-                wait=entry.launch_wait,
-                window_style=window_style,
-            )
+            from app.services.file_associations import open_with_file_associations
+            handled = False
+            if not self._entry_has_persistent_launch_options(entry):
+                handled = open_with_file_associations(
+                    entry.path,
+                    use_system=self.current_file_assoc_use_system(),
+                    audio_app=self.current_file_assoc_audio(),
+                    video_app=self.current_file_assoc_video(),
+                    image_app=self.current_file_assoc_image(),
+                    pdf_app=self.current_file_assoc_pdf(),
+                    document_app=self.current_file_assoc_document(),
+                )
+            if not handled:
+                launch_path(
+                    entry.path,
+                    run_as_admin=run_as_admin,
+                    arguments=entry.launch_arguments,
+                    working_directory=entry.launch_working_directory,
+                    wait=entry.launch_wait,
+                    window_style=window_style,
+                )
             self.status.showMessage(f"Launched: {entry.title}", 3000)
         except (FileNotFoundError, PermissionError, OSError, ValueError) as exc:
             logger.warning(

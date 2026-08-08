@@ -9,6 +9,11 @@ if [ ! -x "$APPDIR/AppRun" ]; then
     exit 1
 fi
 
+if [ -x "$APPDIR/usr/bin/ffmpeg" ] && [ -x "$APPDIR/usr/bin/ffprobe" ]; then
+    "$APPDIR/usr/bin/ffmpeg" -version >/dev/null
+    "$APPDIR/usr/bin/ffprobe" -version >/dev/null
+fi
+
 TEST_ROOT=$(mktemp -d)
 TEST_CONFIG="$TEST_ROOT/config"
 SMOKE_REPORT="$TEST_ROOT/appdir-smoke.json"

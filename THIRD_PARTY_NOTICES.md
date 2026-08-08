@@ -54,6 +54,10 @@ records the value in `build-info.txt`.
 
 - Component: `ffmpeg`, `ffprobe`
 - Upstream project: https://ffmpeg.org/
+- Bundled Linux build: `7.0.2-static` from https://johnvansickle.com/ffmpeg/
+- Verified source archive: `ffmpeg-release-amd64-static.tar.xz`
+- Source archive hash: `packaging/linux/ffmpeg-archive-x86_64.sha256`
+- Bundled binary hashes: `packaging/linux/ffmpeg-x86_64.sha256`
 - Copyright: FFmpeg developers
 - License: GNU General Public License (GPL) v3 or later (for the bundled `full_build` binaries)
 

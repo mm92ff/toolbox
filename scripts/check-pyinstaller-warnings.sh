@@ -10,7 +10,7 @@ fi
 UNEXPECTED=$(
     grep -E '^(missing|excluded) module named ' "$WARNING_FILE" \
         | grep -Ev \
-            "module named (_winapi|winreg|nt |msvcrt|vms_lib|'java\\.lang'|java |\
+            "module named (_winapi|winreg|nt |msvcrt|vms_lib|_scproxy|'java\\.lang'|java |\
 _winreg|_wmi|_frozen_importlib_external|_frozen_importlib )" \
         || true
 )

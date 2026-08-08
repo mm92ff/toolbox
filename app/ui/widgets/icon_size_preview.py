@@ -68,7 +68,7 @@ class _PreviewGridContainer(QtWidgets.QFrame):
                 return
 
             gap_brush = QtGui.QColor("#f1f5f9")
-            gap_brush.setAlpha(90)
+            gap_brush.setAlpha(0)
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.setBrush(gap_brush)
 

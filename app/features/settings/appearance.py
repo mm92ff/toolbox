@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from app import constants
 from app.services.video_thumbnails import (
@@ -176,6 +176,15 @@ class MainWindowSettingsAppearanceMixin:
         resolution = resolve_ffmpeg_path(manual_path or None)
         source_value.setText(self._ffmpeg_source_text(resolution.source))
         resolved_path_value.setText(resolution.path or "(not found)")
+        download_button = self.widgets.get("ffmpeg_download_button")
+        if download_button is not None:
+            internal_available = resolution.source == FFMPEG_SOURCE_INTERNAL
+            download_button.setText(
+                "Verified internal FFmpeg available"
+                if internal_available
+                else "Download verified FFmpeg"
+            )
+            download_button.setEnabled(not internal_available)
 
     def _on_ffmpeg_manual_path_changed(self) -> None:
         manual_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
@@ -207,35 +216,45 @@ class MainWindowSettingsAppearanceMixin:
     def _download_internal_ffmpeg(self) -> None:
         button = self.widgets["ffmpeg_download_button"]
         progress_bar = self.widgets["ffmpeg_download_progress"]
-        
+
         button.setEnabled(False)
         progress_bar.setVisible(True)
         progress_bar.setValue(0)
-        
-        from app.services.ffmpeg_downloader import FfmpegDownloadThread
-        self._ffmpeg_download_thread = FfmpegDownloadThread(self)
-        
-        def on_progress(downloaded: int, total: int):
-            if total > 0:
-                progress_bar.setMaximum(total)
-                progress_bar.setValue(downloaded)
-            elif total == -1:
-                progress_bar.setMaximum(0) # Indeterminate for extraction
-                
-        def on_success(path: str):
-            button.setEnabled(True)
-            progress_bar.setVisible(False)
-            self._rescan_ffmpeg_status()
-            
-        def on_error(err: str):
-            button.setEnabled(True)
-            progress_bar.setVisible(False)
-            QtWidgets.QMessageBox.warning(self, "Download Failed", f"Failed to download FFmpeg:\n{err}")
-            
-        self._ffmpeg_download_thread.progress.connect(on_progress)
-        self._ffmpeg_download_thread.finished_success.connect(on_success)
-        self._ffmpeg_download_thread.finished_error.connect(on_error)
-        self._ffmpeg_download_thread.start()
+
+        from app.services.ffmpeg_downloader import FfmpegDownloadTask
+
+        self._ffmpeg_download_task = FfmpegDownloadTask()
+        self._ffmpeg_download_task.signals.progress.connect(self._on_ffmpeg_download_progress)
+        self._ffmpeg_download_task.signals.finished_success.connect(
+            self._on_ffmpeg_download_success
+        )
+        self._ffmpeg_download_task.signals.finished_error.connect(
+            self._on_ffmpeg_download_error
+        )
+        QtCore.QThreadPool.globalInstance().start(self._ffmpeg_download_task)
+
+    def _on_ffmpeg_download_progress(self, downloaded: int, total: int) -> None:
+        progress_bar = self.widgets["ffmpeg_download_progress"]
+        if total > 0:
+            progress_bar.setMaximum(total)
+            progress_bar.setValue(min(downloaded, total))
+        elif total == -1:
+            progress_bar.setMaximum(0)
+
+    def _on_ffmpeg_download_success(self, _path: str) -> None:
+        self.widgets["ffmpeg_download_progress"].setVisible(False)
+        self._rescan_ffmpeg_status()
+
+    def _on_ffmpeg_download_error(self, error: str) -> None:
+        if getattr(self, "_closing", False):
+            return
+        self.widgets["ffmpeg_download_button"].setEnabled(True)
+        self.widgets["ffmpeg_download_progress"].setVisible(False)
+        QtWidgets.QMessageBox.warning(
+            self,
+            "Download Failed",
+            f"Failed to download FFmpeg:\n{error}",
+        )
 
     def _on_layout_settings_changed(self) -> None:
         self._update_settings_value_labels()

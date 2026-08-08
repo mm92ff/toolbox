@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from PySide6 import QtGui
+from PySide6 import QtGui, QtWidgets
 
 from app import constants
 
@@ -41,6 +41,7 @@ class MainWindowSettingsStateMixin:
         self._applied_video_file_preview_enabled = constants.DEFAULT_VIDEO_FILE_PREVIEW_ENABLED
         self._applied_preview_overlay_enabled = constants.DEFAULT_PREVIEW_OVERLAY_ENABLED
         self._applied_hover_preview_enabled = constants.DEFAULT_HOVER_PREVIEW_ENABLED
+        self._applied_show_tooltips = constants.DEFAULT_SHOW_TOOLTIPS
         self._applied_ffmpeg_manual_path = ""
         self._applied_icon_preview_background_color = (
             constants.DEFAULT_ICON_PREVIEW_BACKGROUND_COLOR
@@ -73,8 +74,13 @@ class MainWindowSettingsStateMixin:
         image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
         video_preview_checkbox = self.widgets[constants.WIDGET_VIDEO_FILE_PREVIEW_CHECKBOX]
         preview_overlay_checkbox = self.widgets.get(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
-        hover_preview_checkbox = self.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
-        ffmpeg_manual_path_input = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
+        hover_preview_checkbox: QtWidgets.QCheckBox = self.widgets[
+            constants.WIDGET_HOVER_PREVIEW_CHECKBOX
+        ]
+        show_tooltips_checkbox: QtWidgets.QCheckBox = self.widgets[
+            constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX
+        ]
+        ffmpeg_manual_path_input: QtWidgets.QLineEdit = self.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
         icon_preview_bg_input = self.widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT]
         frame_thickness_slider = self.widgets[constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER]
         frame_color_input = self.widgets[constants.WIDGET_TILE_FRAME_COLOR_INPUT]
@@ -113,6 +119,7 @@ class MainWindowSettingsStateMixin:
             "video_file_preview_enabled": bool(video_preview_checkbox.isChecked()),
             "preview_overlay_enabled": bool(preview_overlay_checkbox.isChecked()) if preview_overlay_checkbox else False,
             "hover_preview_enabled": bool(hover_preview_checkbox.isChecked()),
+            "show_tooltips": bool(show_tooltips_checkbox.isChecked()),
             "ffmpeg_manual_path": self._normalize_ffmpeg_manual_path(
                 ffmpeg_manual_path_input.text()
             ),
@@ -186,6 +193,9 @@ class MainWindowSettingsStateMixin:
         self._applied_hover_preview_enabled = bool(
             values.get("hover_preview_enabled", constants.DEFAULT_HOVER_PREVIEW_ENABLED)
         )
+        self._applied_show_tooltips = bool(
+            values.get("show_tooltips", constants.DEFAULT_SHOW_TOOLTIPS)
+        )
         self._applied_ffmpeg_manual_path = self._normalize_ffmpeg_manual_path(
             str(values.get("ffmpeg_manual_path", ""))
         )
@@ -255,6 +265,9 @@ class MainWindowSettingsStateMixin:
         self._applied_file_assoc_image = str(values.get("file_assoc_image", ""))
         self._applied_file_assoc_pdf = str(values.get("file_assoc_pdf", ""))
         self._applied_file_assoc_document = str(values.get("file_assoc_document", ""))
+        if hasattr(self, "_sync_tray_state"):
+            self._sync_tray_state()
+        self._applied_settings_snapshot = dict(values)
 
     def current_icon_size(self) -> int:
         return int(self._applied_icon_size)
@@ -278,7 +291,10 @@ class MainWindowSettingsStateMixin:
         return bool(self._applied_preview_overlay_enabled)
 
     def current_hover_preview_enabled(self) -> bool:
-        return bool(self._applied_hover_preview_enabled)
+        return self._applied_hover_preview_enabled
+
+    def current_show_tooltips(self) -> bool:
+        return self._applied_show_tooltips
 
     def current_tile_frame_color(self) -> str:
         return str(self._applied_tile_frame_color)
@@ -322,6 +338,9 @@ class MainWindowSettingsStateMixin:
 
     def current_tool_launch_mode(self) -> str:
         return str(self._applied_tool_launch_mode)
+
+    def current_minimize_to_tray(self) -> bool:
+        return bool(self._minimize_to_tray)
 
     def _normalize_section_line_color(self, value: str) -> str:
         color = QtGui.QColor((value or "").strip())

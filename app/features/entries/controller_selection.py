@@ -12,6 +12,12 @@ from app import constants
 from app.domain.tab_context import ToolboxTabContext
 
 
+def entries_for_current_view(ctx: ToolboxTabContext) -> list:
+    if getattr(ctx, "browse_stack", None):
+        return list(getattr(ctx, "_browse_display_entries", []))
+    return list(ctx.entries)
+
+
 def on_entry_clicked(owner: object, ctx: ToolboxTabContext, entry_id: str) -> None:
     from pathlib import Path
     modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -27,10 +33,8 @@ def on_entry_clicked(owner: object, ctx: ToolboxTabContext, entry_id: str) -> No
     if shift_pressed:
         return
 
-    # Check browse entries too (in case we're in browse mode)
-    browse_entries: list = getattr(ctx, "_browse_display_entries", [])
     entry = next(
-        (item for item in list(ctx.entries) + list(browse_entries) if item.entry_id == entry_id),
+        (item for item in entries_for_current_view(ctx) if item.entry_id == entry_id),
         None,
     )
 
@@ -77,11 +81,8 @@ def on_canvas_area_selection(
 
 def on_entry_activated(owner: object, ctx: ToolboxTabContext, entry_id: str) -> None:
     from pathlib import Path
-    # Check both persisted and browse-mode entries
-    browse_entries: list = getattr(ctx, '_browse_display_entries', [])
     entry = next(
-        (item for item in list(ctx.entries) + list(browse_entries)
-         if item.entry_id == entry_id),
+        (item for item in entries_for_current_view(ctx) if item.entry_id == entry_id),
         None,
     )
     if entry is None:
@@ -110,15 +111,19 @@ def apply_selection_only(owner: object, ctx: ToolboxTabContext) -> None:
 
 
 def update_action_buttons(ctx: ToolboxTabContext) -> None:
-    selected_entries = [entry for entry in ctx.entries if entry.entry_id in ctx.selected_ids]
+    selected_entries = [
+        entry for entry in entries_for_current_view(ctx) if entry.entry_id in ctx.selected_ids
+    ]
     has_selection = bool(selected_entries)
     has_tool = any(entry.is_tool for entry in selected_entries)
     ctx.launch_button.setEnabled(has_tool)
-    ctx.remove_button.setEnabled(has_selection)
+    ctx.remove_button.setEnabled(has_selection and not bool(ctx.browse_stack))
 
 
 def update_details(owner: object, ctx: ToolboxTabContext) -> None:
-    selected_entries = [entry for entry in ctx.entries if entry.entry_id in ctx.selected_ids]
+    selected_entries = [
+        entry for entry in entries_for_current_view(ctx) if entry.entry_id in ctx.selected_ids
+    ]
     if not selected_entries:
         ctx.details_label.setText(
             "No selection yet. Drag files or folders into the toolbox or select an entry."
@@ -127,12 +132,10 @@ def update_details(owner: object, ctx: ToolboxTabContext) -> None:
     if len(selected_entries) > 1:
         tools = sum(1 for entry in selected_entries if entry.is_tool)
         sections = len(selected_entries) - tools
+        action_hint = "Browse view is read-only." if ctx.browse_stack else "Use Remove or Delete to clear the selection."
         ctx.details_label.setText(
-            (
-                f"{len(selected_entries)} entries selected. Apps: {tools}, "
-                f"section separators: {sections}. "
-                "Use Remove or Delete to clear the selection."
-            )
+            f"{len(selected_entries)} entries selected. Apps: {tools}, "
+            f"section separators: {sections}. {action_hint}"
         )
         return
     entry = selected_entries[0]
@@ -166,12 +169,13 @@ def update_details(owner: object, ctx: ToolboxTabContext) -> None:
 
 
 def hidden_entry_ids_for_context(ctx: ToolboxTabContext) -> set[str]:
-    query = ctx.search_input.text().strip().lower()
+    query_value = ctx.search_input.text()
+    query = query_value.strip().lower() if isinstance(query_value, str) else ""
     if not query:
         return set()
     hidden_ids: set[str] = set()
-    for entry in ctx.entries:
-        haystack = entry.title.lower()
+    for entry in entries_for_current_view(ctx):
+        haystack = (entry.custom_title or entry.title).lower()
         if entry.is_tool:
             haystack += f"\n{entry.path.lower()}"
         if query not in haystack:

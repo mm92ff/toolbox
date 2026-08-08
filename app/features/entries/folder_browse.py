@@ -16,23 +16,37 @@ def _make_browse_entries(folder: Path) -> list[ToolboxEntry]:
     """Build a list of ToolboxEntry for the contents of *folder*."""
     entries: list[ToolboxEntry] = []
     try:
-        items = sorted(folder.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
-    except PermissionError:
-        return entries
+        raw_items = list(folder.iterdir())
+    except PermissionError as exc:
+        raise OSError(f"Keine Leseberechtigung für Ordner: {folder}") from exc
+    except OSError as exc:
+        raise OSError(f"Ordner kann nicht gelesen werden: {folder}: {exc}") from exc
+
+    sortable_items: list[tuple[bool, str, Path]] = []
+    for item in raw_items:
+        if item.name.startswith("."):
+            continue
+        try:
+            if item.is_symlink() and not item.exists():
+                continue
+            is_directory = item.is_dir()
+        except OSError:
+            continue
+        sortable_items.append((is_directory, item.name.lower(), item))
+    sortable_items.sort(key=lambda value: (not value[0], value[1]))
 
     x = constants.CANVAS_PADDING
     y = constants.CANVAS_PADDING
-    for item in items:
-        if item.name.startswith("."):
-            continue  # skip hidden files
+    for is_directory, _sort_name, item in sortable_items:
+        normalized_path = str(item.expanduser().resolve(strict=False))
         entries.append(
             ToolboxEntry(
-                title=item.name + ("/" if item.is_dir() else ""),
+                title=item.name + ("/" if is_directory else ""),
                 kind=constants.ENTRY_KIND_TOOL,
-                path=str(item),
+                path=normalized_path,
                 x=x,
                 y=y,
-                entry_id=str(uuid.uuid4()),
+                entry_id=uuid.uuid5(uuid.NAMESPACE_URL, normalized_path).hex,
             )
         )
         x += 1  # auto-compact will position them properly
@@ -42,7 +56,8 @@ def _make_browse_entries(folder: Path) -> list[ToolboxEntry]:
 def enter_folder_browse(owner: object, ctx: ToolboxTabContext, folder: Path) -> None:
     """Push *folder* onto the browse stack and refresh the canvas with its contents."""
     ctx.browse_stack.append(folder)
-    _refresh_browse_view(owner, ctx)
+    if not _refresh_browse_view(owner, ctx):
+        ctx.browse_stack.pop()
 
 
 def exit_folder_browse(owner: object, ctx: ToolboxTabContext) -> None:
@@ -50,24 +65,33 @@ def exit_folder_browse(owner: object, ctx: ToolboxTabContext) -> None:
     if ctx.browse_stack:
         ctx.browse_stack.pop()
     if ctx.browse_stack:
-        _refresh_browse_view(owner, ctx)
+        if not _refresh_browse_view(owner, ctx):
+            ctx.browse_stack.clear()
+            ctx._browse_display_entries = []
+            _update_breadcrumb(ctx, visible=False)
+            owner.refresh_canvas(ctx)
     else:
         # Back to normal
-        ctx._browse_display_entries = []  # type: ignore[attr-defined]
+        ctx._browse_display_entries = []
         _update_breadcrumb(ctx, visible=False)
         owner.refresh_canvas(ctx)
 
 
-def _refresh_browse_view(owner: object, ctx: ToolboxTabContext) -> None:
+def _refresh_browse_view(owner: object, ctx: ToolboxTabContext) -> bool:
     """Re-render the canvas with the top-of-stack folder contents."""
     folder = ctx.browse_stack[-1]
-    browse_entries = _make_browse_entries(folder)
-    ctx._browse_display_entries = browse_entries  # type: ignore[attr-defined]
+    try:
+        browse_entries = _make_browse_entries(folder)
+    except OSError as exc:
+        owner.status.showMessage(str(exc), 5000)
+        return False
+    previous_selection = set(ctx.selected_ids)
+    ctx._browse_display_entries = browse_entries
     _update_breadcrumb(ctx, visible=True, path=folder)
 
-    # Render the browse entries on the canvas (read-only, no persist)
     from app.features.entries.controller_selection import hidden_entry_ids_for_context
-    ctx.selected_ids.clear()
+    visible_ids = {entry.entry_id for entry in browse_entries}
+    ctx.selected_ids = previous_selection & visible_ids
     ctx.canvas.set_entries(
         browse_entries,
         owner.icon_provider,
@@ -84,7 +108,7 @@ def _refresh_browse_view(owner: object, ctx: ToolboxTabContext) -> None:
         owner.current_section_gap(),
         owner.current_section_line_color(),
         ctx.selected_ids,
-        set(),  # no hidden entries in browse mode
+        hidden_entry_ids_for_context(ctx),
         section_gap_above=owner.current_section_gap_above(),
         section_gap_below=owner.current_section_gap_below(),
         image_file_preview_enabled=owner.current_image_file_preview_enabled(),
@@ -93,7 +117,12 @@ def _refresh_browse_view(owner: object, ctx: ToolboxTabContext) -> None:
         video_file_preview_enabled=owner.current_video_file_preview_enabled(),
         hover_preview_enabled=owner.current_hover_preview_enabled(),
         ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
+        folder_show_file_count=owner.current_folder_show_file_count(),
+        show_tooltips=owner.current_show_tooltips(),
     )
+    owner._update_details(ctx)
+    owner._update_action_buttons(ctx)
+    return True
 
 
 def _update_breadcrumb(ctx: ToolboxTabContext, visible: bool, path: Path | None = None) -> None:

@@ -1,10 +1,10 @@
-import pytest
 from PySide6 import QtCore, QtGui, QtWidgets
-from app.ui.widgets.canvas_widgets import ToolTileWidget
+
 from app.domain.models import ToolboxEntry
+from app.ui.widgets.canvas_widgets import ToolTileWidget
 
 def test_tool_tile_widget_overlay_mode():
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     entry = ToolboxEntry(entry_id="test", title="Test App", path="/tmp/test")
     # create a dummy icon
     pixmap = QtGui.QPixmap(64, 64)

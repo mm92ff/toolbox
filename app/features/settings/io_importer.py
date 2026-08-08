@@ -7,6 +7,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from app import constants
+from app.features.settings.schema import import_schema_settings
 
 
 def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) -> None:
@@ -198,36 +199,7 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
             str(layout_settings.get("section_line_color", constants.DEFAULT_SECTION_LINE_COLOR)),
         )
 
-    interaction_settings = ui_settings.get("interaction")
-    if isinstance(interaction_settings, dict):
-        settings.setValue(
-            "interaction/tool_launch_mode",
-            owner._normalize_tool_launch_mode(
-                str(
-                    interaction_settings.get(
-                        "tool_launch_mode",
-                        constants.DEFAULT_LAUNCH_CLICK_MODE,
-                    )
-                )
-            ),
-        )
-
-    system_settings = ui_settings.get("system")
-    if isinstance(system_settings, dict):
-        settings.setValue(
-            "system/minimize_to_tray",
-            bool(system_settings.get("minimize_to_tray", False)),
-        )
-        settings.setValue(
-            "system/folder_single_click_browse",
-            bool(system_settings.get("folder_single_click_browse", constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)),
-        )
-        settings.setValue("system/file_assoc_use_system", bool(system_settings.get("file_assoc_use_system", constants.DEFAULT_FILE_ASSOC_USE_SYSTEM)))
-        settings.setValue("system/file_assoc_audio", str(system_settings.get("file_assoc_audio", "")))
-        settings.setValue("system/file_assoc_video", str(system_settings.get("file_assoc_video", "")))
-        settings.setValue("system/file_assoc_image", str(system_settings.get("file_assoc_image", "")))
-        settings.setValue("system/file_assoc_pdf", str(system_settings.get("file_assoc_pdf", "")))
-        settings.setValue("system/file_assoc_document", str(system_settings.get("file_assoc_document", "")))
+    import_schema_settings(settings, owner, ui_settings)
 
     splitter_sizes = ui_settings.get("toolbox_splitter_sizes")
     if isinstance(splitter_sizes, dict):

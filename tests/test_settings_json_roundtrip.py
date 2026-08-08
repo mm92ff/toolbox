@@ -130,6 +130,9 @@ class _SnapshotOwner:
     def current_tool_launch_mode(self) -> str:
         return constants.LAUNCH_CLICK_MODE_SINGLE
 
+    def current_show_tooltips(self) -> bool:
+        return True
+
     def current_file_assoc_use_system(self) -> bool:
         return True
 
@@ -152,6 +155,9 @@ class _SnapshotOwner:
         return False
 
     def current_folder_show_file_count(self) -> bool:
+        return False
+
+    def current_minimize_to_tray(self) -> bool:
         return False
 
 
@@ -299,7 +305,10 @@ def test_build_ui_settings_snapshot_contains_all_layout_and_interaction_fields()
         "section_gap",
         "section_line_color",
     }
-    assert snapshot["interaction"] == {"tool_launch_mode": constants.LAUNCH_CLICK_MODE_SINGLE}
+    assert snapshot["interaction"] == {
+        "tool_launch_mode": constants.LAUNCH_CLICK_MODE_SINGLE,
+        "show_tooltips": True,
+    }
     system = snapshot["system"]
     assert system["minimize_to_tray"] is False
     assert system["file_assoc_use_system"] is True
@@ -345,10 +354,12 @@ def test_apply_imported_ui_settings_roundtrip_restores_all_keys(monkeypatch) -> 
     assert settings_store.values["layout/section_gap"] == 8
     assert settings_store.values["layout/section_line_color"] == "#444a57"
     assert settings_store.values["interaction/tool_launch_mode"] == constants.LAUNCH_CLICK_MODE_SINGLE
+    assert settings_store.values["interaction/show_tooltips"] is True
     assert settings_store.values["system/file_assoc_use_system"] is True
     assert settings_store.values["system/file_assoc_audio"] == ""
     assert settings_store.values["system/file_assoc_pdf"] == ""
     assert settings_store.values["system/folder_single_click_browse"] is False
+    assert settings_store.values["system/folder_show_file_count"] is False
     assert settings_store.values["toolbox/tab_a/splitter_sizes"] == [220, 640, 150]
     assert settings_store.values["toolbox/tab_b/splitter_sizes"] == [500]
 

@@ -11,7 +11,15 @@ from app import constants
 
 class MainWindowSettingsApplyMixin:
     def _mark_settings_dirty(self) -> None:
-        self._settings_dirty = True
+        applied = getattr(self, "_applied_settings_snapshot", None)
+        values_dirty = True
+        if isinstance(applied, dict):
+            values_dirty = self._capture_pending_settings_from_widgets() != applied
+        tabs_dirty = bool(
+            hasattr(self, "_tab_manager_state_differs_from_runtime")
+            and self._tab_manager_state_differs_from_runtime()
+        )
+        self._settings_dirty = values_dirty or tabs_dirty
         self._update_apply_settings_button_state()
 
     def _clear_settings_dirty(self) -> None:

@@ -53,10 +53,17 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
         hover_preview_enabled=owner.current_hover_preview_enabled(),
         ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
         folder_show_file_count=owner.current_folder_show_file_count(),
+        show_tooltips=owner.current_show_tooltips(),
     )
     update_details(owner, ctx)
     update_action_buttons(ctx)
     update_window_minimum_width(owner, ctx)
+    if (
+        getattr(owner, "_settings_ready", False)
+        and owner.current_toolbox_context() is ctx
+        and hasattr(owner, "_schedule_active_tab_size")
+    ):
+        owner._schedule_active_tab_size(ctx)
 
 
 def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None:
@@ -86,6 +93,7 @@ def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None
                 hover_preview_enabled=owner.current_hover_preview_enabled(),
                 ffmpeg_manual_path=owner.current_ffmpeg_manual_path(),
                 folder_show_file_count=owner.current_folder_show_file_count(),
+                show_tooltips=owner.current_show_tooltips(),
             )
             if reflow_changed:
                 layout_reflow_changed_entries = True

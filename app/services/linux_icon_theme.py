@@ -5,16 +5,12 @@
 from __future__ import annotations
 
 from functools import lru_cache
-import hashlib
 import logging
 import os
 from pathlib import Path
 import shutil
-import signal
 import subprocess
 import sys
-import tempfile
-import time
 from typing import Mapping
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -198,52 +194,39 @@ def _declared_desktop_icon(
     return QtGui.QIcon()
 
 
-def _extract_appimage_icon(path: Path) -> str:
-    """Extract .DirIcon from an AppImage and cache it using FUSE mount."""
-    cache_dir = Path.home() / ".cache" / "toolbox" / "appimage_icons"
-    cache_dir.mkdir(parents=True, exist_ok=True)
+_SIDECAR_SUFFIXES = (".png", ".svg", ".svgz", ".ico", ".jpg", ".jpeg", ".xpm")
 
-    hash_name = hashlib.md5(str(path.absolute()).encode("utf-8")).hexdigest() + ".png"
-    cached_icon = cache_dir / hash_name
 
+@lru_cache(maxsize=1024)
+def _sidecar_icon_path(
+    path_text: str,
+    target_mtime_ns: int,
+    target_size: int,
+    parent_mtime_ns: int,
+) -> str:
+    """Return a passive sidecar image path, caching misses until metadata changes."""
+
+    del target_mtime_ns, target_size, parent_mtime_ns
+    path = Path(path_text)
+    expected_names = {
+        f"{path.name}{suffix}".casefold() for suffix in _SIDECAR_SUFFIXES
+    }
+    expected_names.update(
+        f"{path.stem}{suffix}".casefold() for suffix in _SIDECAR_SUFFIXES
+    )
     try:
-        if cached_icon.exists() and cached_icon.stat().st_mtime > path.stat().st_mtime:
-            return str(cached_icon)
-    except OSError:
-        pass
-
-    try:
-        proc = subprocess.Popen(
-            [str(path), "--appimage-mount"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        )
-        mount_dir = None
-        for _ in range(20):
-            time.sleep(0.05)
-            proc.poll()
-            if proc.stdout:
-                line = proc.stdout.readline().strip()
-                if line:
-                    mount_dir = line
-                    break
-        
-        if mount_dir:
-            dir_icon = Path(mount_dir) / ".DirIcon"
-            if dir_icon.exists():
-                shutil.copy2(dir_icon.resolve(), cached_icon)
-                os.kill(proc.pid, signal.SIGINT)
-                proc.wait(timeout=1)
-                return str(cached_icon)
-            
-            os.kill(proc.pid, signal.SIGINT)
-            proc.wait(timeout=1)
-        else:
-            proc.kill()
-    except Exception:
-        pass
-
+        candidates = sorted(path.parent.iterdir(), key=lambda item: item.name.casefold())
+    except OSError as exc:
+        logger.debug("Could not inspect sidecar icons beside '%s': %s", path.name, exc)
+        return ""
+    for candidate in candidates:
+        if candidate.name.casefold() not in expected_names:
+            continue
+        try:
+            if candidate.is_file():
+                return str(candidate)
+        except OSError as exc:
+            logger.debug("Could not inspect sidecar icon '%s': %s", candidate.name, exc)
     return ""
 
 
@@ -266,25 +249,33 @@ def desktop_icon_for_path(
             )
             if not icon.isNull():
                 return icon
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.debug("Could not inspect desktop icon metadata for '%s': %s", path.name, exc)
 
-    # Neu: Suche nach einem Bild mit demselben Namen im gleichen Verzeichnis
-    for ext in (".png", ".svg", ".ico", ".jpg"):
-        # Prüfe Name + Endung (z.B. appimage.png)
-        candidate1 = path.with_name(path.name + ext)
-        if candidate1.is_file():
-            return QtGui.QIcon(str(candidate1))
-        # Prüfe ersetzte Endung, falls vorhanden (z.B. app.bin -> app.png)
-        candidate2 = path.with_suffix(ext)
-        if candidate2.is_file() and candidate2 != path:
-            return QtGui.QIcon(str(candidate2))
-
-    # Versuch: AppImage Icon automatisch extrahieren (bei ausführbaren Dateien)
-    if os.access(path, os.X_OK) and not path.is_dir():
-        extracted = _extract_appimage_icon(path)
-        if extracted:
-            return QtGui.QIcon(extracted)
+    # Sidecar icons are passive data and therefore safe to inspect. Never run the
+    # target itself merely to obtain metadata: arbitrary executable files are
+    # valid toolbox entries and may have side effects even with unknown options.
+    try:
+        target_stat = path.stat()
+        target_mtime_ns = target_stat.st_mtime_ns
+        target_size = target_stat.st_size
+    except OSError:
+        target_mtime_ns = -1
+        target_size = -1
+    try:
+        parent_mtime_ns = path.parent.stat().st_mtime_ns
+    except OSError:
+        parent_mtime_ns = -1
+    sidecar_path = _sidecar_icon_path(
+        str(path.resolve(strict=False)),
+        target_mtime_ns,
+        target_size,
+        parent_mtime_ns,
+    )
+    if sidecar_path:
+        sidecar_icon = QtGui.QIcon(sidecar_path)
+        if not sidecar_icon.isNull():
+            return sidecar_icon
 
     icon = icon_provider.icon(QtCore.QFileInfo(str(path)))
     if not icon.isNull():
@@ -296,3 +287,4 @@ def clear_linux_icon_cache() -> None:
     """Clear resolved desktop icons after file or theme changes."""
 
     _declared_desktop_icon.cache_clear()
+    _sidecar_icon_path.cache_clear()

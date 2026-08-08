@@ -7,6 +7,8 @@ APPIMAGETOOL_BIN=${APPIMAGETOOL:-}
 VERSION=${TOOLBOX_VERSION:-}
 ARCHITECTURE=${ARCH:-x86_64}
 PINNED_APPIMAGETOOL_HASH_FILE="$PROJECT_ROOT/packaging/linux/appimagetool-x86_64.sha256"
+PINNED_FFMPEG_HASH_FILE="$PROJECT_ROOT/packaging/linux/ffmpeg-x86_64.sha256"
+PINNED_FFMPEG_ARCHIVE_HASH_FILE="$PROJECT_ROOT/packaging/linux/ffmpeg-archive-x86_64.sha256"
 SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-}
 PYTHONHASHSEED=${PYTHONHASHSEED:-0}
 
@@ -200,24 +202,42 @@ ln -s \
     "$APPDIR/io.github.toolbox.Toolbox.desktop"
 ln -s usr/share/icons/hicolor/1024x1024/apps/toolbox.png "$APPDIR/toolbox.png"
 
-# Download or bundle static FFmpeg
-if [ -x "$PROJECT_ROOT/thirdparty/ffmpeg" ] && [ -x "$PROJECT_ROOT/thirdparty/ffprobe" ]; then
-    echo "Using pre-downloaded static FFmpeg from thirdparty/ folder..."
-    cp "$PROJECT_ROOT/thirdparty/ffmpeg" "$APPDIR/usr/bin/ffmpeg"
-    cp "$PROJECT_ROOT/thirdparty/ffprobe" "$APPDIR/usr/bin/ffprobe"
-elif [ -x "$PROJECT_ROOT/.bin/ffmpeg" ] && [ -x "$PROJECT_ROOT/.bin/ffprobe" ]; then
-    echo "Using pre-downloaded static FFmpeg from .bin/ folder..."
-    cp "$PROJECT_ROOT/.bin/ffmpeg" "$APPDIR/usr/bin/ffmpeg"
-    cp "$PROJECT_ROOT/.bin/ffprobe" "$APPDIR/usr/bin/ffprobe"
-else
-    echo "Downloading static FFmpeg..."
-    if command -v curl >/dev/null 2>&1; then
-        curl -sSL "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+# Bundle only locally supplied, pinned FFmpeg binaries. Network downloads are
+# deliberately excluded from the release build so identical inputs stay reproducible.
+FFMPEG_SOURCE=${TOOLBOX_FFMPEG_BINARY:-}
+FFPROBE_SOURCE=${TOOLBOX_FFPROBE_BINARY:-}
+if [ -z "$FFMPEG_SOURCE" ] || [ -z "$FFPROBE_SOURCE" ]; then
+    if [ -x "$PROJECT_ROOT/thirdparty/ffmpeg" ] && [ -x "$PROJECT_ROOT/thirdparty/ffprobe" ]; then
+        FFMPEG_SOURCE="$PROJECT_ROOT/thirdparty/ffmpeg"
+        FFPROBE_SOURCE="$PROJECT_ROOT/thirdparty/ffprobe"
+    elif [ -x "$PROJECT_ROOT/.bin/ffmpeg" ] && [ -x "$PROJECT_ROOT/.bin/ffprobe" ]; then
+        FFMPEG_SOURCE="$PROJECT_ROOT/.bin/ffmpeg"
+        FFPROBE_SOURCE="$PROJECT_ROOT/.bin/ffprobe"
     else
-        wget -qO- "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" | tar -xJ -C "$APPDIR/usr/bin" --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"
+        echo "ERROR: Verified FFmpeg/FFprobe inputs are required for an AppImage build." >&2
+        exit 1
     fi
 fi
+EXPECTED_FFMPEG_SHA256=$(awk '$2 == "ffmpeg" {print $1}' "$PINNED_FFMPEG_HASH_FILE")
+EXPECTED_FFPROBE_SHA256=$(awk '$2 == "ffprobe" {print $1}' "$PINNED_FFMPEG_HASH_FILE")
+EXPECTED_FFMPEG_ARCHIVE_SHA256=$(awk 'NF {print $1; exit}' "$PINNED_FFMPEG_ARCHIVE_HASH_FILE")
+ACTUAL_FFMPEG_SHA256=$(sha256sum "$FFMPEG_SOURCE" | awk '{print $1}')
+ACTUAL_FFPROBE_SHA256=$(sha256sum "$FFPROBE_SOURCE" | awk '{print $1}')
+if [ "$ACTUAL_FFMPEG_SHA256" != "$EXPECTED_FFMPEG_SHA256" ] || \
+   [ "$ACTUAL_FFPROBE_SHA256" != "$EXPECTED_FFPROBE_SHA256" ]; then
+    echo "ERROR: FFmpeg input SHA-256 verification failed." >&2
+    exit 1
+fi
+cp "$FFMPEG_SOURCE" "$APPDIR/usr/bin/ffmpeg"
+cp "$FFPROBE_SOURCE" "$APPDIR/usr/bin/ffprobe"
 chmod +x "$APPDIR/usr/bin/ffmpeg" "$APPDIR/usr/bin/ffprobe"
+{
+    echo "FFmpeg version: 7.0.2-static"
+    echo "FFmpeg source: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+    echo "FFmpeg source archive SHA-256: $EXPECTED_FFMPEG_ARCHIVE_SHA256"
+    echo "FFmpeg SHA-256: $ACTUAL_FFMPEG_SHA256"
+    echo "FFprobe SHA-256: $ACTUAL_FFPROBE_SHA256"
+} >> "$APPDIR/usr/share/doc/toolbox/build-info.txt"
 
 desktop-file-validate \
     "$APPDIR/usr/share/applications/io.github.toolbox.Toolbox.desktop"

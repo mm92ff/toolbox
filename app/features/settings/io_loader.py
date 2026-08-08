@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from PySide6 import QtCore
 
 from app import constants
+from app.features.settings.schema import SETTING_SPEC_BY_NAME
 
 
 def load_settings(owner: object) -> None:
@@ -123,38 +124,38 @@ def load_settings(owner: object) -> None:
 
     minimize_tray_checkbox = owner.widgets.get("minimize_to_tray_checkbox")
     if minimize_tray_checkbox:
+        spec = SETTING_SPEC_BY_NAME["minimize_to_tray"]
         minimize_tray_checkbox.blockSignals(True)
-        minimize_tray_checkbox.setChecked(settings.value("system/minimize_to_tray", False, type=bool))
+        minimize_tray_checkbox.setChecked(
+            settings.value(spec.qsettings_key, spec.default, type=bool)
+        )
         minimize_tray_checkbox.blockSignals(False)
 
     folder_click_cb = owner.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
     if folder_click_cb:
+        spec = SETTING_SPEC_BY_NAME["folder_single_click_browse"]
         folder_click_cb.blockSignals(True)
         folder_click_cb.setChecked(
-            settings.value(
-                "system/folder_single_click_browse",
-                constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE,
-                type=bool,
-            )
+            settings.value(spec.qsettings_key, spec.default, type=bool)
         )
         folder_click_cb.blockSignals(False)
 
     folder_file_count_cb = owner.widgets.get(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX)
     if folder_file_count_cb:
+        spec = SETTING_SPEC_BY_NAME["folder_show_file_count"]
         folder_file_count_cb.blockSignals(True)
         folder_file_count_cb.setChecked(
-            settings.value(
-                "system/folder_show_file_count",
-                constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
-                type=bool,
-            )
+            settings.value(spec.qsettings_key, spec.default, type=bool)
         )
         folder_file_count_cb.blockSignals(False)
 
     use_system_cb = owner.widgets.get(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
     if use_system_cb:
+        spec = SETTING_SPEC_BY_NAME["file_assoc_use_system"]
         use_system_cb.blockSignals(True)
-        use_system_cb.setChecked(settings.value("system/file_assoc_use_system", constants.DEFAULT_FILE_ASSOC_USE_SYSTEM, type=bool))
+        use_system_cb.setChecked(
+            settings.value(spec.qsettings_key, spec.default, type=bool)
+        )
         use_system_cb.blockSignals(False)
         # Manually trigger the enable/disable logic
         from PySide6 import QtWidgets as _QtWidgets
@@ -162,17 +163,18 @@ def load_settings(owner: object) -> None:
         if custom_container:
             custom_container.setEnabled(not use_system_cb.isChecked())
 
-    for key, widget_key in [
-        ("system/file_assoc_audio", constants.WIDGET_FILE_ASSOC_AUDIO_INPUT),
-        ("system/file_assoc_video", constants.WIDGET_FILE_ASSOC_VIDEO_INPUT),
-        ("system/file_assoc_image", constants.WIDGET_FILE_ASSOC_IMAGE_INPUT),
-        ("system/file_assoc_pdf", constants.WIDGET_FILE_ASSOC_PDF_INPUT),
-        ("system/file_assoc_document", constants.WIDGET_FILE_ASSOC_DOCUMENT_INPUT),
+    for name, widget_key in [
+        ("file_assoc_audio", constants.WIDGET_FILE_ASSOC_AUDIO_INPUT),
+        ("file_assoc_video", constants.WIDGET_FILE_ASSOC_VIDEO_INPUT),
+        ("file_assoc_image", constants.WIDGET_FILE_ASSOC_IMAGE_INPUT),
+        ("file_assoc_pdf", constants.WIDGET_FILE_ASSOC_PDF_INPUT),
+        ("file_assoc_document", constants.WIDGET_FILE_ASSOC_DOCUMENT_INPUT),
     ]:
         inp = owner.widgets.get(widget_key)
         if inp:
+            spec = SETTING_SPEC_BY_NAME[name]
             inp.blockSignals(True)
-            inp.setText(settings.value(key, "", type=str))
+            inp.setText(settings.value(spec.qsettings_key, spec.default, type=str))
             inp.blockSignals(False)
 
     hover_preview_checkbox = owner.widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX]
@@ -185,6 +187,18 @@ def load_settings(owner: object) -> None:
         )
     )
     hover_preview_checkbox.blockSignals(False)
+
+    show_tooltips_checkbox = owner.widgets[constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX]
+    show_tooltips_spec = SETTING_SPEC_BY_NAME["show_tooltips"]
+    show_tooltips_checkbox.blockSignals(True)
+    show_tooltips_checkbox.setChecked(
+        settings.value(
+            show_tooltips_spec.qsettings_key,
+            show_tooltips_spec.default,
+            type=bool,
+        )
+    )
+    show_tooltips_checkbox.blockSignals(False)
 
     ffmpeg_manual_path_input = owner.widgets[constants.WIDGET_FFMPEG_MANUAL_PATH_INPUT]
     ffmpeg_manual_path_input.blockSignals(True)
@@ -251,8 +265,13 @@ def load_settings(owner: object) -> None:
     color_input.setText(settings.value("layout/section_line_color", constants.DEFAULT_SECTION_LINE_COLOR, type=str))
 
     launch_mode_combobox = owner.widgets[constants.WIDGET_TOOL_LAUNCH_MODE_COMBOBOX]
+    launch_mode_spec = SETTING_SPEC_BY_NAME["tool_launch_mode"]
     saved_launch_mode = owner._normalize_tool_launch_mode(
-        settings.value("interaction/tool_launch_mode", constants.DEFAULT_LAUNCH_CLICK_MODE, type=str)
+        settings.value(
+            launch_mode_spec.qsettings_key,
+            launch_mode_spec.default,
+            type=str,
+        )
     )
     launch_mode_index = max(0, launch_mode_combobox.findData(saved_launch_mode))
     launch_mode_combobox.blockSignals(True)

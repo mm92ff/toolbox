@@ -79,7 +79,14 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     widgets[constants.WIDGET_HOVER_PREVIEW_CHECKBOX] = hover_preview_enabled
     appearance_layout.addWidget(hover_preview_enabled, 6, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Frame Thickness:"), 7, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Tooltips:"), 7, 0)
+    show_tooltips_enabled = QtWidgets.QCheckBox("Show tooltips on hover")
+    show_tooltips_enabled.setObjectName(constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX)
+    show_tooltips_enabled.setChecked(constants.DEFAULT_SHOW_TOOLTIPS)
+    widgets[constants.WIDGET_SHOW_TOOLTIPS_CHECKBOX] = show_tooltips_enabled
+    appearance_layout.addWidget(show_tooltips_enabled, 7, 1, 1, 2)
+
+    appearance_layout.addWidget(QtWidgets.QLabel("Frame Thickness:"), 8, 0)
     tile_frame_thickness_slider = NoWheelSlider(QtCore.Qt.Orientation.Horizontal)
     tile_frame_thickness_slider.setObjectName(constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER)
     tile_frame_thickness_slider.setRange(
@@ -88,15 +95,15 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     tile_frame_thickness_slider.setSingleStep(1)
     tile_frame_thickness_slider.setPageStep(1)
     widgets[constants.WIDGET_TILE_FRAME_THICKNESS_SLIDER] = tile_frame_thickness_slider
-    appearance_layout.addWidget(tile_frame_thickness_slider, 7, 1)
+    appearance_layout.addWidget(tile_frame_thickness_slider, 8, 1)
 
     tile_frame_thickness_value = QtWidgets.QLabel(str(constants.DEFAULT_TILE_FRAME_THICKNESS))
     tile_frame_thickness_value.setObjectName(constants.WIDGET_TILE_FRAME_THICKNESS_VALUE)
     tile_frame_thickness_value.setMinimumWidth(40)
     widgets[constants.WIDGET_TILE_FRAME_THICKNESS_VALUE] = tile_frame_thickness_value
-    appearance_layout.addWidget(tile_frame_thickness_value, 7, 2)
+    appearance_layout.addWidget(tile_frame_thickness_value, 8, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Frame Color:"), 8, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Frame Color:"), 9, 0)
     frame_color_row = QtWidgets.QHBoxLayout()
     tile_frame_color_input = QtWidgets.QLineEdit(constants.DEFAULT_TILE_FRAME_COLOR)
     tile_frame_color_input.setObjectName(constants.WIDGET_TILE_FRAME_COLOR_INPUT)
@@ -108,15 +115,15 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     tile_frame_color_preview.setFixedSize(28, 18)
     tile_frame_color_preview.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
     widgets[constants.WIDGET_TILE_FRAME_COLOR_PREVIEW] = tile_frame_color_preview
-    frame_color_row.addWidget(tile_frame_color_preview)
+    frame_color_row.addWidget(tile_frame_color_preview, 0)
 
-    tile_frame_color_button = QtWidgets.QPushButton("Choose Color")
+    tile_frame_color_button = QtWidgets.QPushButton("Select...")
     tile_frame_color_button.setObjectName(constants.WIDGET_TILE_FRAME_COLOR_BUTTON)
     widgets[constants.WIDGET_TILE_FRAME_COLOR_BUTTON] = tile_frame_color_button
-    frame_color_row.addWidget(tile_frame_color_button)
-    appearance_layout.addLayout(frame_color_row, 8, 1, 1, 2)
+    frame_color_row.addWidget(tile_frame_color_button, 0)
+    appearance_layout.addLayout(frame_color_row, 9, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Highlight Color:"), 9, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Highlight Color:"), 10, 0)
     highlight_color_row = QtWidgets.QHBoxLayout()
     tile_highlight_color_input = QtWidgets.QLineEdit(constants.DEFAULT_TILE_HIGHLIGHT_COLOR)
     tile_highlight_color_input.setObjectName(constants.WIDGET_TILE_HIGHLIGHT_COLOR_INPUT)
@@ -134,9 +141,9 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     tile_highlight_color_button.setObjectName(constants.WIDGET_TILE_HIGHLIGHT_COLOR_BUTTON)
     widgets[constants.WIDGET_TILE_HIGHLIGHT_COLOR_BUTTON] = tile_highlight_color_button
     highlight_color_row.addWidget(tile_highlight_color_button)
-    appearance_layout.addLayout(highlight_color_row, 9, 1, 1, 2)
+    appearance_layout.addLayout(highlight_color_row, 10, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Preview Background:"), 10, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Preview Background:"), 11, 0)
     preview_bg_row = QtWidgets.QHBoxLayout()
     icon_preview_bg_input = QtWidgets.QLineEdit(constants.DEFAULT_ICON_PREVIEW_BACKGROUND_COLOR)
     icon_preview_bg_input.setObjectName(constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_INPUT)
@@ -154,38 +161,38 @@ def build_appearance_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.Q
     icon_preview_bg_button.setObjectName(constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_BUTTON)
     widgets[constants.WIDGET_ICON_PREVIEW_BACKGROUND_COLOR_BUTTON] = icon_preview_bg_button
     preview_bg_row.addWidget(icon_preview_bg_button)
-    appearance_layout.addLayout(preview_bg_row, 10, 1, 1, 2)
+    appearance_layout.addLayout(preview_bg_row, 11, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Live Preview:"), 11, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Live Preview:"), 12, 0)
     icon_size_preview = IconSizeLivePreview()
     icon_size_preview.setObjectName(constants.WIDGET_ICON_SIZE_LIVE_PREVIEW)
     widgets[constants.WIDGET_ICON_SIZE_LIVE_PREVIEW] = icon_size_preview
-    appearance_layout.addWidget(icon_size_preview, 11, 1, 1, 2)
+    appearance_layout.addWidget(icon_size_preview, 12, 1, 1, 2)
 
     appearance_hint = QtWidgets.QLabel(
         "Font size, tile size, and inner paddings automatically follow the selected icon size."
     )
     appearance_hint.setWordWrap(True)
-    appearance_layout.addWidget(appearance_hint, 12, 0, 1, 3)
-    appearance_layout.addWidget(QtWidgets.QLabel("Tile Overlay:"), 13, 0)
+    appearance_layout.addWidget(appearance_hint, 13, 0, 1, 3)
+    appearance_layout.addWidget(QtWidgets.QLabel("Tile Overlay:"), 14, 0)
     preview_overlay_enabled = QtWidgets.QCheckBox("Full tile image preview (title as overlay)")
     preview_overlay_enabled.setObjectName(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
     preview_overlay_enabled.setChecked(constants.DEFAULT_PREVIEW_OVERLAY_ENABLED)
     widgets[constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX] = preview_overlay_enabled
-    appearance_layout.addWidget(preview_overlay_enabled, 13, 1, 1, 2)
+    appearance_layout.addWidget(preview_overlay_enabled, 14, 1, 1, 2)
 
-    appearance_layout.addWidget(QtWidgets.QLabel("Folders:"), 14, 0)
+    appearance_layout.addWidget(QtWidgets.QLabel("Folders:"), 15, 0)
     folder_single_click = QtWidgets.QCheckBox("Open folders with a single click")
     folder_single_click.setObjectName(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
     folder_single_click.setChecked(constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)
     widgets[constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX] = folder_single_click
-    appearance_layout.addWidget(folder_single_click, 14, 1, 1, 2)
+    appearance_layout.addWidget(folder_single_click, 15, 1, 1, 2)
 
     folder_show_file_count = QtWidgets.QCheckBox("Show file count in folder tiles (line 2)")
     folder_show_file_count.setObjectName(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX)
     folder_show_file_count.setChecked(constants.DEFAULT_FOLDER_SHOW_FILE_COUNT)
     widgets[constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX] = folder_show_file_count
-    appearance_layout.addWidget(folder_show_file_count, 15, 1, 1, 2)
+    appearance_layout.addWidget(folder_show_file_count, 16, 1, 1, 2)
 
     return appearance_group
 
@@ -646,6 +653,46 @@ def build_backup_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGrou
     backup_buttons.addStretch(1)
     backup_layout.addLayout(backup_buttons)
     return backup_group
+
+
+def build_file_associations_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGroupBox:
+    assoc_group = QtWidgets.QGroupBox("Default Applications")
+    assoc_layout = QtWidgets.QGridLayout(assoc_group)
+    assoc_layout.setColumnStretch(1, 1)
+
+    use_system_cb = QtWidgets.QCheckBox("Use system default applications everywhere")
+    use_system_cb.setObjectName(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
+    use_system_cb.setChecked(constants.DEFAULT_FILE_ASSOC_USE_SYSTEM)
+    widgets[constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX] = use_system_cb
+    assoc_layout.addWidget(use_system_cb, 0, 0, 1, 2)
+
+    def add_row(row: int, label: str, obj_name: str):
+        assoc_layout.addWidget(QtWidgets.QLabel(label), row, 0)
+        inp = QtWidgets.QLineEdit()
+        inp.setObjectName(obj_name)
+        inp.setPlaceholderText("e.g. /usr/bin/vlc or vlc")
+        widgets[obj_name] = inp
+        assoc_layout.addWidget(inp, row, 1)
+
+    add_row(1, "Videos:", constants.WIDGET_FILE_ASSOC_VIDEO_INPUT)
+    add_row(2, "Audio:", constants.WIDGET_FILE_ASSOC_AUDIO_INPUT)
+    add_row(3, "Images:", constants.WIDGET_FILE_ASSOC_IMAGE_INPUT)
+    add_row(4, "PDFs:", constants.WIDGET_FILE_ASSOC_PDF_INPUT)
+    add_row(5, "Documents:", constants.WIDGET_FILE_ASSOC_DOCUMENT_INPUT)
+
+    def _toggle_inputs(checked: bool):
+        for w in [constants.WIDGET_FILE_ASSOC_VIDEO_INPUT,
+                  constants.WIDGET_FILE_ASSOC_AUDIO_INPUT,
+                  constants.WIDGET_FILE_ASSOC_IMAGE_INPUT,
+                  constants.WIDGET_FILE_ASSOC_PDF_INPUT,
+                  constants.WIDGET_FILE_ASSOC_DOCUMENT_INPUT]:
+            if w in widgets:
+                widgets[w].setEnabled(not checked)
+
+    use_system_cb.toggled.connect(_toggle_inputs)
+    _toggle_inputs(use_system_cb.isChecked())
+
+    return assoc_group
 
 
 def build_apply_row(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QHBoxLayout:

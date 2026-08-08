@@ -17,6 +17,7 @@ from app.features.entries.controller_crud import (
     sort_entries_alphabetically,
     sort_entries_by_type,
 )
+from app.features.entries.controller_selection import entries_for_current_view
 
 
 def show_canvas_context_menu(
@@ -25,7 +26,10 @@ def show_canvas_context_menu(
     entry_id: str,
     global_pos: QtCore.QPoint,
 ) -> None:
-    entry = next((item for item in ctx.entries if item.entry_id == entry_id), None)
+    entry = next(
+        (item for item in entries_for_current_view(ctx) if item.entry_id == entry_id),
+        None,
+    )
     if entry is None:
         return
     if entry_id not in ctx.selected_ids:
@@ -33,6 +37,22 @@ def show_canvas_context_menu(
         owner._apply_selection_only(ctx)
 
     menu = QtWidgets.QMenu(owner)
+    if ctx.browse_stack:
+        from pathlib import Path
+
+        path = Path(entry.path)
+        open_action = menu.addAction("Ordner öffnen" if path.is_dir() else "Öffnen")
+        open_path_action = menu.addAction("Im Dateimanager anzeigen")
+        chosen = menu.exec(global_pos)
+        if chosen == open_action:
+            if path.is_dir():
+                owner._enter_folder_browse(ctx, path)
+            else:
+                owner._launch_entry(ctx, entry)
+        elif chosen == open_path_action:
+            owner._open_entry_path(entry)
+        return
+
     if entry.is_tool:
         start_action = menu.addAction("Launch")
         start_with_options_action = menu.addAction("Launch with Parameters ...")

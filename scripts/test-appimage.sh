@@ -19,8 +19,25 @@ RELOCATED_APPIMAGE="$RELOCATED_DIR/Renamed Toolbox.AppImage"
 SYMLINKED_APPIMAGE="$TEST_ROOT/Toolbox Link.AppImage"
 DESKTOP_FIXTURE="$TEST_ROOT/Frozen Drop.desktop"
 DROP_FIXTURE="$TEST_ROOT/input file.txt"
-mkdir -p "$TEST_CONFIG" "$RELOCATED_DIR"
-trap 'chmod u+w "$RELOCATED_DIR" 2>/dev/null || true; rm -rf "$TEST_ROOT"' EXIT HUP INT TERM
+PRIMARY_CONFIG="$TEST_ROOT/primary-config"
+PRIMARY_LOG="$TEST_ROOT/primary.log"
+PRIMARY_PID=""
+mkdir -p "$TEST_CONFIG" "$PRIMARY_CONFIG" "$RELOCATED_DIR"
+
+stop_primary_instance() {
+    if [ -n "$PRIMARY_PID" ] && kill -0 "$PRIMARY_PID" 2>/dev/null; then
+        kill "$PRIMARY_PID" 2>/dev/null || true
+        wait "$PRIMARY_PID" 2>/dev/null || true
+    fi
+    PRIMARY_PID=""
+}
+
+cleanup() {
+    stop_primary_instance
+    chmod u+w "$RELOCATED_DIR" 2>/dev/null || true
+    rm -rf "$TEST_ROOT"
+}
+trap cleanup EXIT HUP INT TERM
 
 printf '%s\n' \
     '[Desktop Entry]' \
@@ -69,6 +86,28 @@ run_smoke_test \
     "$APPIMAGE" \
     "$TEST_ROOT/normal.json" \
     "--normal-forwarding-token"
+
+# A smoke run must stay isolated even while the real single-instance server is active.
+env -u PYTHONPATH \
+    PATH=/usr/bin:/bin \
+    PYTHONNOUSERSITE=1 \
+    QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}" \
+    XDG_CONFIG_HOME="$PRIMARY_CONFIG" \
+    TOOLBOX_INSTANCE_KEY="appimage-acceptance-$$" \
+    "$APPIMAGE" >"$PRIMARY_LOG" 2>&1 &
+PRIMARY_PID=$!
+sleep 1
+if ! kill -0 "$PRIMARY_PID" 2>/dev/null; then
+    cat "$PRIMARY_LOG" >&2
+    echo "ERROR: Normal Toolbox instance exited before smoke isolation test." >&2
+    exit 1
+fi
+run_smoke_test \
+    "$APPIMAGE" \
+    "$TEST_ROOT/running-instance.json" \
+    "--running-instance-forwarding-token"
+stop_primary_instance
+
 run_smoke_test \
     "$APPIMAGE" \
     "$TEST_ROOT/extract-and-run.json" \

@@ -12,6 +12,7 @@ from PySide6 import QtCore, QtWidgets
 from app import constants
 from app.canvas.layout_engine import CanvasLayoutEngine
 from app.domain.models import ToolboxEntry
+from app.services.folder_count import FolderCountService
 from app.ui.widgets.canvas_widgets import CanvasItemBase
 
 
@@ -22,6 +23,7 @@ class CanvasSurfaceStateMixin:
         self._widgets: dict[str, CanvasItemBase] = {}
         self._icon_provider = QtWidgets.QFileIconProvider()
         self._layout_engine = CanvasLayoutEngine()
+        self._folder_count_service = FolderCountService(self)
         self._auto_compact_left = constants.DEFAULT_AUTO_COMPACT_LEFT
         self._image_file_preview_enabled = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
         self._image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
@@ -42,6 +44,16 @@ class CanvasSurfaceStateMixin:
         for widget in self._widgets.values():
             widget.deleteLater()
         self._widgets.clear()
+
+    def set_folder_count_service(self, service: FolderCountService) -> None:
+        """Use the window-wide bounded service instead of a per-canvas pool."""
+
+        if service is self._folder_count_service:
+            return
+        old_service = self._folder_count_service
+        self._folder_count_service = service
+        old_service.shutdown()
+        old_service.deleteLater()
 
     def set_viewport_width(self, viewport_width: int) -> None:
         self._layout_engine.set_viewport_width(viewport_width)

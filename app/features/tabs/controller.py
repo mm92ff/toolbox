@@ -168,6 +168,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             tab_index = self.tab_widget.indexOf(ctx.page)
             if tab_index >= 0:
                 self.tab_widget.removeTab(tab_index)
+            ctx.page.deleteLater()
         self.toolbox_tabs.clear()
         self._reinsert_fixed_tabs()
         self._refresh_tab_manager_ui()
@@ -204,6 +205,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             background_color=self._normalize_tab_background_color(background_color),
             selected_ids=set(),
         )
+        ctx.canvas.surface.set_folder_count_service(self._folder_count_service)
         ctx.canvas.set_thumbnail_cache_dir(self.config_dir / "thumbnail_cache")
 
         ctx.add_tool_button.clicked.connect(lambda _=False, c=ctx: self.add_tools_from_dialog(c))
@@ -211,7 +213,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         ctx.launch_button.clicked.connect(lambda _=False, c=ctx: self.launch_selected(c))
         ctx.remove_button.clicked.connect(lambda _=False, c=ctx: self.remove_selected(c))
         ctx.open_config_button.clicked.connect(self._open_config_directory)
-        
+
         # Wire breadcrumb back button
         breadcrumb_bar = widgets.get("breadcrumb_bar")
         ctx.breadcrumb_bar = breadcrumb_bar
@@ -395,7 +397,6 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
     def _apply_corner_button_style(self) -> None:
         """Apply stylesheet to the corner buttons to match the main tab bar appearance."""
         tab_bar = self.tab_widget.tabBar()
-        bg = tab_bar.palette().color(QtGui.QPalette.ColorRole.Window).name()
         text = tab_bar.palette().color(QtGui.QPalette.ColorRole.WindowText).name()
         highlight = tab_bar.palette().color(QtGui.QPalette.ColorRole.Highlight).name()
         highlight_text = tab_bar.palette().color(QtGui.QPalette.ColorRole.HighlightedText).name()
@@ -575,6 +576,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         if preferred_widget is ctx.page:
             preferred_widget = self.settings_tab
         self.toolbox_tabs.pop(tab_index)
+        ctx.page.deleteLater()
         self._hidden_toolbox_tab_ids.discard(ctx.tab_id)
         self._reinsert_fixed_tabs(preferred_widget=preferred_widget)
         self._refresh_tab_manager_ui()

@@ -1,9 +1,10 @@
 from PySide6 import QtWidgets
+
 from app.ui.tabs.settings_tab import create_settings_tab
 
 def test_settings_tab_has_subtabs():
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    tab, widgets = create_settings_tab()
+    _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    tab, _widgets = create_settings_tab()
     
     # Root layout must be a QVBoxLayout
     assert isinstance(tab.layout(), QtWidgets.QVBoxLayout)

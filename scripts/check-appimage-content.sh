@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 
+PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 APPIMAGE=${1:-}
 if [ -z "$APPIMAGE" ] || [ ! -x "$APPIMAGE" ]; then
     echo "ERROR: Executable AppImage not found: $APPIMAGE" >&2
@@ -55,7 +56,24 @@ if [ -n "$FORBIDDEN" ]; then
     exit 1
 fi
 
-if [ "${TOOLBOX_EXPECT_BUNDLED_FFMPEG:-0}" != "1" ]; then
+if [ "${TOOLBOX_EXPECT_BUNDLED_FFMPEG:-0}" = "1" ]; then
+    if [ ! -x "$EXTRACTED/usr/bin/ffmpeg" ] || [ ! -x "$EXTRACTED/usr/bin/ffprobe" ]; then
+        echo "ERROR: Expected executable FFmpeg/FFprobe payload is missing." >&2
+        exit 1
+    fi
+    "$EXTRACTED/usr/bin/ffmpeg" -version >/dev/null
+    "$EXTRACTED/usr/bin/ffprobe" -version >/dev/null
+    HASH_FILE="$PROJECT_ROOT/packaging/linux/ffmpeg-x86_64.sha256"
+    EXPECTED_FFMPEG_SHA256=$(awk '$2 == "ffmpeg" {print $1}' "$HASH_FILE")
+    EXPECTED_FFPROBE_SHA256=$(awk '$2 == "ffprobe" {print $1}' "$HASH_FILE")
+    ACTUAL_FFMPEG_SHA256=$(sha256sum "$EXTRACTED/usr/bin/ffmpeg" | awk '{print $1}')
+    ACTUAL_FFPROBE_SHA256=$(sha256sum "$EXTRACTED/usr/bin/ffprobe" | awk '{print $1}')
+    if [ "$ACTUAL_FFMPEG_SHA256" != "$EXPECTED_FFMPEG_SHA256" ] || \
+       [ "$ACTUAL_FFPROBE_SHA256" != "$EXPECTED_FFPROBE_SHA256" ]; then
+        echo "ERROR: Bundled FFmpeg/FFprobe checksum does not match the pinned input." >&2
+        exit 1
+    fi
+else
     OPTIONAL_MEDIA_BINARIES=$(
         find "$EXTRACTED/usr/lib/toolbox" -type f \
             \( -name ffmpeg -o -name ffprobe -o -name ffmpeg.exe -o -name ffprobe.exe \) \

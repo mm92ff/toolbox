@@ -194,6 +194,31 @@ class MainWindowTabManagerMixin:
             self._refresh_tab_manager_ui(preferred_key=preferred_key)
         return changed
 
+    def _tab_manager_state_differs_from_runtime(self) -> bool:
+        tab_list = self._tab_manager_list_widget()
+        ordered_ids: list[str] = []
+        hidden_ids: set[str] = set()
+        help_hidden = self._help_tab_hidden
+        for row in range(tab_list.count()):
+            item = tab_list.item(row)
+            kind = str(item.data(self._TAB_KIND_ROLE) or "")
+            checked = item.checkState() == QtCore.Qt.CheckState.Checked
+            if kind == self._TAB_KIND_TOOLBOX:
+                tab_id = self._tab_manager_toolbox_id_from_key(
+                    str(item.data(self._TAB_KEY_ROLE) or "")
+                )
+                if tab_id:
+                    ordered_ids.append(tab_id)
+                    if not checked:
+                        hidden_ids.add(tab_id)
+            elif kind == self._TAB_KIND_HELP:
+                help_hidden = not checked
+        return (
+            ordered_ids != [ctx.tab_id for ctx in self.toolbox_tabs]
+            or hidden_ids != self._hidden_toolbox_tab_ids
+            or help_hidden != self._help_tab_hidden
+        )
+
     def _on_tab_manager_item_changed(self, _item: QtWidgets.QListWidgetItem) -> None:
         if self._updating_tab_manager:
             return

@@ -18,6 +18,7 @@ from app.ui.tabs.settings_tab_sections import (
     build_section_colors_group,
     build_section_separator_group,
     build_tabs_group,
+    build_file_associations_group,
 )
 
 
@@ -34,13 +35,13 @@ def create_settings_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidge
 
     def create_scrollable_tab(groups) -> QtWidgets.QWidget:
         t = QtWidgets.QWidget()
-        l = QtWidgets.QVBoxLayout(t)
-        l.setContentsMargins(0, 0, 0, 0)
+        layout = QtWidgets.QVBoxLayout(t)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         sa = QtWidgets.QScrollArea()
         sa.setWidgetResizable(True)
         sa.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        l.addWidget(sa)
+        layout.addWidget(sa)
 
         cw = QtWidgets.QWidget()
         cl = QtWidgets.QVBoxLayout(cw)
@@ -69,6 +70,7 @@ def create_settings_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidge
 
     tab_system = create_scrollable_tab([
         build_tabs_group(widgets),
+        build_file_associations_group(widgets),
         build_maintenance_group(widgets),
         build_backup_group(widgets),
     ])

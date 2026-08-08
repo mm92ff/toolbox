@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app import constants
@@ -17,39 +19,7 @@ from app.services.desktop_entries import (
     read_desktop_entry,
     validate_desktop_launch_input,
 )
-
-
-import os
-
-
-class _FolderCountWorker(QtCore.QThread):
-    """Counts total items (files + dirs) inside a folder recursively (max 1s)."""
-    finished = QtCore.Signal(int)
-
-    def __init__(self, path: str, parent=None):
-        super().__init__(parent)
-        self._path = path
-
-    def run(self) -> None:
-        import time
-        count = 0
-        deadline = time.monotonic() + 1.0
-        dirs_to_visit = [self._path]
-        while dirs_to_visit:
-            if time.monotonic() > deadline:
-                break
-            current = dirs_to_visit.pop()
-            try:
-                with os.scandir(current) as it:
-                    for entry in it:
-                        if entry.is_symlink():
-                            continue
-                        count += 1
-                        if entry.is_dir(follow_symlinks=False):
-                            dirs_to_visit.append(entry.path)
-            except OSError:
-                pass
-        self.finished.emit(count)
+from app.services.folder_count import FolderCountService
 
 
 class ElidedTitleLabel(QtWidgets.QLabel):
@@ -121,14 +91,14 @@ class RoundedIconLabel(QtWidgets.QLabel):
 
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-        
+
         # Calculate alignment (centered)
         x = (self.width() - pixmap.width()) // 2
         y = (self.height() - pixmap.height()) // 2
-        
+
         path = QtGui.QPainterPath()
         path.addRoundedRect(QtCore.QRectF(x, y, pixmap.width(), pixmap.height()), self._radius, self._radius)
-        
+
         painter.setClipPath(path)
         painter.drawPixmap(x, y, pixmap)
 
@@ -155,6 +125,14 @@ class CanvasItemBase(QtWidgets.QFrame):
         self._drag_timer.setInterval(constants.MOVE_HOLD_DELAY_MS)
         self._drag_timer.timeout.connect(self._activate_drag)
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._show_tooltips = constants.DEFAULT_SHOW_TOOLTIPS
+
+    def set_show_tooltips(self, show: bool) -> None:
+        self._show_tooltips = bool(show)
+        self._update_tooltips()
+
+    def _update_tooltips(self) -> None:
+        pass
 
     def set_selected(self, selected: bool) -> None:
         self.setProperty("selected", selected)
@@ -237,7 +215,12 @@ class ToolTileWidget(CanvasItemBase):
     files_dropped = QtCore.Signal(str, object)
 
     def __init__(
-        self, entry: ToolboxEntry, icon: QtGui.QIcon, icon_size: int, parent=None
+        self,
+        entry: ToolboxEntry,
+        icon: QtGui.QIcon,
+        icon_size: int,
+        parent=None,
+        folder_count_service: FolderCountService | None = None,
     ) -> None:
         super().__init__(entry, parent)
         self._icon = icon
@@ -271,6 +254,9 @@ class ToolTileWidget(CanvasItemBase):
         self.file_count_label.hide()
         self._folder_count_mode = False
         self._pending_file_count_path: str | None = None
+        self._folder_count_service = folder_count_service
+        if self._folder_count_service is not None:
+            self._folder_count_service.result_ready.connect(self._on_file_count_ready)
         self.set_icon_size(icon_size)
 
     @staticmethod
@@ -384,7 +370,12 @@ class ToolTileWidget(CanvasItemBase):
             # Line 2: placeholder until worker finishes
             self.file_count_label.setText("...")
 
-            self._start_file_count_worker(path, display_name)
+            if self._folder_count_service is not None:
+                normalized = str(Path(path).expanduser().resolve(strict=False))
+                self._pending_file_count_path = normalized
+                self._folder_count_service.request(normalized)
+            else:
+                self.file_count_label.setText("–")
         else:
             self._pending_file_count_path = None
             self._folder_count_mode = False
@@ -395,16 +386,16 @@ class ToolTileWidget(CanvasItemBase):
 
             self.file_count_label.setText("")
 
-    def _start_file_count_worker(self, path: str, display_name: str) -> None:
-        worker = _FolderCountWorker(path, self)
-        worker.finished.connect(lambda count, p=path, n=display_name: self._on_file_count_ready(count, p, n))
-        worker.start()
-        self._file_count_worker = worker
-
-    def _on_file_count_ready(self, count: int, path: str, display_name: str) -> None:
+    @QtCore.Slot(str, int, str)
+    def _on_file_count_ready(self, path: str, count: int, error: str) -> None:
         if getattr(self, "_pending_file_count_path", None) == path:
-            suffix = "1 Element" if count == 1 else f"{count} Elemente"
-            self.file_count_label.setText(suffix)
+            if error:
+                self.file_count_label.setText("–")
+                self.file_count_label.setToolTip(error)
+            else:
+                suffix = "1 Element" if count == 1 else f"{count} Elemente"
+                self.file_count_label.setText(suffix)
+                self.file_count_label.setToolTip("")
 
 
     def set_icon_size(self, icon_size: int) -> None:
@@ -477,8 +468,18 @@ class ToolTileWidget(CanvasItemBase):
                 field_code = ""
             if field_code:
                 tooltip += f"\nDrop files or URLs here (%{field_code})"
-        self.title_label.setToolTip(tooltip)
-        self.setToolTip(tooltip)
+
+        self._current_tooltip = tooltip
+        self._update_tooltips()
+
+    def _update_tooltips(self) -> None:
+        tooltip = getattr(self, "_current_tooltip", "")
+        if getattr(self, "_show_tooltips", True) and tooltip:
+            self.title_label.setToolTip(tooltip)
+            self.setToolTip(tooltip)
+        else:
+            self.title_label.setToolTip("")
+            self.setToolTip("")
 
         if self._overlay_mode:
             target_size = self._metrics.tile_size.width()

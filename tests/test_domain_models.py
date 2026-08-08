@@ -9,6 +9,19 @@ from app.domain.models import ToolboxEntry, ToolboxTabData
 
 
 class TestToolboxEntryParsing:
+    def test_custom_title_and_icon_roundtrip(self) -> None:
+        original = ToolboxEntry(
+            title="Original",
+            path="/tmp/example",
+            custom_title="Visible name",
+            custom_icon_path="/tmp/icon.png",
+        )
+
+        restored = ToolboxEntry.from_dict(original.to_dict())
+
+        assert restored.custom_title == "Visible name"
+        assert restored.custom_icon_path == "/tmp/icon.png"
+
     def test_from_dict_coerces_numeric_and_bool_fields(self) -> None:
         entry = ToolboxEntry.from_dict(
             {

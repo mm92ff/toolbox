@@ -31,7 +31,8 @@ fi
     sha256sum -c "$(basename "$CHECKSUM_FILE")"
 )
 
-"$PROJECT_ROOT/scripts/check-appimage-content.sh" "$APPIMAGE"
+TOOLBOX_EXPECT_BUNDLED_FFMPEG=1 \
+    "$PROJECT_ROOT/scripts/check-appimage-content.sh" "$APPIMAGE"
 "$PROJECT_ROOT/scripts/test-appimage.sh" "$APPIMAGE"
 if [ -n "${DISPLAY:-}" ] && [ "${XDG_SESSION_TYPE:-}" = "x11" ]; then
     TOOLBOX_REQUIRE_X11_TEST=1 \

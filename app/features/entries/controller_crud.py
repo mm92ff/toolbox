@@ -154,87 +154,105 @@ def edit_properties(owner: object, ctx: ToolboxTabContext, entry: ToolboxEntry) 
         owner.refresh_canvas(ctx)
 
 
-def sort_entries_alphabetically(owner: object, ctx: ToolboxTabContext, section_entry: ToolboxEntry | None = None) -> None:
-    """Sort tools alphabetically. If section_entry is given, only sort tools in that section.
-    Otherwise, sort all tools in their respective sections."""
-    # Find section bounds
-    sections = sorted([e for e in ctx.entries if e.is_section], key=lambda e: e.y)
-    
-    tools = [e for e in ctx.entries if e.is_tool]
-    
-    for tool in tools:
-        # Determine which section this tool belongs to
-        assigned_section = None
-        for sec in reversed(sections):
-            if tool.y > sec.y:
-                assigned_section = sec
+def _display_title(entry: ToolboxEntry) -> str:
+    return (entry.custom_title.strip() or entry.title).casefold()
+
+
+def _tools_by_section(
+    entries: list[ToolboxEntry],
+) -> dict[str | None, list[ToolboxEntry]]:
+    sections = sorted(
+        (entry for entry in entries if entry.is_section),
+        key=lambda entry: (entry.y, entry.x),
+    )
+    grouped: dict[str | None, list[ToolboxEntry]] = {}
+    for tool in (entry for entry in entries if entry.is_tool):
+        section_id: str | None = None
+        for section in reversed(sections):
+            if tool.y > section.y:
+                section_id = section.entry_id
                 break
-                
-        if section_entry and assigned_section != section_entry:
+        grouped.setdefault(section_id, []).append(tool)
+    return grouped
+
+
+def _assign_sorted_tools(
+    tools: list[ToolboxEntry],
+    *,
+    key: object,
+) -> None:
+    positions = sorted(((tool.y, tool.x) for tool in tools))
+    ordered = sorted(tools, key=key)  # type: ignore[arg-type]
+    for tool, (y, x) in zip(ordered, positions, strict=True):
+        tool.x = x
+        tool.y = y
+
+
+def _sort_selected_groups(
+    owner: object,
+    ctx: ToolboxTabContext,
+    section_entry: ToolboxEntry | None,
+    key: object,
+    success_message: str,
+) -> None:
+    if not owner.current_auto_compact_left():
+        owner.status.showMessage(
+            "Auto-sort requires 'Auto-compact left' to be enabled.", 3500
+        )
+        return
+
+    requested_section_id = section_entry.entry_id if section_entry is not None else None
+    for section_id, tools in _tools_by_section(ctx.entries).items():
+        if section_entry is not None and section_id != requested_section_id:
             continue
-            
-        # Temporarily set x and y to identical values within the section
-        # so that the stable sort falls back to alphabetical order
-        tool.y = assigned_section.y + 1 if assigned_section else 0
-        tool.x = 0
+        _assign_sorted_tools(tools, key=key)
 
-    # Ensure titles are used for sort tie-breaker in compaction
-    if owner.current_auto_compact_left():
-        ctx.canvas.compact_tools(ctx.entries)
-        owner.persist_toolbox_state()
-        owner.refresh_canvas(ctx)
-        owner.status.showMessage("Alphabetically sorted tools.", 3000)
-    else:
-        owner.status.showMessage("Auto-sort requires 'Auto-compact left' to be enabled.", 3500)
+    owner.persist_toolbox_state()
+    owner.refresh_canvas(ctx)
+    owner.status.showMessage(success_message, 3000)
 
 
-def sort_entries_by_type(owner: object, ctx: ToolboxTabContext, section_entry: ToolboxEntry | None = None) -> None:
-    """Sort tools by type (Folders first, then by file extension) and then alphabetically."""
-    import os
-    from pathlib import Path
-    
-    sections = sorted([e for e in ctx.entries if e.is_section], key=lambda e: e.y)
-    tools = [e for e in ctx.entries if e.is_tool]
-    
-    extensions = set()
-    for tool in tools:
-        if tool.path and not tool.path.startswith("http"):
-            path = Path(tool.path)
-            if path.is_file():
-                ext = path.suffix.lower()
-                extensions.add(ext)
-                
-    sorted_exts = sorted(list(extensions))
-    ext_to_rank = {ext: i + 1 for i, ext in enumerate(sorted_exts)}
-    
-    for tool in tools:
-        assigned_section = None
-        for sec in reversed(sections):
-            if tool.y > sec.y:
-                assigned_section = sec
-                break
-                
-        if section_entry and assigned_section != section_entry:
-            continue
-            
-        tool.y = assigned_section.y + 1 if assigned_section else 0
-        
-        if tool.path and not tool.path.startswith("http"):
-            path = Path(tool.path)
-            if path.is_dir():
-                tool.x = 0
-            elif path.is_file():
-                ext = path.suffix.lower()
-                tool.x = ext_to_rank.get(ext, 999)
-            else:
-                tool.x = 999
-        else:
-            tool.x = 999
+def sort_entries_alphabetically(
+    owner: object,
+    ctx: ToolboxTabContext,
+    section_entry: ToolboxEntry | None = None,
+) -> None:
+    """Sort visible position slots by display title, without moving other sections."""
 
-    if owner.current_auto_compact_left():
-        ctx.canvas.compact_tools(ctx.entries)
-        owner.persist_toolbox_state()
-        owner.refresh_canvas(ctx)
-        owner.status.showMessage("Tools sorted by type.", 3000)
-    else:
-        owner.status.showMessage("Auto-sort requires 'Auto-compact left' to be enabled.", 3500)
+    _sort_selected_groups(
+        owner,
+        ctx,
+        section_entry,
+        _display_title,
+        "Alphabetically sorted tools.",
+    )
+
+
+def _tool_type_key(entry: ToolboxEntry) -> tuple[int, str, str]:
+    if not entry.path or entry.path.lower().startswith(("http://", "https://")):
+        return (2, "", _display_title(entry))
+    path = Path(entry.path)
+    try:
+        if path.is_dir():
+            return (0, "", _display_title(entry))
+        if path.is_file():
+            return (1, path.suffix.casefold(), _display_title(entry))
+    except OSError:
+        pass
+    return (2, "", _display_title(entry))
+
+
+def sort_entries_by_type(
+    owner: object,
+    ctx: ToolboxTabContext,
+    section_entry: ToolboxEntry | None = None,
+) -> None:
+    """Sort folders first, files by extension, and every group alphabetically."""
+
+    _sort_selected_groups(
+        owner,
+        ctx,
+        section_entry,
+        _tool_type_key,
+        "Tools sorted by type.",
+    )

@@ -293,13 +293,21 @@ def _bundled_ffmpeg_candidates() -> list[Path]:
     binary_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
     candidates: list[Path] = []
 
+    xdg_data_home = os.environ.get("XDG_DATA_HOME", "").strip()
+    user_data_root = (
+        Path(xdg_data_home).expanduser()
+        if xdg_data_home
+        else Path.home() / ".local" / "share"
+    )
+    candidates.append(user_data_root / "toolbox" / "ffmpeg" / "7.0.2" / binary_name)
+
     appdir = os.environ.get("APPDIR")
     if appdir:
         bundle_root = Path(appdir)
         candidates.append(bundle_root / "usr" / "bin" / binary_name)
         candidates.append(bundle_root / binary_name)
         candidates.append(bundle_root / "bin" / binary_name)
-        
+
     project_root = Path(__file__).resolve().parent.parent.parent
     candidates.append(project_root / ".bin" / binary_name)
 

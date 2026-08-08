@@ -125,6 +125,33 @@ def test_build_script_pins_appimagetool_and_creates_portable_checksum() -> None:
     assert "--mksquashfs-opt=-all-time" in build_script
 
 
+def test_build_script_verifies_ffmpeg_without_network_download() -> None:
+    build_script = (PROJECT_ROOT / "scripts" / "build-appimage.sh").read_text(
+        encoding="utf-8"
+    )
+    hashes = (PROJECT_ROOT / "packaging" / "linux" / "ffmpeg-x86_64.sha256").read_text(
+        encoding="utf-8"
+    )
+    archive_hash = (
+        PROJECT_ROOT / "packaging" / "linux" / "ffmpeg-archive-x86_64.sha256"
+    ).read_text(encoding="utf-8")
+
+    assert "EXPECTED_FFMPEG_SHA256" in build_script
+    assert "ACTUAL_FFMPEG_SHA256" in build_script
+    assert "curl -sSL" not in build_script
+    assert "wget -qO-" not in build_script
+    assert len(hashes.splitlines()) == 2
+    assert all(len(line.split()[0]) == 64 for line in hashes.splitlines())
+    assert len(archive_hash.split()[0]) == 64
+    assert "FFmpeg source archive SHA-256" in build_script
+
+    appdir_test = (PROJECT_ROOT / "scripts" / "test-appdir.sh").read_text(
+        encoding="utf-8"
+    )
+    assert '"$APPDIR/usr/bin/ffmpeg" -version' in appdir_test
+    assert '"$APPDIR/usr/bin/ffprobe" -version' in appdir_test
+
+
 def test_appimage_acceptance_covers_content_relocation_and_xcb() -> None:
     build_script = (PROJECT_ROOT / "scripts" / "build-appimage.sh").read_text(
         encoding="utf-8"
@@ -141,6 +168,8 @@ def test_appimage_acceptance_covers_content_relocation_and_xcb() -> None:
     assert "Renamed Toolbox.AppImage" in image_test
     assert "Toolbox Link.AppImage" in image_test
     assert "read-only-directory-token" in image_test
+    assert "running-instance-forwarding-token" in image_test
+    assert "PRIMARY_PID" in image_test
     assert "QT_SCALE_FACTOR=2" in image_test
     assert "QT_QPA_PLATFORM=xcb" in image_test
     assert "test-x11-desktop.sh" in build_script
@@ -148,6 +177,8 @@ def test_appimage_acceptance_covers_content_relocation_and_xcb() -> None:
     assert ".pytest_cache" in content_test
     assert "*.bat" in content_test
     assert "libc.so" in content_test
+    assert "EXPECTED_FFMPEG_SHA256" in content_test
+    assert "EXPECTED_FFPROBE_SHA256" in content_test
 
 
 def test_reproducibility_check_compares_content_modes_and_symlinks() -> None:

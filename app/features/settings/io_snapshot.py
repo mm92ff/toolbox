@@ -9,9 +9,15 @@ from logging import Logger
 
 from PySide6 import QtCore
 
+from app.features.settings.schema import (
+    save_schema_settings,
+    snapshot_schema_sections,
+)
+
 
 def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
     geometry_base64 = bytes(owner.saveGeometry().toBase64()).decode("ascii")
+    schema_sections = snapshot_schema_sections(owner)
     return {
         "window": {
             "width": owner.width(),
@@ -48,20 +54,8 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
             "section_gap": owner.current_section_gap(),
             "section_line_color": owner.current_section_line_color(),
         },
-        "interaction": {
-            "tool_launch_mode": owner.current_tool_launch_mode(),
-        },
-        "system": {
-            "minimize_to_tray": getattr(owner, "_minimize_to_tray", False),
-            "folder_single_click_browse": owner.current_folder_single_click_browse(),
-            "folder_show_file_count": owner.current_folder_show_file_count(),
-            "file_assoc_use_system": owner.current_file_assoc_use_system(),
-            "file_assoc_audio": owner.current_file_assoc_audio(),
-            "file_assoc_video": owner.current_file_assoc_video(),
-            "file_assoc_image": owner.current_file_assoc_image(),
-            "file_assoc_pdf": owner.current_file_assoc_pdf(),
-            "file_assoc_document": owner.current_file_assoc_document(),
-        },
+        "interaction": schema_sections["interaction"],
+        "system": schema_sections["system"],
         "toolbox_splitter_sizes": {
             ctx.tab_id: [int(value) for value in ctx.splitter.sizes()] for ctx in owner.toolbox_tabs
         },
@@ -149,16 +143,7 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("layout/section_gap_below", owner.current_section_gap_below())
     settings.setValue("layout/section_gap", owner.current_section_gap())
     settings.setValue("layout/section_line_color", owner.current_section_line_color())
-    settings.setValue("interaction/tool_launch_mode", owner.current_tool_launch_mode())
-    settings.setValue("system/minimize_to_tray", getattr(owner, "_minimize_to_tray", False))
-    settings.setValue("system/folder_single_click_browse", owner.current_folder_single_click_browse())
-    settings.setValue("system/folder_show_file_count", owner.current_folder_show_file_count())
-    settings.setValue("system/file_assoc_use_system", owner.current_file_assoc_use_system())
-    settings.setValue("system/file_assoc_audio", owner.current_file_assoc_audio())
-    settings.setValue("system/file_assoc_video", owner.current_file_assoc_video())
-    settings.setValue("system/file_assoc_image", owner.current_file_assoc_image())
-    settings.setValue("system/file_assoc_pdf", owner.current_file_assoc_pdf())
-    settings.setValue("system/file_assoc_document", owner.current_file_assoc_document())
+    save_schema_settings(settings, owner)
 
     for ctx in owner.toolbox_tabs:
         settings.setValue(f"toolbox/{ctx.tab_id}/splitter_sizes", ctx.splitter.sizes())
