@@ -112,10 +112,15 @@ def save_settings(owner: object, logger: Logger) -> None:
     if not getattr(owner, "_settings_ready", False):
         return
     settings = QtCore.QSettings()
-    settings.setValue("geometry", owner.saveGeometry())
-    settings.setValue("window/width", owner.width())
-    settings.setValue("window/height", owner.height())
-    settings.setValue("tabs/current_index", owner.tab_widget.currentIndex())
+    manager = getattr(owner, "_window_manager", None)
+    persist_window_local = bool(
+        manager is None or getattr(manager, "_last_active", None) is owner
+    )
+    if persist_window_local:
+        settings.setValue("geometry", owner.saveGeometry())
+        settings.setValue("window/width", owner.width())
+        settings.setValue("window/height", owner.height())
+        settings.setValue("tabs/current_index", owner.tab_widget.currentIndex())
     settings.setValue("tabs/settings_title", owner._settings_title)
     settings.setValue("tabs/help_title", owner._help_title)
     settings.setValue("tabs/hidden_toolbox_tab_ids", sorted(owner._hidden_toolbox_tab_ids))
@@ -149,8 +154,9 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("layout/section_line_color", owner.current_section_line_color())
     save_schema_settings(settings, owner)
 
-    for ctx in owner.toolbox_tabs:
-        settings.setValue(f"toolbox/{ctx.tab_id}/splitter_sizes", ctx.splitter.sizes())
+    if persist_window_local:
+        for ctx in owner.toolbox_tabs:
+            settings.setValue(f"toolbox/{ctx.tab_id}/splitter_sizes", ctx.splitter.sizes())
     settings.sync()
     try:
         owner._persist_ui_settings_json()

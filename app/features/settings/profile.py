@@ -159,18 +159,36 @@ class MainWindowSettingsProfileMixin:
             return
 
         try:
-            save_toolbox_tabs(self.config_dir, imported_tabs)
+            repository = getattr(self, "_state_repository", None)
+            if repository is not None:
+                repository.replace(
+                    imported_tabs,
+                    origin_window_id=getattr(self, "window_id", ""),
+                    kind="profile-import",
+                )
+                repository.flush()
+            else:
+                save_toolbox_tabs(self.config_dir, imported_tabs)
             ui_settings = payload.get("ui_settings")
             if isinstance(ui_settings, dict):
-                self._apply_imported_ui_settings(ui_settings)
-                self._persist_ui_settings_json()
+                settings_controller = getattr(self, "_settings_controller", None)
+                if settings_controller is not None:
+                    settings_controller.import_from(self, ui_settings)
+                else:
+                    self._apply_imported_ui_settings(ui_settings)
+                    self._persist_ui_settings_json()
         except (OSError, ValueError, TypeError) as exc:
             QtWidgets.QMessageBox.critical(self, "Import failed", str(exc))
             self.status.showMessage("Import failed.", 3000)
             return
 
-        self._clear_toolbox_tabs()
-        self._load_toolbox_state()
-        self._load_settings()
+        if getattr(self, "_state_repository", None) is None:
+            self._clear_toolbox_tabs()
+            self._load_toolbox_state()
+        if not (
+            isinstance(payload.get("ui_settings"), dict)
+            and getattr(self, "_settings_controller", None) is not None
+        ):
+            self._load_settings()
         self.refresh_all_canvases()
         self.status.showMessage("Import applied successfully.", 4000)

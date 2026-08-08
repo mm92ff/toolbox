@@ -36,6 +36,26 @@ class MainWindowSettingsApplyMixin:
             self.status.showMessage("No changes to apply.", 2000)
             return
 
+        if getattr(self, "_shared_settings_conflict", False):
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Settings changed in another window",
+                "Another Toolbox window applied newer settings.\n\n"
+                "Yes: reload the newer settings and discard this draft.\n"
+                "No: keep this draft and apply it over the newer settings.\n"
+                "Cancel: continue editing without applying.",
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No
+                | QtWidgets.QMessageBox.StandardButton.Cancel,
+                QtWidgets.QMessageBox.StandardButton.Yes,
+            )
+            if answer == QtWidgets.QMessageBox.StandardButton.Yes:
+                self._reload_shared_settings()
+                return
+            if answer != QtWidgets.QMessageBox.StandardButton.No:
+                return
+            self._shared_settings_conflict = False
+
         pending_values = self._capture_pending_settings_from_widgets()
         frame_color_input = self.widgets[constants.WIDGET_TILE_FRAME_COLOR_INPUT]
         highlight_color_input = self.widgets[constants.WIDGET_TILE_HIGHLIGHT_COLOR_INPUT]

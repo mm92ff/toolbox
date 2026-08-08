@@ -174,7 +174,13 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "Use the '+' button in the top tab bar, or press Ctrl+T, "
                     "to create and open a new toolbox tab."
                 ),
+                (
+                    "Press Ctrl+N to open another synchronized Toolbox window. "
+                    "Tabs, entries, settings, and undo/redo are shared, while active "
+                    "tab, search, selection, and folder browsing stay window-local."
+                ),
                 "Tab titles can be renamed via right-click.",
+                "Right-click a toolbox tab to open that tab in a new window.",
                 "In 'Manage Tabs' you can adjust order and visibility.",
                 "The 'Settings' and 'Help' tabs are permanently docked on the right side of the tab bar.",
                 "Right-click on empty canvas space to set/reset the background color for the current tab.",
@@ -184,7 +190,11 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 ),
                 (
                     "The System settings control whether the tray icon remains visible and, "
-                    "independently, whether closing the window minimizes Toolbox to the tray."
+                    "independently, whether closing the last window minimizes Toolbox to the tray."
+                ),
+                (
+                    "System settings also choose whether a second Toolbox start activates "
+                    "the last window or creates a new window."
                 ),
                 (
                     "In the Settings tab, you can fine-tune icon size, tile-title "
@@ -228,7 +238,7 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
 
     quick_tips = QtWidgets.QLabel(
         "Tips: Shift-click supports multi-select, Ctrl+Z undoes the last toolbox change, "
-        "Ctrl+Y redoes it, and Save & Apply commits pending settings changes."
+        "Ctrl+Y redoes it, Ctrl+N opens a new window, and Save & Apply commits pending settings changes."
     )
     quick_tips.setWordWrap(True)
     quick_tips.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)

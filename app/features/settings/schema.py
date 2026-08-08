@@ -50,6 +50,13 @@ SETTING_SPECS = (
     ),
     SettingSpec(
         "system",
+        "second_launch_action",
+        constants.DEFAULT_SECOND_LAUNCH_ACTION,
+        "current_second_launch_action",
+        "_normalize_second_launch_action",
+    ),
+    SettingSpec(
+        "system",
         "folder_single_click_browse",
         constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE,
         "current_folder_single_click_browse",
@@ -83,13 +90,19 @@ def specs_for_section(section: str) -> tuple[SettingSpec, ...]:
 def snapshot_schema_sections(owner: object) -> dict[str, dict[str, object]]:
     result: dict[str, dict[str, object]] = {}
     for spec in SETTING_SPECS:
-        result.setdefault(spec.section, {})[spec.name] = getattr(owner, spec.accessor)()
+        accessor = getattr(owner, spec.accessor, None)
+        value = accessor() if callable(accessor) else spec.default
+        result.setdefault(spec.section, {})[spec.name] = value
     return result
 
 
 def save_schema_settings(settings: object, owner: object) -> None:
     for spec in SETTING_SPECS:
-        settings.setValue(spec.qsettings_key, getattr(owner, spec.accessor)())
+        accessor = getattr(owner, spec.accessor, None)
+        settings.setValue(
+            spec.qsettings_key,
+            accessor() if callable(accessor) else spec.default,
+        )
 
 
 def _coerce_bool(value: object, default: bool) -> bool:
@@ -120,6 +133,6 @@ def import_schema_settings(
             normalized: object = _coerce_bool(value, spec.default)
         else:
             normalized = str(value).strip()
-            if spec.normalizer:
+            if spec.normalizer and hasattr(owner, spec.normalizer):
                 normalized = getattr(owner, spec.normalizer)(normalized)
         settings.setValue(spec.qsettings_key, normalized)

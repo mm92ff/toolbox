@@ -161,6 +161,19 @@ def load_settings(owner: object) -> None:
         minimize_tray_checkbox.blockSignals(False)
     owner._update_tray_settings_controls_enabled()
 
+    second_launch_combo = owner.widgets.get(
+        constants.WIDGET_SECOND_LAUNCH_ACTION_COMBOBOX
+    )
+    if second_launch_combo is not None:
+        spec = SETTING_SPEC_BY_NAME["second_launch_action"]
+        action = owner._normalize_second_launch_action(
+            settings.value(spec.qsettings_key, spec.default, type=str)
+        )
+        index = max(0, second_launch_combo.findData(action))
+        second_launch_combo.blockSignals(True)
+        second_launch_combo.setCurrentIndex(index)
+        second_launch_combo.blockSignals(False)
+
     folder_click_cb = owner.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
     if folder_click_cb:
         spec = SETTING_SPEC_BY_NAME["folder_single_click_browse"]

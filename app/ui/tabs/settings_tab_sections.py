@@ -654,9 +654,22 @@ def build_system_tray_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.
     widgets[constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX] = minimize_to_tray
     tray_layout.addWidget(minimize_to_tray)
 
+    second_launch_row = QtWidgets.QFormLayout()
+    second_launch_action = QtWidgets.QComboBox()
+    second_launch_action.setObjectName(constants.WIDGET_SECOND_LAUNCH_ACTION_COMBOBOX)
+    second_launch_action.addItem(
+        "Activate the last window", constants.SECOND_LAUNCH_ACTIVATE
+    )
+    second_launch_action.addItem(
+        "Open a new window", constants.SECOND_LAUNCH_NEW_WINDOW
+    )
+    widgets[constants.WIDGET_SECOND_LAUNCH_ACTION_COMBOBOX] = second_launch_action
+    second_launch_row.addRow("When Toolbox is started again:", second_launch_action)
+    tray_layout.addLayout(second_launch_row)
+
     tray_hint = QtWidgets.QLabel(
         "The tray icon can stay visible without changing the normal close behavior. "
-        "Minimize-to-tray requires the tray icon."
+        "Minimize-to-tray requires the tray icon. Ctrl+N always opens another window."
     )
     tray_hint.setWordWrap(True)
     tray_layout.addWidget(tray_hint)

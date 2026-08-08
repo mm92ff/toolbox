@@ -61,7 +61,11 @@ class MainWindowSettingsIOMixin:
         load_settings(self)
 
     def _save_settings(self) -> None:
-        save_settings(self, logger)
+        controller = getattr(self, "_settings_controller", None)
+        if controller is not None:
+            controller.save_from(self)
+        else:
+            save_settings(self, logger)
 
     def _set_slider_value(self, widget_name: str, value: int) -> None:
         slider = self.widgets[widget_name]

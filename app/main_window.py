@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import sys
+import uuid
 import weakref
 from pathlib import Path
 from typing import Optional
@@ -32,8 +33,32 @@ class MainWindow(
 ):
     """Main application window for the EXE/shortcut toolbox."""
 
-    def __init__(self, app_name: str, config_dir: Path | None = None):
+    new_window_requested = QtCore.Signal()
+    window_closing = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        app_name: str,
+        config_dir: Path | None = None,
+        *,
+        state_repository: object | None = None,
+        settings_controller: object | None = None,
+        folder_count_service: FolderCountService | None = None,
+        appimage_icon_service: AppImageIconService | None = None,
+        managed: bool = False,
+        window_id: str | None = None,
+    ):
         super().__init__()
+        self.window_id = window_id or uuid.uuid4().hex
+        self._managed = bool(managed)
+        self._state_repository = state_repository
+        self._shared_state_revision = 0
+        self._settings_controller = settings_controller
+        self._shared_settings_conflict = False
+        self._shared_settings_revision = 0
+        self._owns_shared_services = (
+            folder_count_service is None and appimage_icon_service is None
+        )
         self.app_name = app_name or constants.DEFAULT_APP_NAME
         self.setWindowTitle(self.app_name)
         app = QtWidgets.QApplication.instance()
@@ -87,8 +112,10 @@ class MainWindow(
         self._last_size_signatures: dict[str, tuple[str, ...]] = {}
         self._size_service = TabSizeCalculationService(self)
         self._size_service.result_ready.connect(self._on_tab_size_calculated)
-        self._folder_count_service = FolderCountService(self, max_workers=2)
-        self._appimage_icon_service = AppImageIconService(self)
+        self._folder_count_service = folder_count_service or FolderCountService(
+            self, max_workers=2
+        )
+        self._appimage_icon_service = appimage_icon_service or AppImageIconService(self)
         self._size_recalc_timer = QtCore.QTimer(self)
         self._size_recalc_timer.setSingleShot(True)
         self._size_recalc_timer.setInterval(180)
@@ -99,13 +126,24 @@ class MainWindow(
         self.status.showMessage("Ready")
 
         self._setup_ui()
-        if app is not None:
+        if app is not None and not self._managed:
             app.aboutToQuit.connect(self._persist_on_quit)
         self._load_toolbox_state()
         self._load_settings()
         self.refresh_all_canvases()
         self._initialize_undo_history()
         self._settings_ready = True
+
+        if self._state_repository is not None:
+            self._shared_state_revision = self._state_repository.revision
+            self._state_repository.state_changed.connect(
+                self._on_shared_toolbox_state_changed
+            )
+        if self._settings_controller is not None:
+            self._shared_settings_revision = self._settings_controller.revision
+            self._settings_controller.settings_changed.connect(
+                self._on_shared_settings_changed
+            )
 
         ctx = self.current_toolbox_context()
         if ctx is not None:
@@ -114,6 +152,45 @@ class MainWindow(
     def _update_window_minimum_width(self, ctx: ToolboxTabContext) -> None:
         del ctx
         self.setMinimumWidth(self.minimumSizeHint().width())
+
+    def _update_managed_window_title(self) -> None:
+        if not self._managed:
+            return
+        ctx = self.current_toolbox_context()
+        self.setWindowTitle(
+            f"{self.app_name} — {ctx.title}" if ctx is not None else self.app_name
+        )
+
+    def _on_shared_settings_changed(
+        self, origin_window_id: str, revision: int, _snapshot: object
+    ) -> None:
+        if origin_window_id == self.window_id:
+            self._shared_settings_revision = revision
+            self._shared_settings_conflict = False
+            return
+        if self._settings_dirty:
+            self._shared_settings_conflict = True
+            self.status.showMessage(
+                "Settings changed in another window. Reload before applying.", 5000
+            )
+            return
+        self._shared_settings_revision = revision
+        self._reload_shared_settings()
+
+    def _reload_shared_settings(self) -> None:
+        geometry = self.saveGeometry()
+        current = self.current_toolbox_context()
+        current_tab_id = current.tab_id if current is not None else None
+        self._load_settings()
+        self.restoreGeometry(geometry)
+        if current_tab_id is not None:
+            restored = next(
+                (ctx for ctx in self.toolbox_tabs if ctx.tab_id == current_tab_id), None
+            )
+            if restored is not None:
+                self.tab_widget.setCurrentWidget(restored.page)
+        self.refresh_all_canvases(apply_layout_only=True)
+        self._shared_settings_conflict = False
 
     def _schedule_active_tab_size(self, ctx: ToolboxTabContext, force: bool = False) -> None:
         if self._closing:
@@ -155,12 +232,27 @@ class MainWindow(
         ffmpeg_task = getattr(self, "_ffmpeg_download_task", None)
         if ffmpeg_task is not None:
             ffmpeg_task.cancel()
-        self._folder_count_service.shutdown()
-        self._appimage_icon_service.shutdown()
+        if self._owns_shared_services:
+            self._folder_count_service.shutdown()
+            self._appimage_icon_service.shutdown()
         self.desktop_process_manager.shutdown()
         self._shutdown_broken_entries_scan_worker()
         self.persist_toolbox_state()
         self._save_settings()
+        if self._state_repository is not None:
+            try:
+                self._state_repository.state_changed.disconnect(
+                    self._on_shared_toolbox_state_changed
+                )
+            except (RuntimeError, TypeError):
+                pass
+        if self._settings_controller is not None:
+            try:
+                self._settings_controller.settings_changed.disconnect(
+                    self._on_shared_settings_changed
+                )
+            except (RuntimeError, TypeError):
+                pass
 
     def _setup_ui(self) -> None:
         central_widget, self.widgets = UIBuilder.create_main_layout()
@@ -189,12 +281,21 @@ class MainWindow(
         self._new_toolbox_tab_shortcut.activated.connect(
             self._create_new_toolbox_tab
         )
+        self._new_window_shortcut = QtGui.QShortcut(
+            QtGui.QKeySequence("Ctrl+N"),
+            self,
+        )
+        self._new_window_shortcut.setContext(
+            QtCore.Qt.ShortcutContext.ApplicationShortcut
+        )
+        self._new_window_shortcut.activated.connect(self.new_window_requested)
 
         tab_bar = self.tab_widget.tabBar()
         tab_bar.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         tab_bar.customContextMenuRequested.connect(self._show_tab_context_menu)
 
-        self._setup_system_tray()
+        if not self._managed:
+            self._setup_system_tray()
         self._connect_settings_widgets()
 
     def _setup_system_tray(self) -> None:
@@ -245,6 +346,11 @@ class MainWindow(
         return QtGui.QIcon(pixmap) if not pixmap.isNull() else icon
 
     def _sync_tray_state(self) -> None:
+        if self._managed:
+            manager = getattr(self, "_window_manager", None)
+            if manager is not None:
+                manager.sync_tray_from_window(self)
+            return
         app = QtWidgets.QApplication.instance()
         tray_available = bool(
             self.tray_icon is not None
@@ -457,6 +563,14 @@ class MainWindow(
         if minimize_tray_cb is not None:
             minimize_tray_cb.toggled.connect(self._on_system_settings_changed)
 
+        second_launch_combo = self.widgets.get(
+            constants.WIDGET_SECOND_LAUNCH_ACTION_COMBOBOX
+        )
+        if second_launch_combo is not None:
+            second_launch_combo.currentIndexChanged.connect(
+                self._on_system_settings_changed
+            )
+
         folder_click_cb = self.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
         if folder_click_cb is not None:
             folder_click_cb.toggled.connect(self._on_system_settings_changed)
@@ -542,6 +656,7 @@ class MainWindow(
             self._update_corner_button_active_state(current_widget)
 
         if ctx is not None:
+            self._update_managed_window_title()
             self._update_details(ctx)
             self._update_action_buttons(ctx)
             self._update_window_minimum_width(ctx)
@@ -556,6 +671,14 @@ class MainWindow(
         self._last_tab_index = index
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        if self._managed:
+            manager = getattr(self, "_window_manager", None)
+            if manager is not None and manager.handle_close_event(self, event):
+                return
+            self._begin_shutdown()
+            self.window_closing.emit(self.window_id)
+            super().closeEvent(event)
+            return
         tray_enabled = bool(
             not self._force_quit
             and self._show_tray_icon

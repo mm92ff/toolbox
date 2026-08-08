@@ -8,6 +8,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- Safe multi-window support in one process with shared state, global undo/redo,
+  `Ctrl+N`, tab context action, and configurable second-launch behavior
+- Application-owned tray menu with Show Last Window, New Window, and Quit
+- Versioned, size-limited local IPC commands for activation and new windows
 - Linux Mint 22.3 x86_64 AppImage build pipeline with AppDir, desktop metadata,
   AppStream metadata, dependency validation, checksum generation, and smoke tests
 - Linux launcher tests for argument handling, working directories, desktop file

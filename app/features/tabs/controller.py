@@ -14,6 +14,7 @@ from app.domain.models import ToolboxEntry, ToolboxTabData
 from app.domain.tab_context import ToolboxTabContext
 from app.features.tabs.tab_manager import MainWindowTabManagerMixin
 from app.services.storage import load_toolbox_tabs, save_toolbox_tabs
+from app.state.toolbox_repository import StaleToolboxStateError
 from app.ui.layouts import UIBuilder
 
 
@@ -55,6 +56,11 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             tab.is_primary = index == first_primary
 
     def _initialize_undo_history(self) -> None:
+        if getattr(self, "_state_repository", None) is not None:
+            self._undo_stack.clear()
+            self._redo_stack.clear()
+            self._undo_last_state = copy.deepcopy(self._collect_toolbox_state_dicts())
+            return
         self._undo_stack.clear()
         self._redo_stack.clear()
         self._undo_last_state = copy.deepcopy(self._collect_toolbox_state_dicts())
@@ -87,17 +93,46 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         current_widget = self.tab_widget.currentWidget()
         preferred_ctx = self.current_toolbox_context()
         preferred_tab_id = preferred_ctx.tab_id if preferred_ctx is not None else None
-
-        self._clear_toolbox_tabs()
+        preferred_index = (
+            self.toolbox_tabs.index(preferred_ctx) if preferred_ctx is not None else 0
+        )
+        existing_by_id = {ctx.tab_id: ctx for ctx in self.toolbox_tabs}
+        reconciled_contexts: list[ToolboxTabContext] = []
         for tab_data in tabs:
-            self._create_toolbox_tab(
-                tab_data.title,
-                tab_data.entries,
-                tab_data.tab_id,
-                tab_data.is_primary,
-                tab_data.background_color,
-                rebuild_tabs=False,
-            )
+            restored = existing_by_id.pop(tab_data.tab_id, None)
+            if restored is None:
+                restored = self._create_toolbox_tab(
+                    tab_data.title,
+                    tab_data.entries,
+                    tab_data.tab_id,
+                    tab_data.is_primary,
+                    tab_data.background_color,
+                    rebuild_tabs=False,
+                )
+            else:
+                restored.title = tab_data.title
+                restored.is_primary = tab_data.is_primary
+                restored.background_color = self._normalize_tab_background_color(
+                    tab_data.background_color
+                )
+                restored.entries = self._reconcile_entry_models(
+                    restored.entries, tab_data.entries
+                )
+                available_ids = {entry.entry_id for entry in restored.entries}
+                restored.selected_ids.intersection_update(available_ids)
+                self._apply_tab_background_color(restored)
+            reconciled_contexts.append(restored)
+
+        for removed in existing_by_id.values():
+            for widget in (
+                removed.drop_zone,
+                removed.canvas.viewport(),
+                removed.canvas.surface,
+            ):
+                self._drop_widget_map.pop(widget, None)
+                widget.removeEventFilter(self)
+            removed.page.deleteLater()
+        self.toolbox_tabs = reconciled_contexts
 
         preferred_widget = self.settings_tab
         if current_widget is self.help_tab:
@@ -111,12 +146,64 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             )
             if restored_ctx is not None:
                 preferred_widget = restored_ctx.page
+            elif self.toolbox_tabs:
+                fallback_index = min(preferred_index, len(self.toolbox_tabs) - 1)
+                preferred_widget = self.toolbox_tabs[fallback_index].page
         selected_key = self._selected_tab_manager_key()
         self._reinsert_fixed_tabs(preferred_widget=preferred_widget)
         self._refresh_tab_manager_ui(preferred_key=selected_key)
         self.refresh_all_canvases()
+        for ctx in self.toolbox_tabs:
+            if ctx.browse_stack:
+                from app.features.entries.folder_browse import _refresh_browse_view
+
+                if not _refresh_browse_view(self, ctx):
+                    ctx.browse_stack.clear()
+        if hasattr(self, "_update_managed_window_title"):
+            self._update_managed_window_title()
+
+    @staticmethod
+    def _reconcile_entry_models(
+        current: list[ToolboxEntry], incoming: list[ToolboxEntry]
+    ) -> list[ToolboxEntry]:
+        """Keep existing entry identities while applying canonical model fields."""
+
+        existing = {entry.entry_id: entry for entry in current}
+        reconciled: list[ToolboxEntry] = []
+        field_names = (
+            "title",
+            "kind",
+            "path",
+            "x",
+            "y",
+            "always_run_as_admin",
+            "launch_arguments",
+            "launch_working_directory",
+            "launch_wait",
+            "launch_window_style",
+            "section_line_color",
+            "section_title_color",
+            "custom_title",
+            "custom_icon_path",
+        )
+        for source in incoming:
+            target = existing.get(source.entry_id)
+            if target is None:
+                target = ToolboxEntry.from_dict(source.to_dict())
+            else:
+                for field_name in field_names:
+                    setattr(target, field_name, getattr(source, field_name))
+            reconciled.append(target)
+        return reconciled
 
     def _undo_last_toolbox_change(self) -> None:
+        repository = getattr(self, "_state_repository", None)
+        if repository is not None:
+            if repository.undo(getattr(self, "window_id", "")):
+                self.status.showMessage("Undid last toolbox change.", 2500)
+            else:
+                self.status.showMessage("Nothing to undo.", 2500)
+            return
         if not self._undo_stack:
             self.status.showMessage("Nothing to undo.", 2500)
             return
@@ -139,6 +226,13 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         self.status.showMessage("Undid last toolbox change.", 2500)
 
     def _redo_last_toolbox_change(self) -> None:
+        repository = getattr(self, "_state_repository", None)
+        if repository is not None:
+            if repository.redo(getattr(self, "window_id", "")):
+                self.status.showMessage("Redid last toolbox change.", 2500)
+            else:
+                self.status.showMessage("Nothing to redo.", 2500)
+            return
         if not self._redo_stack:
             self.status.showMessage("Nothing to redo.", 2500)
             return
@@ -292,7 +386,8 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         return self._toolbox_context_for_index(self.tab_widget.currentIndex())
 
     def _load_toolbox_state(self) -> None:
-        tabs = load_toolbox_tabs(self.config_dir)
+        repository = getattr(self, "_state_repository", None)
+        tabs = repository.snapshot() if repository is not None else load_toolbox_tabs(self.config_dir)
         if not tabs:
             tabs = [
                 ToolboxTabData(
@@ -329,11 +424,76 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
 
     def persist_toolbox_state(self) -> None:
         current_state = self._collect_toolbox_state_dicts()
+        repository = getattr(self, "_state_repository", None)
+        if repository is not None:
+            try:
+                repository.replace(
+                    current_state,
+                    origin_window_id=getattr(self, "window_id", ""),
+                    kind="view-command",
+                    expected_revision=getattr(self, "_shared_state_revision", None),
+                )
+            except StaleToolboxStateError:
+                self._apply_toolbox_state_dicts(repository.snapshot_dicts())
+                self._shared_state_revision = repository.revision
+                self.status.showMessage(
+                    "Toolbox changed in another window; the stale local change was not applied.",
+                    5000,
+                )
+                return
+            self._undo_last_state = copy.deepcopy(current_state)
+            if hasattr(self, "_update_managed_window_title"):
+                self._update_managed_window_title()
+            return
         self._record_undo_snapshot_before_persist(current_state)
         tabs = self._toolbox_state_from_dicts(current_state)
         self._normalize_primary_tabs(tabs)
         save_toolbox_tabs(self.config_dir, tabs)
         self._undo_last_state = copy.deepcopy(current_state)
+
+    def _on_shared_toolbox_state_changed(self, change: object, state: object) -> None:
+        if getattr(self, "_closing", False):
+            return
+        revision = int(getattr(change, "revision", 0))
+        self._shared_state_revision = revision
+        if (
+            getattr(change, "origin_window_id", None) == getattr(self, "window_id", "")
+            and getattr(change, "kind", "") == "view-command"
+        ):
+            return
+        if not isinstance(state, list):
+            return
+        self._undo_suspended = True
+        try:
+            incoming = self._toolbox_state_from_dicts(state)
+            can_update_in_place = len(incoming) == len(self.toolbox_tabs) and all(
+                tab.tab_id == ctx.tab_id
+                and tab.title == ctx.title
+                and tab.is_primary == ctx.is_primary
+                and self._normalize_tab_background_color(tab.background_color)
+                == ctx.background_color
+                for tab, ctx in zip(incoming, self.toolbox_tabs, strict=True)
+            )
+            if can_update_in_place:
+                for tab, ctx in zip(incoming, self.toolbox_tabs, strict=True):
+                    if [entry.to_dict() for entry in tab.entries] == [
+                        entry.to_dict() for entry in ctx.entries
+                    ]:
+                        continue
+                    ctx.entries = self._reconcile_entry_models(ctx.entries, tab.entries)
+                    available_ids = {entry.entry_id for entry in ctx.entries}
+                    ctx.selected_ids.intersection_update(available_ids)
+                    if not ctx.browse_stack:
+                        self.refresh_canvas(ctx)
+                    if ctx is self.current_toolbox_context():
+                        self._update_details(ctx)
+                        self._update_action_buttons(ctx)
+                        self._schedule_active_tab_size(ctx)
+            else:
+                self._apply_toolbox_state_dicts(state)
+            self._undo_last_state = copy.deepcopy(state)
+        finally:
+            self._undo_suspended = False
 
     def _reinsert_fixed_tabs(self, preferred_widget: Optional[QtWidgets.QWidget] = None) -> None:
         if preferred_widget is None:
@@ -520,9 +680,12 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         rename_action = menu.addAction("Rename Tab")
         delete_toolbox_action = None
         new_toolbox_action = None
+        open_in_new_window_action = None
         ctx = self._toolbox_context_for_index(index)
         if not is_fixed_tab:
             new_toolbox_action = menu.addAction("Create New Toolbox Tab")
+            if ctx is not None and getattr(self, "_managed", False):
+                open_in_new_window_action = menu.addAction("Open This Tab in New Window")
             if ctx is not None and not ctx.is_primary:
                 delete_toolbox_action = menu.addAction("Delete Tab")
         chosen = menu.exec(tab_bar.mapToGlobal(pos))
@@ -533,6 +696,10 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
             if ctx is not None:
                 insert_position = self._toolbox_tab_index(ctx) + 1
             self._create_new_toolbox_tab(insert_position=insert_position)
+        elif open_in_new_window_action is not None and chosen == open_in_new_window_action:
+            manager = getattr(self, "_window_manager", None)
+            if manager is not None and ctx is not None:
+                manager.create_window(ctx.tab_id)
         elif delete_toolbox_action is not None and chosen == delete_toolbox_action:
             self._delete_toolbox_tab_by_index(index)
 

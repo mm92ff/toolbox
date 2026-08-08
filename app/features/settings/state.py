@@ -13,6 +13,12 @@ from app import constants
 
 class MainWindowSettingsStateMixin:
     @staticmethod
+    def _normalize_second_launch_action(value: str) -> str:
+        if value == constants.SECOND_LAUNCH_NEW_WINDOW:
+            return constants.SECOND_LAUNCH_NEW_WINDOW
+        return constants.SECOND_LAUNCH_ACTIVATE
+
+    @staticmethod
     def _coerce_int(value: object, default: int) -> int:
         try:
             return int(value)  # type: ignore[arg-type]
@@ -68,6 +74,7 @@ class MainWindowSettingsStateMixin:
         self._applied_file_assoc_document = ""
         self._applied_folder_single_click_browse = constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE
         self._applied_folder_show_file_count = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT
+        self._applied_second_launch_action = constants.DEFAULT_SECOND_LAUNCH_ACTION
 
     def _capture_pending_settings_from_widgets(self) -> dict[str, object]:
         icon_slider = self.widgets[constants.WIDGET_ICON_SIZE_SLIDER]
@@ -102,6 +109,9 @@ class MainWindowSettingsStateMixin:
         show_tray_icon_checkbox = self.widgets.get(constants.WIDGET_SHOW_TRAY_ICON_CHECKBOX)
         minimize_tray_checkbox = self.widgets.get(
             constants.WIDGET_MINIMIZE_TO_TRAY_CHECKBOX
+        )
+        second_launch_combo = self.widgets.get(
+            constants.WIDGET_SECOND_LAUNCH_ACTION_COMBOBOX
         )
         folder_click_cb = self.widgets.get(constants.WIDGET_FOLDER_SINGLE_CLICK_CHECKBOX)
         use_system_cb = self.widgets.get(constants.WIDGET_FILE_ASSOC_USE_SYSTEM_CHECKBOX)
@@ -170,6 +180,11 @@ class MainWindowSettingsStateMixin:
                 bool(minimize_tray_checkbox.isChecked())
                 if minimize_tray_checkbox
                 else constants.DEFAULT_MINIMIZE_TO_TRAY
+            ),
+            "second_launch_action": self._normalize_second_launch_action(
+                str(second_launch_combo.currentData())
+                if isinstance(second_launch_combo, QtWidgets.QComboBox)
+                else constants.DEFAULT_SECOND_LAUNCH_ACTION
             ),
             "folder_single_click_browse": bool(folder_click_cb.isChecked()) if folder_click_cb else False,
             "folder_show_file_count": bool(self.widgets[constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX].isChecked()) if self.widgets.get(constants.WIDGET_FOLDER_SHOW_FILE_COUNT_CHECKBOX) else False,
@@ -282,6 +297,13 @@ class MainWindowSettingsStateMixin:
         self._minimize_to_tray = bool(
             values.get("minimize_to_tray", constants.DEFAULT_MINIMIZE_TO_TRAY)
         )
+        self._applied_second_launch_action = self._normalize_second_launch_action(
+            str(
+                values.get(
+                    "second_launch_action", constants.DEFAULT_SECOND_LAUNCH_ACTION
+                )
+            )
+        )
         self._applied_folder_single_click_browse = bool(
             values.get("folder_single_click_browse", constants.DEFAULT_FOLDER_SINGLE_CLICK_BROWSE)
         )
@@ -379,6 +401,9 @@ class MainWindowSettingsStateMixin:
 
     def current_show_tray_icon(self) -> bool:
         return bool(self._show_tray_icon)
+
+    def current_second_launch_action(self) -> str:
+        return str(self._applied_second_launch_action)
 
     def _normalize_section_line_color(self, value: str) -> str:
         color = QtGui.QColor((value or "").strip())

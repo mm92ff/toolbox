@@ -3,15 +3,18 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import pytest
 from PySide6 import QtCore, QtNetwork, QtWidgets
 
 from app.application_controller import (
+    MAX_IPC_MESSAGE_BYTES,
     InstanceStartResult,
     SingleInstanceController,
+    resolve_second_launch_command,
     single_instance_server_name,
 )
 
@@ -80,3 +83,41 @@ def test_hard_server_failure_is_not_reported_as_secondary_success() -> None:
         result = controller.start()
 
     assert result is InstanceStartResult.FAILED
+
+
+def test_versioned_command_supports_partial_reads() -> None:
+    _application()
+    controller = SingleInstanceController("unused")
+    client = MagicMock()
+    encoded = controller.encode_command("new_window")
+    client.readAll.side_effect = [encoded[:8], encoded[8:]]
+    received: list[str] = []
+    controller.command_received.connect(lambda command, _payload: received.append(command))
+
+    controller._read_client(client)
+    assert received == []
+    controller._read_client(client)
+    assert received == ["new_window"]
+
+
+def test_unknown_and_oversized_ipc_messages_are_rejected() -> None:
+    controller = SingleInstanceController("unused")
+    with pytest.raises(ValueError):
+        controller.encode_command("unknown")
+    with pytest.raises(ValueError):
+        controller.encode_command("activate", "x" * MAX_IPC_MESSAGE_BYTES)
+
+
+@pytest.mark.parametrize(
+    ("arguments", "persisted", "expected"),
+    [
+        ([], "activate_existing", "activate"),
+        ([], "new_window", "new_window"),
+        (["--new-window"], "activate_existing", "new_window"),
+        (["--activate-existing"], "new_window", "activate"),
+        (["--new-window", "--activate-existing"], "activate_existing", "new_window"),
+        ([], "invalid", "activate"),
+    ],
+)
+def test_second_launch_command_resolution(arguments, persisted, expected) -> None:
+    assert resolve_second_launch_command(arguments, persisted) == expected

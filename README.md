@@ -16,6 +16,7 @@ Desktop toolbox launcher built with Python and PySide6.
 ## Highlights
 
 - Multiple toolbox tabs with reorder/visibility management
+- Multiple synchronized windows in one safe application process (`Ctrl+N`)
 - Drag-and-drop app entries and section separators
 - Multi-select movement with structure-preserving behavior
 - Grid snapping with optional auto-compaction
@@ -156,6 +157,14 @@ $env:PYTHONPATH='.'
 - If you leave `Settings` with unsaved changes and switch to a toolbox tab, pending settings are auto-applied.
 - Create a new toolbox tab with the `+` action in the top tab bar or with
   `Ctrl+T`; the existing tab context-menu action remains available.
+- Open another synchronized Toolbox window with `Ctrl+N`. All windows share
+  tabs, entries, settings, persistence, and global undo/redo, while each window
+  keeps its own active tab, search, selection, and folder-browse state.
+- A second Toolbox/AppImage start activates the last window by default. Change
+  this under `Settings > System`, or use `--new-window` / `--activate-existing`
+  to override it for one start.
+- Right-click a toolbox tab and choose `Open This Tab in New Window` to open a
+  second view focused on that tab.
 - Tile positions snap to the active grid, so visible spacing changes in row-sized steps.
 - `Check Broken Entries` runs in the background and shows results when scanning is done.
 - Hover preview only appears when media preview is enabled and `Hover Preview` is checked.
