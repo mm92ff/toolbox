@@ -112,6 +112,7 @@ class CanvasItemBase(QtWidgets.QFrame):
     move_live = QtCore.Signal()
     hover_started = QtCore.Signal(str, QtCore.QPoint)
     hover_ended = QtCore.Signal(str)
+    movement_blocked = QtCore.Signal(str)
 
     def __init__(self, entry: ToolboxEntry, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -126,6 +127,16 @@ class CanvasItemBase(QtWidgets.QFrame):
         self._drag_timer.timeout.connect(self._activate_drag)
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._show_tooltips = constants.DEFAULT_SHOW_TOOLTIPS
+        self._movement_enabled = True
+
+    def set_movement_enabled(self, enabled: bool) -> None:
+        self._movement_enabled = bool(enabled)
+        if not self._movement_enabled:
+            self._drag_timer.stop()
+            self._drag_active = False
+
+    def movement_enabled(self) -> bool:
+        return self._movement_enabled
 
     def set_show_tooltips(self, show: bool) -> None:
         self._show_tooltips = bool(show)
@@ -142,6 +153,9 @@ class CanvasItemBase(QtWidgets.QFrame):
 
     def _activate_drag(self) -> None:
         if QtWidgets.QApplication.mouseButtons() & QtCore.Qt.MouseButton.LeftButton:
+            if not self._movement_enabled:
+                self.movement_blocked.emit(self.entry.entry_id)
+                return
             self._drag_active = True
             self.raise_()
             self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)

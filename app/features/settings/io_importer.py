@@ -10,6 +10,20 @@ from app import constants
 from app.features.settings.schema import import_schema_settings
 
 
+def _coerce_responsive_layout(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().casefold()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT
+
+
 def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) -> None:
     settings = QtCore.QSettings()
 
@@ -174,6 +188,15 @@ def apply_imported_ui_settings(owner: object, ui_settings: dict[str, object]) ->
         settings.setValue(
             "layout/auto_compact_left",
             bool(layout_settings.get("auto_compact_left", constants.DEFAULT_AUTO_COMPACT_LEFT)),
+        )
+        settings.setValue(
+            "layout/responsive_toolbox_layout",
+            _coerce_responsive_layout(
+                layout_settings.get(
+                    "responsive_toolbox_layout",
+                    constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT,
+                )
+            ),
         )
         settings.setValue(
             "layout/section_font_size",

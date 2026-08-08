@@ -99,6 +99,7 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                     "slider. The value is remembered for that folder; reset restores "
                     "the current global icon size."
                 ),
+                "Open folders automatically wrap their tiles to the available window width.",
                 "Use right-click on empty canvas space to add a section at that position.",
                 "Launch behavior can be switched globally between single-click and double-click in Settings.",
             ),
@@ -119,6 +120,11 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 ),
                 "Mixed selection (sections + tiles) uses vertical group movement to keep structure stable.",
                 "A short hold with left mouse button activates move mode; release snaps back to grid.",
+                (
+                    "When responsive layout is enabled for normal tabs, resizing keeps saved "
+                    "positions untouched and manual movement stays disabled until the option "
+                    "is switched off."
+                ),
                 "Dropping a tile directly between two tiles in the same row requires 'Auto-compact icons to the left' to be enabled.",
                 "Right-click on empty canvas space to insert grid rows above or below.",
                 "Right-click on empty canvas space or a section header to 'Alphabetisch sortieren' (Auto-sort alphabetically).",
@@ -203,7 +209,8 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
                 ),
                 (
                     "In the Settings tab, you can fine-tune icon size, tile-title "
-                    "font size, grid, compaction, separator style, and tile colors."
+                    "font size, grid, responsive wrapping, compaction, separator style, "
+                    "and tile colors."
                 ),
                 "Separator spacing can be adjusted separately with 'Gap Above' and 'Gap Below'.",
                 (

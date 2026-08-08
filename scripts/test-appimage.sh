@@ -60,6 +60,9 @@ printf '%s\n' \
     'Terminal=false' \
     > "$DESKTOP_FIXTURE"
 : > "$DROP_FIXTURE"
+for FIXTURE_INDEX in 1 2 3 4 5 6 7 8; do
+    : > "$FOLDER_APPEARANCE_FIXTURE/item-$FIXTURE_INDEX.txt"
+done
 
 if ! command -v mksquashfs >/dev/null 2>&1 || \
    ! command -v unsquashfs >/dev/null 2>&1; then
@@ -104,6 +107,9 @@ run_smoke_test() {
     grep -F -- '"icon_available": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"icon_theme_name":' "$REPORT_PATH" >/dev/null
     grep -F -- '"icon_theme_search_path_count":' "$REPORT_PATH" >/dev/null
+    grep -F -- '"responsive_layout_setting_available": true' "$REPORT_PATH" >/dev/null
+    grep -F -- '"responsive_layout_setting_enabled": true' "$REPORT_PATH" >/dev/null
+    grep -F -- '"responsive_layout_normal_canvas_enabled": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"folder_icon_size_slider_available": true' "$REPORT_PATH" >/dev/null
     grep -F -- '"folder_icon_size_slider_minimum": 40' "$REPORT_PATH" >/dev/null
     grep -F -- '"folder_icon_size_slider_maximum": 160' "$REPORT_PATH" >/dev/null
@@ -130,6 +136,17 @@ run_smoke_test \
 grep -F -- '"folder_icon_size_browse_visible": true' "$TEST_ROOT/normal.json" >/dev/null
 grep -F -- '"folder_icon_size_effective": 118' "$TEST_ROOT/normal.json" >/dev/null
 grep -F -- '"folder_icon_size_override": 118' "$TEST_ROOT/normal.json" >/dev/null
+grep -F -- '"responsive_layout_browse_canvas_enabled": true' "$TEST_ROOT/normal.json" >/dev/null
+grep -F -- '"responsive_layout_browse_columns":' "$TEST_ROOT/normal.json" >/dev/null
+grep -F -- '"responsive_layout_browse_narrow_columns": 1' "$TEST_ROOT/normal.json" >/dev/null
+WIDE_COLUMNS=$(
+    sed -n 's/.*"responsive_layout_browse_wide_columns": \([0-9][0-9]*\).*/\1/p' \
+        "$TEST_ROOT/normal.json"
+)
+if [ -z "$WIDE_COLUMNS" ] || [ "$WIDE_COLUMNS" -le 1 ]; then
+    echo "ERROR: Responsive AppImage smoke did not expand the folder grid." >&2
+    exit 1
+fi
 
 TOOLBOX_SMOKE_FOLDER_APPEARANCE_PATH="$FOLDER_APPEARANCE_FIXTURE" \
 run_smoke_test \

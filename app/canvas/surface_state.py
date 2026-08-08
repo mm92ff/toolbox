@@ -14,6 +14,7 @@ from app.canvas.layout_engine import CanvasLayoutEngine
 from app.domain.models import ToolboxEntry
 from app.services.appimage_icons import AppImageIconService
 from app.services.folder_count import FolderCountService
+from app.services.media_thumbnails import MediaThumbnailService
 from app.ui.widgets.canvas_widgets import CanvasItemBase
 
 
@@ -27,6 +28,15 @@ class CanvasSurfaceStateMixin:
         self._folder_count_service = FolderCountService(self)
         self._appimage_icon_service = AppImageIconService(self)
         self._appimage_icon_service.result_ready.connect(self._on_appimage_icon_ready)
+        self._media_thumbnail_service = MediaThumbnailService(self)
+        self._media_thumbnail_service.result_ready.connect(self._on_media_thumbnail_ready)
+        self._pending_media_entry_ids: set[str] = set()
+        self._media_request_timer = QtCore.QTimer(self)
+        self._media_request_timer.setSingleShot(True)
+        self._media_request_timer.setInterval(
+            constants.MEDIA_THUMBNAIL_REQUEST_DEBOUNCE_MS
+        )
+        self._media_request_timer.timeout.connect(self._request_pending_media_thumbnails)
         self._auto_compact_left = constants.DEFAULT_AUTO_COMPACT_LEFT
         self._image_file_preview_enabled = constants.DEFAULT_IMAGE_FILE_PREVIEW_ENABLED
         self._image_file_preview_mode = constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
@@ -41,9 +51,16 @@ class CanvasSurfaceStateMixin:
         self._selection_active = False
         self._selection_additive = False
         self._selection_dragged = False
-        self.setMinimumSize(900, 540)
+        self._responsive_layout_enabled = False
+        self._responsive_visual_rects: dict[str, QtCore.QRect] = {}
+        self._responsive_columns = 1
+        self._responsive_content_size = QtCore.QSize(0, 420)
+        self._responsive_reflow_count = 0
+        self.setMinimumSize(0, 420)
 
     def clear(self) -> None:
+        self._media_request_timer.stop()
+        self._pending_media_entry_ids.clear()
         for widget in self._widgets.values():
             widget.deleteLater()
         self._widgets.clear()
@@ -70,9 +87,49 @@ class CanvasSurfaceStateMixin:
         old_service.shutdown()
         old_service.deleteLater()
 
+    def set_media_thumbnail_service(self, service: MediaThumbnailService) -> None:
+        """Use the application-wide bounded media thumbnail service."""
+
+        if service is self._media_thumbnail_service:
+            return
+        old_service = self._media_thumbnail_service
+        old_service.result_ready.disconnect(self._on_media_thumbnail_ready)
+        self._media_thumbnail_service = service
+        service.result_ready.connect(self._on_media_thumbnail_ready)
+        old_service.shutdown()
+        old_service.deleteLater()
+
     def set_viewport_width(self, viewport_width: int) -> None:
+        previous_columns = self._responsive_columns
         self._layout_engine.set_viewport_width(viewport_width)
+        if (
+            self._responsive_layout_enabled
+            and self._responsive_visual_rects
+            and self._layout_engine.responsive_columns() == previous_columns
+        ):
+            self._apply_responsive_width_only()
+            self._update_canvas_size()
+            return
         self._apply_geometry(compact_tools=False)
+
+    def set_responsive_layout_enabled(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if self._responsive_layout_enabled == enabled:
+            return
+        self._responsive_layout_enabled = enabled
+        self._responsive_visual_rects.clear()
+        for widget in self._widgets.values():
+            widget.set_movement_enabled(not enabled)
+        self._apply_geometry(compact_tools=False)
+
+    def responsive_layout_enabled(self) -> bool:
+        return self._responsive_layout_enabled
+
+    def responsive_columns(self) -> int:
+        return self._responsive_columns
+
+    def responsive_reflow_count(self) -> int:
+        return self._responsive_reflow_count
 
     def select_entries(self, entry_ids: set[str]) -> None:
         self._selected_entry_ids = set(entry_ids)

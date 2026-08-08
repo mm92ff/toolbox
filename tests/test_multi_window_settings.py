@@ -7,9 +7,10 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtTest, QtWidgets
 
 from app import constants
+from app.domain.models import ToolboxEntry
 from app.window_manager import WindowManager
 
 
@@ -59,6 +60,116 @@ def test_clean_settings_view_updates_immediately(tmp_path) -> None:
 
         assert second._shared_settings_conflict is False
         assert second.current_icon_size() == 104
+        manager.shutdown()
+
+
+def test_responsive_setting_syncs_but_column_counts_stay_window_local(tmp_path) -> None:
+    app = _application()
+    with patch.object(QtWidgets.QSystemTrayIcon, "isSystemTrayAvailable", return_value=False):
+        manager = WindowManager(
+            f"ResponsiveSync-{uuid.uuid4().hex}", tmp_path, parent=app
+        )
+        first = manager.create_window()
+        second = manager.create_window()
+        first_ctx = first.current_toolbox_context()
+        second_ctx = second.current_toolbox_context()
+        assert first_ctx is not None
+        assert second_ctx is not None
+        first_ctx.entries.extend(
+            ToolboxEntry(title=f"Tool {index}", path=f"/tmp/tool-{index}")
+            for index in range(8)
+        )
+        first.persist_toolbox_state()
+
+        first.widgets[
+            constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+        ].setChecked(True)
+        first._apply_pending_settings()
+
+        assert first.current_responsive_toolbox_layout() is True
+        assert second.current_responsive_toolbox_layout() is True
+        assert first_ctx.canvas.responsive_layout_enabled() is True
+        assert second_ctx.canvas.responsive_layout_enabled() is True
+        first_ctx.canvas.surface.set_viewport_width(900)
+        second_ctx.canvas.surface.set_viewport_width(260)
+        assert first_ctx.canvas.responsive_columns() > second_ctx.canvas.responsive_columns()
+        manager.shutdown()
+
+
+def test_responsive_resize_does_not_commit_persist_or_add_undo(tmp_path) -> None:
+    app = _application()
+    config_dir = tmp_path / "config"
+    with patch.object(QtWidgets.QSystemTrayIcon, "isSystemTrayAvailable", return_value=False):
+        manager = WindowManager(
+            f"ResponsiveNoCommit-{uuid.uuid4().hex}", config_dir, parent=app
+        )
+        window = manager.create_window()
+        ctx = window.current_toolbox_context()
+        assert ctx is not None
+        ctx.entries.extend(
+            ToolboxEntry(title=f"Tool {index}", path=f"/tmp/tool-{index}")
+            for index in range(8)
+        )
+        window.persist_toolbox_state()
+        manager.repository.flush()
+        window.widgets[
+            constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+        ].setChecked(True)
+        window._apply_pending_settings()
+        tools_path = config_dir / constants.TOOL_CONFIG_FILENAME
+        tools_before = tools_path.read_bytes()
+        revision_before = manager.repository.revision
+        undo_steps_before = len(manager.repository._undo_stack)
+        state_changes = QtTest.QSignalSpy(manager.repository.state_changed)
+
+        for width in (900, 700, 500, 300, 700):
+            ctx.canvas.surface.set_viewport_width(width)
+        manager.repository.flush()
+
+        assert manager.repository.revision == revision_before
+        assert len(manager.repository._undo_stack) == undo_steps_before
+        assert state_changes.count() == 0
+        assert tools_path.read_bytes() == tools_before
+        manager.shutdown()
+
+
+def test_responsive_drag_attempt_is_blocked_with_status_hint(tmp_path) -> None:
+    app = _application()
+    with patch.object(QtWidgets.QSystemTrayIcon, "isSystemTrayAvailable", return_value=False):
+        manager = WindowManager(
+            f"ResponsiveDrag-{uuid.uuid4().hex}", tmp_path, parent=app
+        )
+        window = manager.create_window()
+        ctx = window.current_toolbox_context()
+        assert ctx is not None
+        entry = ToolboxEntry(title="Tool", path="/tmp/tool")
+        ctx.entries.append(entry)
+        window.persist_toolbox_state()
+        window.widgets[
+            constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+        ].setChecked(True)
+        window._apply_pending_settings()
+        window.refresh_canvas(ctx)
+        window.show()
+        app.processEvents()
+        widget = ctx.canvas.surface._widgets[entry.entry_id]
+        canonical_position = (entry.x, entry.y)
+
+        QtTest.QTest.mousePress(
+            widget,
+            QtCore.Qt.MouseButton.LeftButton,
+            pos=widget.rect().center(),
+        )
+        QtTest.QTest.qWait(constants.MOVE_HOLD_DELAY_MS + 40)
+        QtTest.QTest.mouseRelease(
+            widget,
+            QtCore.Qt.MouseButton.LeftButton,
+            pos=widget.rect().center(),
+        )
+
+        assert "Manuelles Verschieben" in window.status.currentMessage()
+        assert (entry.x, entry.y) == canonical_position
+        assert widget.acceptDrops() is True
         manager.shutdown()
 
 

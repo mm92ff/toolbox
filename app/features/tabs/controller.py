@@ -305,6 +305,7 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         )
         ctx.canvas.surface.set_folder_count_service(self._folder_count_service)
         ctx.canvas.surface.set_appimage_icon_service(self._appimage_icon_service)
+        ctx.canvas.surface.set_media_thumbnail_service(self._media_thumbnail_service)
         ctx.canvas.set_thumbnail_cache_dir(self.config_dir / "thumbnail_cache")
 
         ctx.add_tool_button.clicked.connect(lambda _=False, c=ctx: self.add_tools_from_dialog(c))
@@ -382,6 +383,13 @@ class MainWindowTabsMixin(MainWindowTabManagerMixin):
         )
         ctx.canvas.entry_moved.connect(
             lambda entry_id, x, y, c=ctx: self._on_entry_moved(c, entry_id, x, y)
+        )
+        ctx.canvas.responsive_move_blocked.connect(
+            lambda _entry_id: self.status.showMessage(
+                "Manuelles Verschieben ist im responsiven Layout deaktiviert. "
+                "Deaktivieren Sie ‚An Fensterbreite anpassen‘, um Kacheln frei zu positionieren.",
+                5000,
+            )
         )
         ctx.canvas.entry_files_dropped.connect(
             lambda entry_id, payload, c=ctx: self._on_entry_files_dropped(

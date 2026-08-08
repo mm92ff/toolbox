@@ -116,6 +116,9 @@ class _SnapshotOwner:
     def current_auto_compact_left(self) -> bool:
         return True
 
+    def current_responsive_toolbox_layout(self) -> bool:
+        return True
+
     def current_section_font_size(self) -> int:
         return 17
 
@@ -310,6 +313,7 @@ def test_build_ui_settings_snapshot_contains_all_layout_and_interaction_fields()
         "grid_spacing_x",
         "grid_spacing_y",
         "auto_compact_left",
+        "responsive_toolbox_layout",
         "section_font_size",
         "section_line_thickness",
         "section_gap_above",
@@ -399,6 +403,7 @@ def test_apply_imported_ui_settings_roundtrip_restores_all_keys(monkeypatch) -> 
     assert settings_store.values["layout/grid_spacing_x"] == 7
     assert settings_store.values["layout/grid_spacing_y"] == 9
     assert settings_store.values["layout/auto_compact_left"] is True
+    assert settings_store.values["layout/responsive_toolbox_layout"] is True
     assert settings_store.values["layout/section_font_size"] == 17
     assert settings_store.values["layout/section_line_thickness"] == 4
     assert settings_store.values["layout/section_gap_above"] == 6
@@ -416,6 +421,18 @@ def test_apply_imported_ui_settings_roundtrip_restores_all_keys(monkeypatch) -> 
     assert settings_store.values["system/folder_show_file_count"] is False
     assert settings_store.values["toolbox/tab_a/splitter_sizes"] == [220, 640, 150]
     assert settings_store.values["toolbox/tab_b/splitter_sizes"] == [500]
+
+
+def test_invalid_responsive_layout_profile_value_uses_safe_default(monkeypatch) -> None:
+    settings_store = _FakeQSettings()
+    owner = _ImporterOwner()
+    snapshot = build_ui_settings_snapshot(_SnapshotOwner())
+    snapshot["layout"]["responsive_toolbox_layout"] = "not-a-boolean"
+    monkeypatch.setattr(io_importer_module.QtCore, "QSettings", lambda: settings_store)
+
+    io_importer_module.apply_imported_ui_settings(owner, snapshot)
+
+    assert settings_store.values["layout/responsive_toolbox_layout"] is True
 
 
 def test_profile_import_restores_toolbox_and_ui_settings(monkeypatch) -> None:

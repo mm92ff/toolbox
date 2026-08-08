@@ -102,6 +102,17 @@ def test_video_thumbnail_generates_normal_and_hq_cache_variants(monkeypatch) -> 
         cache_files = list(cache_dir.glob("*.png"))
         assert len(cache_files) == 2
 
+        larger = video_thumbnails.load_or_create_video_thumbnail(
+            str(source),
+            128,
+            constants.IMAGE_PREVIEW_MODE_FIT,
+            cache_dir,
+        )
+        assert larger is not None
+        assert larger.size() == QtCore.QSize(128, 128)
+        assert call_count["extract"] == 1
+        assert len(list(cache_dir.glob("*.png"))) == 3
+
 
 def test_resolve_ffmpeg_prefers_manual_then_system_then_internal(monkeypatch) -> None:
     video_thumbnails.clear_ffmpeg_resolution_cache()

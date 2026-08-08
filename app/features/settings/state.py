@@ -60,6 +60,9 @@ class MainWindowSettingsStateMixin:
         self._applied_grid_spacing_x = constants.DEFAULT_GRID_SPACING_X
         self._applied_grid_spacing_y = constants.DEFAULT_GRID_SPACING_Y
         self._applied_auto_compact_left = constants.DEFAULT_AUTO_COMPACT_LEFT
+        self._applied_responsive_toolbox_layout = (
+            constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT
+        )
         self._applied_section_font_size = constants.DEFAULT_SECTION_FONT_SIZE
         self._applied_section_line_thickness = constants.DEFAULT_SECTION_LINE_THICKNESS
         self._applied_section_gap_above = constants.DEFAULT_SECTION_PROTECTED_GAP_ABOVE
@@ -99,6 +102,9 @@ class MainWindowSettingsStateMixin:
         grid_x_slider = self.widgets[constants.WIDGET_GRID_SPACING_X_SLIDER]
         grid_y_slider = self.widgets[constants.WIDGET_GRID_SPACING_Y_SLIDER]
         auto_compact_checkbox = self.widgets[constants.WIDGET_AUTO_COMPACT_LEFT_CHECKBOX]
+        responsive_checkbox = self.widgets[
+            constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+        ]
         section_font_slider = self.widgets[constants.WIDGET_SECTION_FONT_SIZE_SLIDER]
         section_line_slider = self.widgets[constants.WIDGET_SECTION_LINE_THICKNESS_SLIDER]
         section_gap_above_spinbox = self.widgets.get(constants.WIDGET_SECTION_GAP_ABOVE_SPINBOX)
@@ -153,6 +159,7 @@ class MainWindowSettingsStateMixin:
             "grid_spacing_x": int(grid_x_slider.value()),
             "grid_spacing_y": int(grid_y_slider.value()),
             "auto_compact_left": bool(auto_compact_checkbox.isChecked()),
+            "responsive_toolbox_layout": bool(responsive_checkbox.isChecked()),
             "section_font_size": int(section_font_slider.value()),
             "section_line_thickness": int(section_line_slider.value()),
             "section_gap_above": (
@@ -267,6 +274,12 @@ class MainWindowSettingsStateMixin:
         self._applied_auto_compact_left = bool(
             values.get("auto_compact_left", constants.DEFAULT_AUTO_COMPACT_LEFT)
         )
+        self._applied_responsive_toolbox_layout = bool(
+            values.get(
+                "responsive_toolbox_layout",
+                constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT,
+            )
+        )
         self._applied_section_font_size = self._coerce_int(
             values.get("section_font_size"), constants.DEFAULT_SECTION_FONT_SIZE
         )
@@ -373,6 +386,9 @@ class MainWindowSettingsStateMixin:
 
     def current_auto_compact_left(self) -> bool:
         return bool(self._applied_auto_compact_left)
+
+    def current_responsive_toolbox_layout(self) -> bool:
+        return bool(self._applied_responsive_toolbox_layout)
 
     def current_section_font_size(self) -> int:
         return int(self._applied_section_font_size)

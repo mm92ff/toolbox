@@ -99,6 +99,11 @@ def on_entry_activated(owner: object, ctx: ToolboxTabContext, entry_id: str) -> 
 
 
 def on_entry_moved(owner: object, ctx: ToolboxTabContext, _entry_id: str, _x: int, _y: int) -> None:
+    if ctx.canvas.responsive_layout_enabled():
+        owner.status.showMessage(
+            "Manuelles Verschieben ist im responsiven Layout deaktiviert.", 3000
+        )
+        return
     owner.persist_toolbox_state()
     update_details(owner, ctx)
     owner.status.showMessage("Position saved.", 1500)

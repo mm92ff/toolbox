@@ -55,6 +55,7 @@ def build_ui_settings_snapshot(owner: object) -> dict[str, object]:
             "grid_spacing_x": owner.current_grid_spacing_x(),
             "grid_spacing_y": owner.current_grid_spacing_y(),
             "auto_compact_left": owner.current_auto_compact_left(),
+            "responsive_toolbox_layout": owner.current_responsive_toolbox_layout(),
             "section_font_size": owner.current_section_font_size(),
             "section_line_thickness": owner.current_section_line_thickness(),
             "section_gap_above": owner.current_section_gap_above(),
@@ -201,6 +202,10 @@ def save_settings(owner: object, logger: Logger) -> None:
     settings.setValue("layout/grid_spacing_x", owner.current_grid_spacing_x())
     settings.setValue("layout/grid_spacing_y", owner.current_grid_spacing_y())
     settings.setValue("layout/auto_compact_left", owner.current_auto_compact_left())
+    settings.setValue(
+        "layout/responsive_toolbox_layout",
+        owner.current_responsive_toolbox_layout(),
+    )
     settings.setValue("layout/section_font_size", owner.current_section_font_size())
     settings.setValue("layout/section_line_thickness", owner.current_section_line_thickness())
     settings.setValue("layout/section_gap_above", owner.current_section_gap_above())

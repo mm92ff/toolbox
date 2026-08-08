@@ -39,6 +39,10 @@ def test_tabs_and_layout_settings_survive_full_window_restart() -> None:
             ]  # type: ignore[assignment]
             auto_font.setChecked(False)
             font_slider.setValue(21)
+            responsive_checkbox: QtWidgets.QCheckBox = first.widgets[
+                constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+            ]  # type: ignore[assignment]
+            responsive_checkbox.setChecked(True)
             first._apply_pending_settings()
             first.persist_toolbox_state()
             first._save_settings()
@@ -54,6 +58,8 @@ def test_tabs_and_layout_settings_survive_full_window_restart() -> None:
             assert second.current_icon_size() == target_icon_size
             assert second.current_tile_font_auto() is False
             assert second.current_tile_font_size() == 21
+            assert second.current_responsive_toolbox_layout() is True
+            assert second.toolbox_tabs[0].canvas.responsive_layout_enabled() is True
             assert second.widgets[constants.WIDGET_TILE_FONT_SIZE_SLIDER].isEnabled()
             assert (config_dir / constants.TOOL_CONFIG_FILENAME).is_file()
             assert (config_dir / constants.UI_SETTINGS_FILENAME).is_file()

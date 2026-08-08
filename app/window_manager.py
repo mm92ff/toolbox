@@ -9,6 +9,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from app.main_window import MainWindow
 from app.services.appimage_icons import AppImageIconService
 from app.services.folder_count import FolderCountService
+from app.services.media_thumbnails import MediaThumbnailService
 from app.state.settings_controller import SharedSettingsController
 from app.state.folder_browse_appearance import FolderBrowseAppearanceStore
 from app.state.toolbox_repository import ToolboxStateRepository
@@ -36,6 +37,7 @@ class WindowManager(QtCore.QObject):
         self.folder_browse_appearance = FolderBrowseAppearanceStore(self)
         self.folder_count_service = FolderCountService(self, max_workers=2)
         self.appimage_icon_service = AppImageIconService(self)
+        self.media_thumbnail_service = MediaThumbnailService(self)
         self.tray = ApplicationTrayController(self._tray_icon_path(), self)
         self.tray.show_last_requested.connect(self.show_last_window)
         self.tray.new_window_requested.connect(self.create_window)
@@ -66,6 +68,7 @@ class WindowManager(QtCore.QObject):
             folder_browse_appearance_store=self.folder_browse_appearance,
             folder_count_service=self.folder_count_service,
             appimage_icon_service=self.appimage_icon_service,
+            media_thumbnail_service=self.media_thumbnail_service,
             managed=True,
         )
         window._window_manager = self
@@ -188,4 +191,5 @@ class WindowManager(QtCore.QObject):
         self.repository.shutdown()
         self.folder_count_service.shutdown()
         self.appimage_icon_service.shutdown()
+        self.media_thumbnail_service.shutdown()
         self.tray.icon.hide()

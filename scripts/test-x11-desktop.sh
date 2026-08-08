@@ -29,6 +29,7 @@ done
 TEST_ROOT=$(mktemp -d)
 TEST_CONFIG="$TEST_ROOT/config"
 INSTANCE_KEY="x11-desktop-$$"
+RESPONSIVE_REPORT="$TEST_ROOT/responsive-state.json"
 APP_PID=
 cleanup() {
     if [ -n "$APP_PID" ] && kill -0 "$APP_PID" 2>/dev/null; then
@@ -41,6 +42,7 @@ trap cleanup EXIT HUP INT TERM
 
 XDG_CONFIG_HOME="$TEST_CONFIG" \
     TOOLBOX_INSTANCE_KEY="$INSTANCE_KEY" \
+    TOOLBOX_X11_RESPONSIVE_REPORT="$RESPONSIVE_REPORT" \
     "$APPIMAGE" >"$TEST_ROOT/stdout.log" 2>"$TEST_ROOT/stderr.log" &
 APP_PID=$!
 
@@ -76,6 +78,29 @@ printf '%s\n' "$WINDOW_PROPERTIES" \
     | grep -F '_NET_WM_NAME(UTF8_STRING) = "Toolbox' >/dev/null
 printf '%s\n' "$WINDOW_PROPERTIES" | grep -F '_NET_WM_ICON(CARDINAL)' >/dev/null
 
+read_probe_value() {
+    PROBE_KEY=$1
+    sed -n "s/.*\"$PROBE_KEY\": \([0-9][0-9]*\).*/\1/p" "$RESPONSIVE_REPORT" \
+        2>/dev/null | head -n 1
+}
+
+ATTEMPT=0
+INITIAL_COLUMNS=
+while [ "$ATTEMPT" -lt 100 ]; do
+    INITIAL_COLUMNS=$(read_probe_value columns)
+    if [ -n "$INITIAL_COLUMNS" ] && [ "$INITIAL_COLUMNS" -gt 1 ]; then
+        break
+    fi
+    sleep 0.1
+    ATTEMPT=$((ATTEMPT + 1))
+done
+if [ -z "$INITIAL_COLUMNS" ] || [ "$INITIAL_COLUMNS" -le 1 ]; then
+    echo "ERROR: X11 responsive probe did not start with multiple columns." >&2
+    exit 1
+fi
+grep -F '"canonical_unchanged": true' "$RESPONSIVE_REPORT" >/dev/null
+grep -F '"responsive_enabled": true' "$RESPONSIVE_REPORT" >/dev/null
+
 # A second AppImage start must ask the existing process for another window.
 find "$TEST_CONFIG" -type f -print0 2>/dev/null \
     | sort -z \
@@ -108,6 +133,26 @@ fi
 
 INITIAL_WIDTH=$(xwininfo -id "$WINDOW_ID" | awk '/Width:/ { print $2; exit }')
 INITIAL_HEIGHT=$(xwininfo -id "$WINDOW_ID" | awk '/Height:/ { print $2; exit }')
+NARROW_WIDTH=220
+wmctrl -ir "$WINDOW_ID" -e "0,120,140,$NARROW_WIDTH,$INITIAL_HEIGHT"
+
+ATTEMPT=0
+NARROW_COLUMNS=
+while [ "$ATTEMPT" -lt 50 ]; do
+    CURRENT_WIDTH=$(xwininfo -id "$WINDOW_ID" | awk '/Width:/ { print $2; exit }')
+    NARROW_COLUMNS=$(read_probe_value columns)
+    if [ "$CURRENT_WIDTH" -le "$NARROW_WIDTH" ] && [ "$NARROW_COLUMNS" = "1" ]; then
+        break
+    fi
+    sleep 0.1
+    ATTEMPT=$((ATTEMPT + 1))
+done
+if [ "$NARROW_COLUMNS" != "1" ]; then
+    echo "ERROR: Real X11 narrowing did not produce one responsive column." >&2
+    exit 1
+fi
+grep -F '"canonical_unchanged": true' "$RESPONSIVE_REPORT" >/dev/null
+
 TARGET_WIDTH=$((INITIAL_WIDTH + 120))
 TARGET_HEIGHT=$((INITIAL_HEIGHT + 80))
 wmctrl -ir "$WINDOW_ID" -e "0,120,140,$TARGET_WIDTH,$TARGET_HEIGHT"
@@ -116,18 +161,24 @@ ATTEMPT=0
 while [ "$ATTEMPT" -lt 30 ]; do
     CURRENT_WIDTH=$(xwininfo -id "$WINDOW_ID" | awk '/Width:/ { print $2; exit }')
     CURRENT_HEIGHT=$(xwininfo -id "$WINDOW_ID" | awk '/Height:/ { print $2; exit }')
+    CURRENT_COLUMNS=$(read_probe_value columns)
     if [ "$CURRENT_WIDTH" -ge "$TARGET_WIDTH" ] \
-        && [ "$CURRENT_HEIGHT" -ge "$TARGET_HEIGHT" ]; then
+        && [ "$CURRENT_HEIGHT" -ge "$TARGET_HEIGHT" ] \
+        && [ -n "$CURRENT_COLUMNS" ] \
+        && [ "$CURRENT_COLUMNS" -gt 1 ]; then
         break
     fi
     sleep 0.1
     ATTEMPT=$((ATTEMPT + 1))
 done
 if [ "$CURRENT_WIDTH" -lt "$TARGET_WIDTH" ] \
-    || [ "$CURRENT_HEIGHT" -lt "$TARGET_HEIGHT" ]; then
-    echo "ERROR: Toolbox window did not accept the resize request." >&2
+    || [ "$CURRENT_HEIGHT" -lt "$TARGET_HEIGHT" ] \
+    || [ -z "$CURRENT_COLUMNS" ] \
+    || [ "$CURRENT_COLUMNS" -le 1 ]; then
+    echo "ERROR: Toolbox did not restore multiple columns after X11 expansion." >&2
     exit 1
 fi
+grep -F '"canonical_unchanged": true' "$RESPONSIVE_REPORT" >/dev/null
 
 wmctrl -lp | awk -v target="$APP_PID" '$3 == target { print $1 }' | while IFS= read -r id; do
     wmctrl -ic "$id"

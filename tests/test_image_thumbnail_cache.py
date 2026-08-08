@@ -74,3 +74,26 @@ def test_thumbnail_fill_mode_outputs_square_thumbnail() -> None:
         assert thumb is not None
         assert not thumb.isNull()
         assert thumb.size() == QtCore.QSize(96, 96)
+
+
+def test_nearby_sizes_reuse_the_same_cache_bucket() -> None:
+    _ensure_app()
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        source = base / "sample.png"
+        cache_dir = base / "thumb-cache"
+        pixmap = QtGui.QPixmap(640, 360)
+        pixmap.fill(QtGui.QColor("#225588"))
+        assert pixmap.save(str(source), "PNG")
+
+        first = load_or_create_thumbnail(
+            str(source), 72, constants.IMAGE_PREVIEW_MODE_FIT, cache_dir
+        )
+        files_after_first = {path.name for path in cache_dir.glob("*.png")}
+        second = load_or_create_thumbnail(
+            str(source), 80, constants.IMAGE_PREVIEW_MODE_FIT, cache_dir
+        )
+
+        assert first is not None and first.size() == QtCore.QSize(72, 72)
+        assert second is not None and second.size() == QtCore.QSize(80, 80)
+        assert {path.name for path in cache_dir.glob("*.png")} == files_after_first

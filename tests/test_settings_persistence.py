@@ -12,6 +12,7 @@ from PySide6 import QtCore, QtWidgets
 from app import constants
 from app.features.settings.schema import SETTING_SPECS
 from app.main_window import MainWindow
+from app.features.settings.io_loader import _coerce_responsive_layout
 
 
 def _create_window(app_name: str, config_dir: Path) -> MainWindow:
@@ -98,6 +99,58 @@ def test_old_profile_without_tile_font_keys_keeps_automatic_scaling(
     finally:
         window._force_quit = True
         window.close()
+        QtCore.QSettings().clear()
+
+
+def test_old_profile_without_responsive_key_migrates_to_enabled_layout(tmp_path: Path) -> None:
+    app_name = f"ToolboxResponsiveMigration-{uuid.uuid4().hex}"
+    app = QtWidgets.QApplication.instance()
+    assert app is not None
+    app.setOrganizationName(app_name)
+    app.setApplicationName(app_name)
+    settings = QtCore.QSettings()
+    settings.clear()
+    settings.setValue("layout/icon_size", constants.DEFAULT_ICON_SIZE)
+    settings.sync()
+
+    window = _create_window(app_name, tmp_path / "config")
+    try:
+        assert window.current_responsive_toolbox_layout() is True
+        assert window.toolbox_tabs[0].canvas.responsive_layout_enabled() is True
+    finally:
+        window._force_quit = True
+        window.close()
+        QtCore.QSettings().clear()
+
+
+def test_invalid_local_responsive_setting_uses_safe_default() -> None:
+    assert _coerce_responsive_layout("invalid") is True
+    assert _coerce_responsive_layout(None) is True
+    assert _coerce_responsive_layout("false") is False
+    assert _coerce_responsive_layout("true") is True
+
+
+def test_responsive_layout_can_be_disabled_after_default_migration(tmp_path: Path) -> None:
+    app_name = f"ToolboxResponsiveChoice-{uuid.uuid4().hex}"
+    config_dir = tmp_path / "config"
+    first = _create_window(app_name, config_dir)
+    try:
+        assert first.current_responsive_toolbox_layout() is True
+        first.widgets[
+            constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+        ].setChecked(False)
+        first._apply_pending_settings()
+    finally:
+        first._force_quit = True
+        first.close()
+
+    second = _create_window(app_name, config_dir)
+    try:
+        assert second.current_responsive_toolbox_layout() is False
+        assert second.toolbox_tabs[0].canvas.responsive_layout_enabled() is False
+    finally:
+        second._force_quit = True
+        second.close()
         QtCore.QSettings().clear()
 
 

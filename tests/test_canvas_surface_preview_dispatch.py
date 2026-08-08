@@ -2,12 +2,13 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtWidgets
 
 from app import constants
 from app.canvas import surface_render as surface_render_module
 from app.canvas.toolbox_canvas import CanvasSurface
 from app.domain.models import ToolboxEntry
+from app.services.media_thumbnails import MEDIA_KIND_IMAGE, MEDIA_KIND_VIDEO, MediaThumbnailService
 
 
 def _ensure_app() -> QtWidgets.QApplication:
@@ -32,20 +33,22 @@ def test_image_preview_dispatch_does_not_forward_ffmpeg_manual_path(monkeypatch)
     monkeypatch.setattr(surface_render_module, "is_supported_image_path", lambda _path: True)
     monkeypatch.setattr(surface_render_module, "is_supported_video_path", lambda _path: False)
 
-    def _fake_image_loader(
+    def _fake_request(
+        _self,
         source_path: str,
+        kind: str,
         icon_size: int,
         mode: str,
         cache_dir,
-    ) -> QtGui.QPixmap:
+        **kwargs,
+    ) -> None:
         calls["source_path"] = source_path
+        calls["kind"] = kind
         calls["icon_size"] = icon_size
         calls["mode"] = mode
-        pixmap = QtGui.QPixmap(max(1, icon_size), max(1, icon_size))
-        pixmap.fill(QtGui.QColor("#335577"))
-        return pixmap
+        calls["kwargs"] = kwargs
 
-    monkeypatch.setattr(surface_render_module, "load_or_create_thumbnail", _fake_image_loader)
+    monkeypatch.setattr(MediaThumbnailService, "request", _fake_request)
 
     surface = CanvasSurface()
     entries = [_base_entry(r"C:\Images\sample.png", "img-1")]
@@ -73,8 +76,10 @@ def test_image_preview_dispatch_does_not_forward_ffmpeg_manual_path(monkeypatch)
     )
 
     assert calls["source_path"] == r"C:\Images\sample.png"
+    assert calls["kind"] == MEDIA_KIND_IMAGE
     assert calls["icon_size"] == constants.DEFAULT_ICON_SIZE
     assert calls["mode"] == constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
+    assert "manual_ffmpeg_path" not in calls["kwargs"]
 
 
 def test_video_preview_dispatch_forwards_manual_ffmpeg_path(monkeypatch) -> None:
@@ -84,27 +89,22 @@ def test_video_preview_dispatch_forwards_manual_ffmpeg_path(monkeypatch) -> None
     monkeypatch.setattr(surface_render_module, "is_supported_image_path", lambda _path: False)
     monkeypatch.setattr(surface_render_module, "is_supported_video_path", lambda _path: True)
 
-    def _fake_video_loader(
+    def _fake_request(
+        _self,
         source_path: str,
+        kind: str,
         icon_size: int,
         mode: str,
         cache_dir,
-        capture_seconds: float = constants.VIDEO_PREVIEW_CAPTURE_SECONDS,
-        manual_ffmpeg_path: str | None = None,
-    ) -> QtGui.QPixmap:
+        **kwargs,
+    ) -> None:
         calls["source_path"] = source_path
+        calls["kind"] = kind
         calls["icon_size"] = icon_size
         calls["mode"] = mode
-        calls["manual_ffmpeg_path"] = manual_ffmpeg_path
-        pixmap = QtGui.QPixmap(max(1, icon_size), max(1, icon_size))
-        pixmap.fill(QtGui.QColor("#446688"))
-        return pixmap
+        calls["manual_ffmpeg_path"] = kwargs.get("manual_ffmpeg_path")
 
-    monkeypatch.setattr(
-        surface_render_module,
-        "load_or_create_video_thumbnail",
-        _fake_video_loader,
-    )
+    monkeypatch.setattr(MediaThumbnailService, "request", _fake_request)
 
     surface = CanvasSurface()
     entries = [_base_entry(r"C:\Videos\clip.mp4", "vid-1")]
@@ -132,7 +132,7 @@ def test_video_preview_dispatch_forwards_manual_ffmpeg_path(monkeypatch) -> None
     )
 
     assert calls["source_path"] == r"C:\Videos\clip.mp4"
+    assert calls["kind"] == MEDIA_KIND_VIDEO
     assert calls["icon_size"] == constants.DEFAULT_ICON_SIZE
     assert calls["mode"] == constants.DEFAULT_IMAGE_FILE_PREVIEW_MODE
     assert calls["manual_ffmpeg_path"] == r"C:\ffmpeg\ffmpeg.exe"
-

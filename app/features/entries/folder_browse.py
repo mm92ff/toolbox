@@ -134,9 +134,13 @@ def _refresh_browse_view(owner: object, ctx: ToolboxTabContext) -> bool:
             if owner.current_tile_font_auto()
             else owner.current_tile_font_size()
         ),
+        responsive_layout=True,
     )
     owner._update_details(ctx)
     owner._update_action_buttons(ctx)
+    update_minimum_width = getattr(owner, "_update_window_minimum_width", None)
+    if callable(update_minimum_width):
+        update_minimum_width(ctx)
     return True
 
 
@@ -217,10 +221,14 @@ def _apply_browse_layout(
         tile_font_size=(
             None if owner.current_tile_font_auto() else owner.current_tile_font_size()
         ),
+        responsive_layout=True,
     )
     ctx.canvas.select_entries(ctx.selected_ids)
     owner._update_details(ctx)
     owner._update_action_buttons(ctx)
+    update_minimum_width = getattr(owner, "_update_window_minimum_width", None)
+    if callable(update_minimum_width):
+        update_minimum_width(ctx)
 
 
 def schedule_folder_icon_size_change(
@@ -256,6 +264,10 @@ def apply_folder_icon_size_preview(owner: object, ctx: ToolboxTabContext) -> Non
     timer = ctx.browse_icon_size_timer
     if timer is not None:
         timer.stop()
+    persist_timer = ctx.browse_icon_size_persist_timer
+    restart_persist_debounce = bool(
+        persist_timer is not None and persist_timer.isActive()
+    )
     store = _appearance_store(owner)
     if store is None:
         return
@@ -263,6 +275,9 @@ def apply_folder_icon_size_preview(owner: object, ctx: ToolboxTabContext) -> Non
         ctx.browse_stack[-1], ctx.browse_icon_size_slider.value()
     ):
         ctx._browse_icon_size_persist_pending = True
+        if restart_persist_debounce and persist_timer is not None:
+            # Count the idle interval after the potentially expensive visual reflow.
+            persist_timer.start()
 
 
 def commit_folder_icon_size_change(owner: object, ctx: ToolboxTabContext) -> None:

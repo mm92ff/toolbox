@@ -119,6 +119,14 @@ def _write_smoke_test_report(
     )
     report.update(
         {
+            "responsive_layout_setting_available": (
+                constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX in window.widgets
+            ),
+            "responsive_layout_setting_enabled": window.current_responsive_toolbox_layout(),
+            "responsive_layout_normal_canvas_enabled": bool(
+                toolbox_context is not None
+                and toolbox_context.canvas.responsive_layout_enabled()
+            ),
             "folder_icon_size_slider_available": folder_size_slider is not None,
             "folder_icon_size_slider_minimum": (
                 folder_size_slider.minimum() if folder_size_slider is not None else None
@@ -142,6 +150,12 @@ def _write_smoke_test_report(
             toolbox_context.browse_icon_size_slider.setValue(int(requested_size))
             window._commit_folder_icon_size_change(toolbox_context)
         app.processEvents()
+        original_viewport_width = toolbox_context.canvas.viewport().width()
+        toolbox_context.canvas.surface.set_viewport_width(900)
+        responsive_wide_columns = toolbox_context.canvas.responsive_columns()
+        toolbox_context.canvas.surface.set_viewport_width(220)
+        responsive_narrow_columns = toolbox_context.canvas.responsive_columns()
+        toolbox_context.canvas.surface.set_viewport_width(original_viewport_width)
         report.update(
             {
                 "folder_icon_size_browse_visible": bool(
@@ -156,6 +170,14 @@ def _write_smoke_test_report(
                 "folder_icon_size_override": (
                     window._folder_browse_appearance_store.get_override(fixture_path)
                 ),
+                "responsive_layout_browse_canvas_enabled": (
+                    toolbox_context.canvas.responsive_layout_enabled()
+                ),
+                "responsive_layout_browse_columns": (
+                    toolbox_context.canvas.responsive_columns()
+                ),
+                "responsive_layout_browse_wide_columns": responsive_wide_columns,
+                "responsive_layout_browse_narrow_columns": responsive_narrow_columns,
             }
         )
     desktop_fixture = os.environ.get("TOOLBOX_SMOKE_DESKTOP_ENTRY", "").strip()
@@ -238,6 +260,60 @@ def _write_smoke_test_report(
     )
 
 
+def _install_x11_responsive_probe(window: MainWindow, report_path: str) -> None:
+    """Expose responsive state for the opt-in real-X11 release acceptance test."""
+
+    from app.domain.models import ToolboxEntry
+
+    ctx = window.current_toolbox_context()
+    if ctx is None:
+        return
+    probe_entries = [
+        ToolboxEntry(
+            title=f"Responsive probe {index}",
+            path=f"/tmp/toolbox-responsive-probe-{index}",
+            x=constants.CANVAS_PADDING + index,
+            y=constants.CANVAS_PADDING,
+            entry_id=f"responsive-probe-{index}",
+        )
+        for index in range(12)
+    ]
+    ctx.entries.extend(probe_entries)
+    canonical_positions = {
+        entry.entry_id: (entry.x, entry.y) for entry in probe_entries
+    }
+    window._applied_responsive_toolbox_layout = True
+    window.refresh_canvas(ctx)
+
+    target = Path(report_path).expanduser()
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    def write_probe_report() -> None:
+        current_positions = {
+            entry.entry_id: (entry.x, entry.y) for entry in probe_entries
+        }
+        payload = {
+            "canonical_unchanged": current_positions == canonical_positions,
+            "columns": ctx.canvas.responsive_columns(),
+            "responsive_enabled": ctx.canvas.responsive_layout_enabled(),
+            "viewport_width": ctx.canvas.viewport().width(),
+            "window_width": window.width(),
+        }
+        temporary = target.with_name(f".{target.name}.tmp")
+        temporary.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, target)
+
+    timer = QtCore.QTimer(window)
+    timer.setInterval(40)
+    timer.timeout.connect(write_probe_report)
+    timer.start()
+    window._x11_responsive_probe_timer = timer
+    write_probe_report()
+
+
 def main() -> int:
     """Start the application and return the process exit code."""
     configure_logging()
@@ -298,6 +374,10 @@ def main() -> int:
         parent=app,
     )
     window = window_manager.create_window()
+
+    x11_probe_report = os.environ.get("TOOLBOX_X11_RESPONSIVE_REPORT", "").strip()
+    if x11_probe_report:
+        _install_x11_responsive_probe(window, x11_probe_report)
 
     if instance_controller is not None:
         instance_controller.command_received.connect(

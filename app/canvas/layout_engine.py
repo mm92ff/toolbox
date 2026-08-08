@@ -148,8 +148,28 @@ class CanvasLayoutEngine:
     def section_line_color(self) -> str:
         return self._section_line_color
 
+    @property
+    def grid_spacing_x(self) -> int:
+        return self._grid_spacing_x
+
+    @property
+    def grid_spacing_y(self) -> int:
+        return self._grid_spacing_y
+
+    @property
+    def section_gap_above(self) -> int:
+        return self._section_gap_above
+
+    @property
+    def section_gap_below(self) -> int:
+        return self._section_gap_below
+
+    @property
+    def viewport_width(self) -> int:
+        return self._viewport_width
+
     def set_viewport_width(self, viewport_width: int) -> None:
-        self._viewport_width = max(480, viewport_width)
+        self._viewport_width = max(1, int(viewport_width))
 
     def configure(
         self,
@@ -231,6 +251,23 @@ class CanvasLayoutEngine:
 
     def content_width(self) -> int:
         return max(self._viewport_width - (2 * constants.CANVAS_PADDING), 320)
+
+    def responsive_columns(self, viewport_width: int | None = None) -> int:
+        width = self._viewport_width if viewport_width is None else max(1, int(viewport_width))
+        available_width = max(1, width - (2 * constants.CANVAS_PADDING))
+        tile_width = self.tool_tile_size().width()
+        return max(
+            1,
+            (available_width + self._grid_spacing_x)
+            // (tile_width + self._grid_spacing_x),
+        )
+
+    def responsive_content_width(self, viewport_width: int | None = None) -> int:
+        width = self._viewport_width if viewport_width is None else max(1, int(viewport_width))
+        available_width = max(1, width - (2 * constants.CANVAS_PADDING))
+        return max(self.tool_tile_size().width(), available_width) + (
+            2 * constants.CANVAS_PADDING
+        )
 
     def tool_rect_at(self, x: int, y: int) -> QtCore.QRect:
         size = self.tool_tile_size()

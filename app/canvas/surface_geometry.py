@@ -13,6 +13,7 @@ from app.canvas.section_conflicts import (
     resolve_section_protection_conflicts,
     section_drop_intersects_tools,
 )
+from app.canvas.responsive_layout import ResponsiveItem, build_responsive_layout
 from app.domain.models import ToolboxEntry
 from app.ui.widgets.canvas_widgets import SectionWidget
 
@@ -98,6 +99,10 @@ class CanvasSurfaceGeometryMixin:
         self._apply_geometry(compact_tools=True)
 
     def _apply_geometry(self, compact_tools: bool = False) -> None:
+        if self._responsive_layout_enabled:
+            self._apply_responsive_geometry()
+            self._update_canvas_size()
+            return
         self._apply_section_geometry()
         self._apply_tool_geometry(compact_rows=compact_tools)
         for entry in self._entries:
@@ -105,6 +110,73 @@ class CanvasSurfaceGeometryMixin:
             if entry.is_section and widget is not None:
                 widget.raise_()
         self._update_canvas_size()
+
+    def _apply_responsive_geometry(self) -> None:
+        self._responsive_reflow_count += 1
+        visible_items = [
+            ResponsiveItem(
+                entry_id=entry.entry_id,
+                is_section=entry.is_section,
+                x=entry.x,
+                y=entry.y,
+                source_index=index,
+            )
+            for index, entry in enumerate(self._entries)
+            if entry.entry_id not in self._hidden_entry_ids
+        ]
+        tile_size = self._layout_engine.tool_tile_size()
+        result = build_responsive_layout(
+            visible_items,
+            viewport_width=self._layout_engine.viewport_width,
+            tile_width=tile_size.width(),
+            tile_height=tile_size.height(),
+            spacing_x=self._layout_engine.grid_spacing_x,
+            spacing_y=self._layout_engine.grid_spacing_y,
+            padding=constants.CANVAS_PADDING,
+            section_height=self._layout_engine.section_height(),
+            section_gap_above=self._layout_engine.section_gap_above,
+            section_gap_below=self._layout_engine.section_gap_below,
+        )
+        self._responsive_visual_rects = {
+            entry_id: QtCore.QRect(rect.x, rect.y, rect.width, rect.height)
+            for entry_id, rect in result.rects.items()
+        }
+        self._responsive_columns = result.columns
+        self._responsive_content_size = QtCore.QSize(
+            result.content_width, result.content_height
+        )
+        for entry in self._entries:
+            widget = self._widgets.get(entry.entry_id)
+            if widget is None:
+                continue
+            rect = self._responsive_visual_rects.get(entry.entry_id)
+            widget.setVisible(rect is not None)
+            if rect is None:
+                continue
+            widget.setGeometry(rect)
+            if entry.is_tool:
+                widget.lower()
+            else:
+                if isinstance(widget, SectionWidget):
+                    widget.set_drop_hint(False)
+                widget.raise_()
+
+    def _apply_responsive_width_only(self) -> None:
+        """Resize section rows when a width change keeps the same tile columns."""
+
+        content_width = self._layout_engine.responsive_content_width()
+        section_width = content_width - (2 * constants.CANVAS_PADDING)
+        for entry in self._entries:
+            if not entry.is_section:
+                continue
+            rect = self._responsive_visual_rects.get(entry.entry_id)
+            widget = self._widgets.get(entry.entry_id)
+            if rect is None or widget is None:
+                continue
+            resized = QtCore.QRect(rect.x(), rect.y(), section_width, rect.height())
+            self._responsive_visual_rects[entry.entry_id] = resized
+            widget.setGeometry(resized)
+        self._responsive_content_size.setWidth(content_width)
 
     def _insert_tool_row_at_y(
         self, insertion_y: int, exclude_entry_id: str | None = None
@@ -188,6 +260,10 @@ class CanvasSurfaceGeometryMixin:
         return changed
 
     def _update_canvas_size(self) -> None:
+        if self._responsive_layout_enabled:
+            self.resize(self._responsive_content_size)
+            self.update()
+            return
         max_right = self._layout_engine.content_width() + (2 * constants.CANVAS_PADDING)
         max_bottom = 420
         for entry in self._entries:

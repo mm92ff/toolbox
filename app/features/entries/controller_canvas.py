@@ -8,6 +8,7 @@ from typing import Optional
 
 from PySide6 import QtWidgets
 
+from app import constants
 from app.domain.tab_context import ToolboxTabContext
 from app.features.entries.controller_selection import (
     hidden_entry_ids_for_context,
@@ -59,6 +60,7 @@ def refresh_canvas(owner: object, ctx: Optional[ToolboxTabContext] = None) -> No
             if owner.current_tile_font_auto()
             else owner.current_tile_font_size()
         ),
+        responsive_layout=owner.current_responsive_toolbox_layout(),
     )
     update_details(owner, ctx)
     update_action_buttons(ctx)
@@ -114,6 +116,7 @@ def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None
                     if owner.current_tile_font_auto()
                     else owner.current_tile_font_size()
                 ),
+                responsive_layout=owner.current_responsive_toolbox_layout(),
             )
             if reflow_changed:
                 layout_reflow_changed_entries = True
@@ -136,7 +139,14 @@ def refresh_all_canvases(owner: object, apply_layout_only: bool = False) -> None
 
 def update_window_minimum_width(owner: object, _ctx: Optional[ToolboxTabContext]) -> None:
     base_min_width = owner.minimumSizeHint().width()
-    owner.setMinimumWidth(base_min_width)
+    ctx = _ctx
+    if ctx is None or not ctx.canvas.responsive_layout_enabled():
+        owner.setMinimumWidth(base_min_width)
+        return
+    complete_tile_width = (
+        ctx.canvas.tool_tile_size().width() + (2 * constants.CANVAS_PADDING) + 32
+    )
+    owner.setMinimumWidth(max(base_min_width, complete_tile_width))
 
 
 def open_config_directory(owner: object) -> None:

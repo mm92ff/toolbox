@@ -17,6 +17,8 @@ from app.canvas.section_conflicts import (
 from app.domain.models import ToolboxEntry
 from app.services.image_thumbnails import is_supported_image_path, load_or_create_thumbnail
 from app.services.linux_icon_theme import desktop_icon_for_path
+from app.services.media_thumbnails import MEDIA_KIND_IMAGE, MEDIA_KIND_VIDEO
+from app.services.thumbnail_cache import pixmap_for_requested_size, thumbnail_bucket_size
 from app.services.video_thumbnails import (
     is_supported_video_path,
     load_or_create_video_thumbnail,
@@ -56,6 +58,7 @@ class CanvasSurfaceRenderMixin:
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
         tile_font_size: int | None = None,
+        responsive_layout: bool = False,
     ) -> None:
         self.clear()
         self._entries = entries
@@ -72,6 +75,7 @@ class CanvasSurfaceRenderMixin:
         self._show_tooltips = show_tooltips
         self._selected_entry_ids = set(selected_entry_ids)
         self._hidden_entry_ids = set(hidden_entry_ids)
+        self._responsive_layout_enabled = bool(responsive_layout)
 
         self._layout_engine.set_viewport_width(viewport_width)
         self._layout_engine.configure(
@@ -96,14 +100,19 @@ class CanvasSurfaceRenderMixin:
                 tile_highlight_color=tile_highlight_color,
             )
             widget.setVisible(entry.entry_id not in self._hidden_entry_ids)
+            widget.set_movement_enabled(not self._responsive_layout_enabled)
             self._widgets[entry.entry_id] = widget
             widget.show()
 
-        self._resolve_section_protection_conflicts()
+        if not self._responsive_layout_enabled:
+            self._resolve_section_protection_conflicts()
         self._apply_geometry(compact_tools=False)
-        if self._resolve_tool_overlap_conflicts():
+        if not self._responsive_layout_enabled and self._resolve_tool_overlap_conflicts():
             self._apply_geometry(compact_tools=False)
         self._apply_selection()
+        for widget in self._widgets.values():
+            if isinstance(widget, ToolTileWidget):
+                self._refresh_tool_icon(widget, defer_generation=False)
 
     def apply_layout_settings(
         self,
@@ -132,6 +141,7 @@ class CanvasSurfaceRenderMixin:
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
         tile_font_size: int | None = None,
+        responsive_layout: bool = False,
     ) -> bool:
         self._entries = entries
         self._auto_compact_left = auto_compact_left
@@ -144,6 +154,7 @@ class CanvasSurfaceRenderMixin:
         self._ffmpeg_manual_path = (ffmpeg_manual_path or "").strip()
         self._thumbnail_cache_dir = thumbnail_cache_dir
         self._folder_show_file_count = folder_show_file_count
+        self._responsive_layout_enabled = bool(responsive_layout)
         previous_tool_cell_size = self._layout_engine.tool_cell_size()
         previous_segments = self._layout_engine.segment_ranges(self._entries)
         previous_tool_positions = {
@@ -163,16 +174,19 @@ class CanvasSurfaceRenderMixin:
         )
 
         for widget in self._widgets.values():
+            widget.set_movement_enabled(not self._responsive_layout_enabled)
             if isinstance(widget, ToolTileWidget):
                 is_media = (self._image_file_preview_enabled and is_supported_image_path(widget.entry.path)) or \
                            (self._video_file_preview_enabled and is_supported_video_path(widget.entry.path))
                 widget.set_overlay_mode(self._preview_overlay_enabled and is_media)
-                widget.set_icon(self._icon_for_tool_entry(widget.entry))
                 widget.set_folder_file_count_mode(self._folder_show_file_count)
                 widget.set_icon_size(
                     self._layout_engine.icon_size,
                     self._layout_engine.tile_font_size,
                 )
+                # Existing media is scaled immediately. Expensive regeneration is
+                # delayed and performed by MediaThumbnailService off the GUI thread.
+                self._refresh_tool_icon(widget, defer_generation=True)
                 widget.set_show_tooltips(self._show_tooltips)
                 widget.set_tile_style(
                     frame_enabled=tile_frame_enabled,
@@ -204,6 +218,11 @@ class CanvasSurfaceRenderMixin:
                     self._section_line_color_for_entry(section_entry),
                     self._section_title_color_for_entry(section_entry),
                 )
+        if self._responsive_layout_enabled:
+            self._apply_geometry(compact_tools=False)
+            self._apply_selection()
+            return False
+
         updated_segments = self._layout_engine.segment_ranges(self._entries)
         shifted_for_section_gap = shift_tools_for_segment_start_delta(
             self._entries,
@@ -279,6 +298,7 @@ class CanvasSurfaceRenderMixin:
         widget.double_clicked.connect(self.entry_activated.emit)
         widget.context_requested.connect(self.entry_context_requested.emit)
         widget.move_finished.connect(self._on_widget_move_finished)
+        widget.movement_blocked.connect(self.responsive_move_blocked.emit)
         widget.move_live.connect(self._update_canvas_size)
         widget.move_live.connect(
             lambda entry_id=entry.entry_id: self._on_widget_move_live(entry_id)
@@ -294,34 +314,14 @@ class CanvasSurfaceRenderMixin:
         return widget
 
     def _icon_for_tool_entry(self, entry: ToolboxEntry) -> QtGui.QIcon:
-        is_media = (self._image_file_preview_enabled and is_supported_image_path(entry.path)) or \
-                   (self._video_file_preview_enabled and is_supported_video_path(entry.path))
-        target_size = self._layout_engine.tool_tile_size().width() if (self._preview_overlay_enabled and is_media) else self._layout_engine.icon_size
-        
         if entry.custom_icon_path:
             pixmap = QtGui.QPixmap(entry.custom_icon_path)
             if not pixmap.isNull():
                 return QtGui.QIcon(pixmap)
-                
-        if self._image_file_preview_enabled and is_supported_image_path(entry.path):
-            pixmap = load_or_create_thumbnail(
-                entry.path,
-                target_size,
-                self._image_file_preview_mode,
-                self._thumbnail_cache_dir,
-            )
-            if pixmap is not None and not pixmap.isNull():
-                return QtGui.QIcon(pixmap)
-        if self._video_file_preview_enabled and is_supported_video_path(entry.path):
-            pixmap = load_or_create_video_thumbnail(
-                entry.path,
-                target_size,
-                self._image_file_preview_mode,
-                self._thumbnail_cache_dir,
-                manual_ffmpeg_path=self._ffmpeg_manual_path,
-            )
-            if pixmap is not None and not pixmap.isNull():
-                return QtGui.QIcon(pixmap)
+
+        cached_icon = self._cached_media_icon(entry)
+        if cached_icon is not None:
+            return cached_icon
 
         fallback = self.style().standardIcon(
             QtWidgets.QStyle.StandardPixmap.SP_DesktopIcon
@@ -332,6 +332,120 @@ class CanvasSurfaceRenderMixin:
             fallback,
             self._appimage_icon_service,
         )
+
+    def _media_kind_for_entry(self, entry: ToolboxEntry) -> str | None:
+        if entry.custom_icon_path:
+            return None
+        if self._image_file_preview_enabled and is_supported_image_path(entry.path):
+            return MEDIA_KIND_IMAGE
+        if self._video_file_preview_enabled and is_supported_video_path(entry.path):
+            return MEDIA_KIND_VIDEO
+        return None
+
+    def _media_target_size(self, entry: ToolboxEntry) -> int:
+        is_media = self._media_kind_for_entry(entry) is not None
+        if self._preview_overlay_enabled and is_media:
+            return self._layout_engine.tool_tile_size().width()
+        return self._layout_engine.icon_size
+
+    def _cached_media_icon(self, entry: ToolboxEntry) -> QtGui.QIcon | None:
+        kind = self._media_kind_for_entry(entry)
+        if kind is None:
+            return None
+        target_size = self._media_target_size(entry)
+        cache_path = self._media_thumbnail_service.cached_path(
+            entry.path,
+            kind,
+            target_size,
+            self._image_file_preview_mode,
+            self._thumbnail_cache_dir,
+        )
+        if cache_path is None:
+            return None
+        pixmap = pixmap_for_requested_size(cache_path, target_size)
+        return None if pixmap.isNull() else QtGui.QIcon(pixmap)
+
+    def _refresh_tool_icon(
+        self,
+        widget: ToolTileWidget,
+        *,
+        defer_generation: bool,
+    ) -> None:
+        entry = widget.entry
+        kind = self._media_kind_for_entry(entry)
+        if kind is None:
+            widget.set_icon(self._icon_for_tool_entry(entry))
+            self._pending_media_entry_ids.discard(entry.entry_id)
+            return
+
+        cached_icon = self._cached_media_icon(entry)
+        if cached_icon is not None:
+            widget.set_icon(cached_icon)
+            self._pending_media_entry_ids.discard(entry.entry_id)
+            return
+
+        self._pending_media_entry_ids.add(entry.entry_id)
+        if defer_generation:
+            self._media_request_timer.start()
+        else:
+            self._request_pending_media_thumbnails()
+
+    @QtCore.Slot()
+    def _request_pending_media_thumbnails(self) -> None:
+        self._media_request_timer.stop()
+        pending_ids = tuple(self._pending_media_entry_ids)
+        self._pending_media_entry_ids.clear()
+        widgets: list[ToolTileWidget] = []
+        for entry_id in pending_ids:
+            widget = self._widgets.get(entry_id)
+            if isinstance(widget, ToolTileWidget) and not widget.isHidden():
+                widgets.append(widget)
+        widgets.sort(key=lambda item: item.visibleRegion().isEmpty())
+        for widget in widgets:
+            entry = widget.entry
+            kind = self._media_kind_for_entry(entry)
+            if kind is None:
+                continue
+            request_kwargs: dict[str, object] = {
+                "priority": 1 if not widget.visibleRegion().isEmpty() else 0,
+            }
+            if kind == MEDIA_KIND_VIDEO:
+                request_kwargs["manual_ffmpeg_path"] = self._ffmpeg_manual_path
+            self._media_thumbnail_service.request(
+                entry.path,
+                kind,
+                self._media_target_size(entry),
+                self._image_file_preview_mode,
+                self._thumbnail_cache_dir,
+                **request_kwargs,
+            )
+
+    @QtCore.Slot(str, str, int, str, str)
+    def _on_media_thumbnail_ready(
+        self,
+        path: str,
+        kind: str,
+        bucket_size: int,
+        mode: str,
+        thumbnail_path: str,
+    ) -> None:
+        normalized = os.path.abspath(os.path.expanduser(path))
+        for entry in self._entries:
+            if not entry.is_tool or self._media_kind_for_entry(entry) != kind:
+                continue
+            if os.path.abspath(os.path.expanduser(entry.path)) != normalized:
+                continue
+            target_size = self._media_target_size(entry)
+            if thumbnail_bucket_size(target_size) != bucket_size:
+                continue
+            if (self._image_file_preview_mode or "").strip().lower() != mode:
+                continue
+            widget = self._widgets.get(entry.entry_id)
+            if not isinstance(widget, ToolTileWidget):
+                continue
+            pixmap = pixmap_for_requested_size(thumbnail_path, target_size)
+            if not pixmap.isNull():
+                widget.set_icon(QtGui.QIcon(pixmap))
 
     @QtCore.Slot(str, str)
     def _on_appimage_icon_ready(self, path: str, icon_path: str) -> None:

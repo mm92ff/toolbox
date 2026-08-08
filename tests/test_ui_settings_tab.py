@@ -1,6 +1,7 @@
 from PySide6 import QtWidgets
 
 from app.ui.tabs.settings_tab import create_settings_tab
+from app import constants
 
 def test_settings_tab_has_subtabs():
     _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -27,3 +28,7 @@ def test_settings_tab_has_subtabs():
     assert "Appearance & Layout" in tab_texts
     assert "Sections & Colors" in tab_texts
     assert "System" in tab_texts
+    assert constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX in _widgets
+    assert _widgets[
+        constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+    ].isChecked()

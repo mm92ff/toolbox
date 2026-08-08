@@ -53,6 +53,9 @@ grep -F -- '"frozen": true' "$SMOKE_REPORT" >/dev/null
 grep -F -- '"icon_available": true' "$SMOKE_REPORT" >/dev/null
 grep -F -- '"icon_theme_name":' "$SMOKE_REPORT" >/dev/null
 grep -F -- '"icon_theme_search_path_count":' "$SMOKE_REPORT" >/dev/null
+grep -F -- '"responsive_layout_setting_available": true' "$SMOKE_REPORT" >/dev/null
+grep -F -- '"responsive_layout_setting_enabled": true' "$SMOKE_REPORT" >/dev/null
+grep -F -- '"responsive_layout_normal_canvas_enabled": true' "$SMOKE_REPORT" >/dev/null
 grep -F -- '"desktop_fixture_field_code": "F"' "$SMOKE_REPORT" >/dev/null
 grep -F -- '"desktop_fixture_icon_available": true' "$SMOKE_REPORT" >/dev/null
 grep -F -- '"desktop_fixture_mode": "direct"' "$SMOKE_REPORT" >/dev/null

@@ -322,13 +322,28 @@ def build_grid_group(widgets: Dict[str, QtWidgets.QWidget]) -> QtWidgets.QGroupB
     widgets[constants.WIDGET_AUTO_COMPACT_LEFT_CHECKBOX] = auto_compact_left_checkbox
     grid_layout.addWidget(auto_compact_left_checkbox, 2, 1, 1, 2)
 
+    grid_layout.addWidget(QtWidgets.QLabel("Responsive Layout:"), 3, 0)
+    responsive_checkbox = QtWidgets.QCheckBox(
+        "Automatically wrap tiles to the window width"
+    )
+    responsive_checkbox.setObjectName(
+        constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+    )
+    responsive_checkbox.setChecked(constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT)
+    responsive_checkbox.setToolTip(
+        "Displays normal toolbox tabs responsively. Saved tile positions are not changed. "
+        "Manual tile movement is disabled while this option is active."
+    )
+    widgets[constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX] = responsive_checkbox
+    grid_layout.addWidget(responsive_checkbox, 3, 1, 1, 2)
+
     grid_hint = QtWidgets.QLabel(
         "Tiles remain freely movable and always snap to the active grid when released. "
         "To insert a dragged tile between existing tiles in a row, enable "
         "'Auto-compact icons to the left'."
     )
     grid_hint.setWordWrap(True)
-    grid_layout.addWidget(grid_hint, 3, 0, 1, 3)
+    grid_layout.addWidget(grid_hint, 4, 0, 1, 3)
     return grid_group
 
 

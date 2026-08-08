@@ -20,6 +20,7 @@ from app.features.tabs.controller import MainWindowTabsMixin
 from app.services.appimage_icons import AppImageIconService
 from app.services.desktop_entry_launch import DesktopProcessManager
 from app.services.folder_count import FolderCountService
+from app.services.media_thumbnails import MediaThumbnailService
 from app.services.size_calculator import TabSizeCalculationService
 from app.services.system_utils import get_config_directory
 from app.state.folder_browse_appearance import FolderBrowseAppearanceStore
@@ -47,6 +48,7 @@ class MainWindow(
         folder_browse_appearance_store: FolderBrowseAppearanceStore | None = None,
         folder_count_service: FolderCountService | None = None,
         appimage_icon_service: AppImageIconService | None = None,
+        media_thumbnail_service: MediaThumbnailService | None = None,
         managed: bool = False,
         window_id: str | None = None,
     ):
@@ -63,8 +65,13 @@ class MainWindow(
         )
         self._shared_settings_conflict = False
         self._shared_settings_revision = 0
-        self._owns_shared_services = (
-            folder_count_service is None and appimage_icon_service is None
+        self._owns_shared_services = all(
+            service is None
+            for service in (
+                folder_count_service,
+                appimage_icon_service,
+                media_thumbnail_service,
+            )
         )
         self.app_name = app_name or constants.DEFAULT_APP_NAME
         self.setWindowTitle(self.app_name)
@@ -123,6 +130,9 @@ class MainWindow(
             self, max_workers=2
         )
         self._appimage_icon_service = appimage_icon_service or AppImageIconService(self)
+        self._media_thumbnail_service = (
+            media_thumbnail_service or MediaThumbnailService(self)
+        )
         self._size_recalc_timer = QtCore.QTimer(self)
         self._size_recalc_timer.setSingleShot(True)
         self._size_recalc_timer.setInterval(180)
@@ -160,8 +170,9 @@ class MainWindow(
             self._schedule_active_tab_size(ctx, force=True)
 
     def _update_window_minimum_width(self, ctx: ToolboxTabContext) -> None:
-        del ctx
-        self.setMinimumWidth(self.minimumSizeHint().width())
+        from app.features.entries.controller_canvas import update_window_minimum_width
+
+        update_window_minimum_width(self, ctx)
 
     def _update_managed_window_title(self) -> None:
         if not self._managed:
@@ -246,6 +257,7 @@ class MainWindow(
         if self._owns_shared_services:
             self._folder_count_service.shutdown()
             self._appimage_icon_service.shutdown()
+            self._media_thumbnail_service.shutdown()
         self.desktop_process_manager.shutdown()
         self._shutdown_broken_entries_scan_worker()
         self.persist_toolbox_state()
@@ -432,6 +444,11 @@ class MainWindow(
 
         tile_font_auto = self.widgets[constants.WIDGET_TILE_FONT_AUTO_CHECKBOX]
         tile_font_auto.toggled.connect(self._on_tile_font_auto_changed)
+
+        responsive_checkbox = self.widgets[
+            constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+        ]
+        responsive_checkbox.toggled.connect(self._on_layout_settings_changed)
 
         frame_checkbox = self.widgets[constants.WIDGET_TILE_FRAME_ENABLED_CHECKBOX]
         frame_checkbox.toggled.connect(self._on_layout_settings_changed)

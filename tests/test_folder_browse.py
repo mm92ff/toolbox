@@ -212,6 +212,7 @@ def test_browse_refresh_preserves_stable_selection_and_passes_display_settings(
     kwargs = ctx.canvas.set_entries.call_args.kwargs
     assert kwargs["folder_show_file_count"] is True
     assert kwargs["show_tooltips"] is False
+    assert kwargs["responsive_layout"] is True
 
 
 @pytest.mark.parametrize(
@@ -236,6 +237,7 @@ def test_browse_layout_preserves_automatic_or_fixed_font_mode(
         ctx.canvas.apply_layout_settings.call_args.kwargs["tile_font_size"]
         == expected_font_size
     )
+    assert ctx.canvas.apply_layout_settings.call_args.kwargs["responsive_layout"] is True
 
 
 def test_entries_for_current_view_returns_browse_entries(tmp_folder: Path) -> None:

@@ -72,6 +72,7 @@ class CanvasSurface(
     entry_hover_started = QtCore.Signal(str, QtCore.QPoint)
     entry_hover_ended = QtCore.Signal(str)
     entry_files_dropped = QtCore.Signal(str, object)
+    responsive_move_blocked = QtCore.Signal(str)
 
 
 class ToolboxCanvas(QtWidgets.QScrollArea):
@@ -85,6 +86,7 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
     entry_hover_started = QtCore.Signal(str, QtCore.QPoint)
     entry_hover_ended = QtCore.Signal(str)
     entry_files_dropped = QtCore.Signal(str, object)
+    responsive_move_blocked = QtCore.Signal(str)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -115,6 +117,12 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         self.surface.entry_hover_started.connect(self.entry_hover_started.emit)
         self.surface.entry_hover_ended.connect(self.entry_hover_ended.emit)
         self.surface.entry_files_dropped.connect(self.entry_files_dropped.emit)
+        self.surface.responsive_move_blocked.connect(self.responsive_move_blocked.emit)
+        self._pending_viewport_width = self.viewport().width()
+        self._resize_layout_timer = QtCore.QTimer(self)
+        self._resize_layout_timer.setSingleShot(True)
+        self._resize_layout_timer.setInterval(constants.RESPONSIVE_LAYOUT_INTERVAL_MS)
+        self._resize_layout_timer.timeout.connect(self._apply_pending_viewport_width)
         self.verticalScrollBar().valueChanged.connect(lambda _value: self._hide_hover_preview())
         self.horizontalScrollBar().valueChanged.connect(lambda _value: self._hide_hover_preview())
 
@@ -147,7 +155,9 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
         tile_font_size: int | None = None,
+        responsive_layout: bool = False,
     ) -> None:
+        anchor = self._capture_vertical_anchor()
         self._hover_preview_enabled = bool(hover_preview_enabled)
         self._hide_hover_preview()
         self.surface.set_entries(
@@ -180,7 +190,10 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             folder_show_file_count=folder_show_file_count,
             show_tooltips=show_tooltips,
             tile_font_size=tile_font_size,
+            responsive_layout=responsive_layout,
         )
+        self._sync_scrollbar_policy()
+        self._restore_vertical_anchor(anchor)
 
     def apply_layout_settings(
         self,
@@ -208,10 +221,12 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
         folder_show_file_count: bool = constants.DEFAULT_FOLDER_SHOW_FILE_COUNT,
         show_tooltips: bool = constants.DEFAULT_SHOW_TOOLTIPS,
         tile_font_size: int | None = None,
+        responsive_layout: bool = False,
     ) -> bool:
+        anchor = self._capture_vertical_anchor()
         self._hover_preview_enabled = bool(hover_preview_enabled)
         self._hide_hover_preview()
-        return self.surface.apply_layout_settings(
+        changed = self.surface.apply_layout_settings(
             entries,
             icon_size,
             tile_frame_enabled,
@@ -237,7 +252,58 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
             folder_show_file_count=folder_show_file_count,
             show_tooltips=show_tooltips,
             tile_font_size=tile_font_size,
+            responsive_layout=responsive_layout,
         )
+        self._sync_scrollbar_policy()
+        self._restore_vertical_anchor(anchor)
+        return changed
+
+    def responsive_layout_enabled(self) -> bool:
+        return self.surface.responsive_layout_enabled()
+
+    def responsive_columns(self) -> int:
+        return self.surface.responsive_columns()
+
+    def tool_tile_size(self) -> QtCore.QSize:
+        return self.surface.tool_tile_size()
+
+    def _sync_scrollbar_policy(self) -> None:
+        policy = (
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            if self.surface.responsive_layout_enabled()
+            else QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.setHorizontalScrollBarPolicy(policy)
+
+    def _apply_pending_viewport_width(self) -> None:
+        anchor = self._capture_vertical_anchor()
+        self.surface.set_viewport_width(self._pending_viewport_width)
+        self._restore_vertical_anchor(anchor)
+
+    def _capture_vertical_anchor(self) -> tuple[str, int] | None:
+        viewport_top = self.verticalScrollBar().value()
+        candidates = [
+            (widget.y(), widget.x(), entry_id, widget)
+            for entry_id, widget in self.surface._widgets.items()
+            if widget.isVisible() and widget.geometry().bottom() >= viewport_top
+        ]
+        if not candidates:
+            return None
+        _y, _x, entry_id, widget = min(candidates)
+        return entry_id, widget.y() - viewport_top
+
+    def _restore_vertical_anchor(self, anchor: tuple[str, int] | None) -> None:
+        if anchor is None:
+            return
+        entry_id, offset = anchor
+        widget = self.surface._widgets.get(entry_id)
+        if widget is None or not widget.isVisible():
+            return
+        self.verticalScrollBar().setValue(widget.y() - offset)
+
+    def flush_pending_responsive_layout(self) -> None:
+        self._resize_layout_timer.stop()
+        self._apply_pending_viewport_width()
 
     def select_entries(self, entry_ids: set[str]) -> None:
         self.surface.select_entries(entry_ids)
@@ -367,4 +433,10 @@ class ToolboxCanvas(QtWidgets.QScrollArea):
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         self._hide_hover_preview()
-        self.surface.set_viewport_width(self.viewport().width())
+        self._pending_viewport_width = self.viewport().width()
+        if not self._resize_layout_timer.isActive():
+            self._resize_layout_timer.start()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        self._resize_layout_timer.stop()
+        super().closeEvent(event)

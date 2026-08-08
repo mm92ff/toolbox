@@ -12,6 +12,20 @@ from app import constants
 from app.features.settings.schema import SETTING_SPEC_BY_NAME
 
 
+def _coerce_responsive_layout(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().casefold()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT
+
+
 def load_settings(owner: object) -> None:
     persisted_ui_settings = owner._read_persisted_ui_settings()
     if isinstance(persisted_ui_settings, dict):
@@ -271,6 +285,32 @@ def load_settings(owner: object) -> None:
         settings.value("layout/auto_compact_left", constants.DEFAULT_AUTO_COMPACT_LEFT, type=bool)
     )
     auto_compact_left_checkbox.blockSignals(False)
+
+    responsive_checkbox = owner.widgets[
+        constants.WIDGET_RESPONSIVE_TOOLBOX_LAYOUT_CHECKBOX
+    ]
+    responsive_default_migrated = settings.value(
+        constants.RESPONSIVE_LAYOUT_DEFAULT_MIGRATION_KEY,
+        False,
+        type=bool,
+    )
+    responsive_enabled = _coerce_responsive_layout(
+        settings.value(
+            "layout/responsive_toolbox_layout",
+            constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT,
+        )
+    )
+    if not responsive_default_migrated:
+        # The responsive option was introduced disabled during development. Move
+        # existing profiles to the new enabled default exactly once; subsequent
+        # explicit user choices remain untouched.
+        responsive_enabled = constants.DEFAULT_RESPONSIVE_TOOLBOX_LAYOUT
+        settings.setValue("layout/responsive_toolbox_layout", responsive_enabled)
+        settings.setValue(constants.RESPONSIVE_LAYOUT_DEFAULT_MIGRATION_KEY, True)
+        settings.sync()
+    responsive_checkbox.blockSignals(True)
+    responsive_checkbox.setChecked(responsive_enabled)
+    responsive_checkbox.blockSignals(False)
 
     legacy_gap = settings.value("layout/section_gap", constants.DEFAULT_SECTION_PROTECTED_GAP, type=int)
     gap_above = settings.value(

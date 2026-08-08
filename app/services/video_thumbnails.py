@@ -18,9 +18,17 @@ from PySide6 import QtCore, QtGui
 
 from app import constants
 from app.services.system_utils import external_process_environment
+from app.services.thumbnail_cache import (
+    load_cached_image,
+    pixmap_for_requested_size,
+    render_square_thumbnail,
+    save_image_atomic,
+    thumbnail_bucket_size,
+)
 
 _CACHE_VARIANT_NORMAL = "normal"
 _CACHE_VARIANT_HQ = "hq"
+_CACHE_VARIANT_MASTER = "video-frame-master-v2"
 
 FFMPEG_SOURCE_ENV = "env"
 FFMPEG_SOURCE_MANUAL = "manual"
@@ -48,52 +56,71 @@ def load_or_create_video_thumbnail(
     capture_seconds: float = constants.VIDEO_PREVIEW_CAPTURE_SECONDS,
     manual_ffmpeg_path: str | None = None,
 ) -> QtGui.QPixmap | None:
-    source = Path(source_path)
-    if not source.exists() or not source.is_file():
-        return None
-
-    normalized_mode = _normalize_mode(mode)
-    normal_size = max(1, int(icon_size))
-    hq_size = _hq_size_for(normal_size)
-    cache_path = _cache_path_for(
-        source,
-        normal_size,
-        normalized_mode,
+    cache_path = prepare_video_thumbnail_cache(
+        source_path,
+        icon_size,
+        mode,
         cache_dir,
-        variant=_CACHE_VARIANT_NORMAL,
+        capture_seconds=capture_seconds,
+        manual_ffmpeg_path=manual_ffmpeg_path,
     )
-    if cache_path is not None and cache_path.exists():
-        cached = QtGui.QPixmap(str(cache_path))
-        if not cached.isNull():
-            return cached
-
-    ffmpeg_path = _find_ffmpeg_path(manual_ffmpeg_path)
-    if not ffmpeg_path:
+    if cache_path is None:
         return None
+    pixmap = pixmap_for_requested_size(cache_path, icon_size)
+    return None if pixmap.isNull() else pixmap
 
-    frame = _extract_video_frame(source, ffmpeg_path, float(capture_seconds))
-    if frame is None or frame.isNull():
+
+def cached_video_thumbnail_path(
+    source_path: str,
+    icon_size: int,
+    mode: str,
+    cache_dir: Path | None,
+) -> Path | None:
+    source = Path(source_path)
+    if not source.is_file():
         return None
+    path = _cache_path_for(source, icon_size, _normalize_mode(mode), cache_dir)
+    return path if path is not None and path.is_file() else None
 
-    thumb = _render_thumbnail(frame, normal_size, normalized_mode)
-    if thumb.isNull():
+
+def prepare_video_thumbnail_cache(
+    source_path: str,
+    icon_size: int,
+    mode: str,
+    cache_dir: Path | None,
+    capture_seconds: float = constants.VIDEO_PREVIEW_CAPTURE_SECONDS,
+    manual_ffmpeg_path: str | None = None,
+) -> Path | None:
+    """Create a reusable video frame and size bucket using worker-safe QImage."""
+
+    source = Path(source_path)
+    if not source.is_file() or cache_dir is None:
         return None
+    normalized_mode = _normalize_mode(mode)
+    cache_path = _cache_path_for(source, icon_size, normalized_mode, cache_dir)
+    if cache_path is None:
+        return None
+    cached = load_cached_image(cache_path)
+    if not cached.isNull():
+        return cache_path
 
-    if cache_path is not None:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        thumb.save(str(cache_path), "PNG")
-        hq_cache_path = _cache_path_for(
-            source,
-            hq_size,
-            normalized_mode,
-            cache_dir,
-            variant=_CACHE_VARIANT_HQ,
-        )
-        if hq_cache_path is not None and not hq_cache_path.exists():
-            hq_thumb = _render_thumbnail(frame, hq_size, normalized_mode)
-            if not hq_thumb.isNull():
-                hq_thumb.save(str(hq_cache_path), "PNG")
-    return thumb
+    master_path = _master_cache_path_for(source, cache_dir, capture_seconds)
+    frame = load_cached_image(master_path)
+    if frame.isNull():
+        ffmpeg_path = _find_ffmpeg_path(manual_ffmpeg_path)
+        if not ffmpeg_path:
+            return None
+        extracted = _extract_video_frame(source, ffmpeg_path, float(capture_seconds))
+        frame = _as_qimage(extracted)
+        if frame.isNull() or master_path is None or not save_image_atomic(frame, master_path):
+            return None
+
+    thumbnail = render_square_thumbnail(
+        frame,
+        thumbnail_bucket_size(icon_size),
+        fill=normalized_mode == constants.IMAGE_PREVIEW_MODE_FILL,
+    )
+    return cache_path if save_image_atomic(thumbnail, cache_path) else None
 
 
 def _normalize_mode(mode: str) -> str:
@@ -114,19 +141,35 @@ def _cache_path_for(
         return None
     try:
         stat = source.stat()
+        resolved = source.resolve()
     except OSError:
         return None
-
-    key_source = (
-        f"{source.resolve()}|{stat.st_mtime_ns}|{stat.st_size}|{icon_size}|{mode}|video|{variant}".encode(
-            "utf-8"
-        )
-    )
+    bucket = thumbnail_bucket_size(icon_size)
+    key_source = f"{resolved}|{stat.st_mtime_ns}|{stat.st_size}|{bucket}|{mode}|video-v2|{variant}".encode("utf-8")
     digest = hashlib.sha256(key_source).hexdigest()
     return cache_dir / f"{digest}.png"
 
 
-def _extract_video_frame(source: Path, ffmpeg_path: str, capture_seconds: float) -> QtGui.QPixmap | None:
+def _master_cache_path_for(
+    source: Path,
+    cache_dir: Path | None,
+    capture_seconds: float,
+) -> Path | None:
+    if cache_dir is None:
+        return None
+    try:
+        stat = source.stat()
+        resolved = source.resolve()
+    except OSError:
+        return None
+    key_source = (
+        f"{resolved}|{stat.st_mtime_ns}|{stat.st_size}|{max(0.0, float(capture_seconds)):.3f}|"
+        f"{_CACHE_VARIANT_MASTER}"
+    ).encode("utf-8")
+    return cache_dir / f"{hashlib.sha256(key_source).hexdigest()}.png"
+
+
+def _extract_video_frame(source: Path, ffmpeg_path: str, capture_seconds: float) -> QtGui.QImage | None:
     with tempfile.TemporaryDirectory() as tmp:
         frame_path = Path(tmp) / "frame.png"
         cmd = [
@@ -156,10 +199,18 @@ def _extract_video_frame(source: Path, ffmpeg_path: str, capture_seconds: float)
             return None
         if result.returncode != 0 or not frame_path.exists():
             return None
-        pixmap = QtGui.QPixmap(str(frame_path))
-        if pixmap.isNull():
+        image = QtGui.QImage(str(frame_path))
+        if image.isNull():
             return None
-        return pixmap
+        return image
+
+
+def _as_qimage(value: QtGui.QImage | QtGui.QPixmap | None) -> QtGui.QImage:
+    if isinstance(value, QtGui.QImage):
+        return value
+    if isinstance(value, QtGui.QPixmap):
+        return value.toImage()
+    return QtGui.QImage()
 
 
 def clear_ffmpeg_resolution_cache() -> None:

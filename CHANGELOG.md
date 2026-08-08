@@ -35,8 +35,15 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   icon visible by default for existing profiles
 - Per-folder icon-size controls in the folder breadcrumb, including persistent
   overrides, global fallback, reset, and path-local multi-window synchronization
+- Responsive wrapping in folder views and an optional width-aware presentation
+  for normal toolbox tabs, without modifying saved tile coordinates
+- Responsive wrapping is enabled by default for normal toolbox tabs, with a
+  one-time migration from the earlier development default
 
 ### Changed
+
+- Folder views now reflow tiles from multiple columns down to one column as the
+  window narrows; responsive normal tabs temporarily disable manual movement
 
 - Application identity is stable across renamed/versioned executables and honors
   `XDG_CONFIG_HOME` on Linux
