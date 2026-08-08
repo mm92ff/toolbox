@@ -139,6 +139,12 @@ install -Dm644 \
 install -Dm644 \
     "$PROJECT_ROOT/packaging/linux/licenses/ICU-LICENSE.txt" \
     "$APPDIR/usr/share/doc/toolbox/licenses/ICU-LICENSE.txt"
+install -Dm644 \
+    "$PROJECT_ROOT/packaging/linux/licenses/XCB-LICENSE.txt" \
+    "$APPDIR/usr/share/doc/toolbox/licenses/XCB-LICENSE.txt"
+install -Dm644 \
+    "$PROJECT_ROOT/packaging/linux/licenses/XKBCOMMON-LICENSE.txt" \
+    "$APPDIR/usr/share/doc/toolbox/licenses/XKBCOMMON-LICENSE.txt"
 
 PYTHON_LICENSE=$(
     "$PYTHON_BIN" -c '

@@ -40,8 +40,12 @@ REQUIRED_BACKUP_FILES=(
   "packaging/linux/io.github.toolbox.Toolbox.appdata.xml"
   "packaging/linux/ffmpeg-archive-x86_64.sha256"
   "packaging/linux/ffmpeg-x86_64.sha256"
+  "packaging/linux/licenses/XCB-LICENSE.txt"
+  "packaging/linux/licenses/XKBCOMMON-LICENSE.txt"
   "scripts/build-appimage.sh"
+  "scripts/build-deb.sh"
   "scripts/create_code_backup.sh"
+  "scripts/test-deb.sh"
   "scripts/verify-linux-release.sh"
   "app/constants.py"
   "app/application_controller.py"
@@ -50,6 +54,7 @@ REQUIRED_BACKUP_FILES=(
   "app/services/desktop_entries.py"
   "app/services/desktop_entry_launch.py"
   "tests/test_appimage_packaging.py"
+  "tests/test_deb_packaging.py"
   "tests/test_desktop_entries.py"
 )
 
@@ -252,6 +257,7 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
     '-xr!build' \
     '-xr!dist' \
     '-xr!dist-appimage' \
+    '-xr!dist-deb' \
     '-xr!Toolbox.AppDir' \
     '-xr!thirdparty' \
     '-xr!.bin' \
@@ -265,6 +271,8 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
     '-xr!*.log' \
     '-xr!*.AppImage' \
     '-xr!*.AppImage.sha256' \
+    '-xr!*.deb' \
+    '-xr!*.deb.sha256' \
     '-xr!*.exe' \
     '-xr!*.7z' \
     '-xr!*.zip' \
@@ -307,6 +315,7 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
       -name 'build' -o \
       -name 'dist' -o \
       -name 'dist-appimage' -o \
+      -name 'dist-deb' -o \
       -name 'Toolbox.AppDir' \
       -o -name 'thirdparty' \
       -o -name '.bin' \

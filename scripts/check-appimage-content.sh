@@ -31,6 +31,8 @@ for REQUIRED_PATH in \
     usr/share/doc/toolbox/THIRD_PARTY_NOTICES.md \
     usr/share/doc/toolbox/licenses/APPIMAGE-RUNTIME-LICENSE.txt \
     usr/share/doc/toolbox/licenses/ICU-LICENSE.txt \
+    usr/share/doc/toolbox/licenses/XCB-LICENSE.txt \
+    usr/share/doc/toolbox/licenses/XKBCOMMON-LICENSE.txt \
     usr/share/doc/toolbox/licenses/PYTHON-LICENSE.txt \
     usr/share/doc/toolbox/licenses/PYINSTALLER-COPYING.txt
 do
@@ -91,3 +93,46 @@ if find "$EXTRACTED/usr/lib/toolbox" -type f -name 'libc.so*' -print -quit | gre
     echo "ERROR: glibc must not be bundled in the AppImage payload." >&2
     exit 1
 fi
+
+BUNDLED_LIBRARY_DIR="$EXTRACTED/usr/lib/toolbox/_internal"
+QXCB_PLUGIN=$(
+    find "$EXTRACTED/usr/lib/toolbox" -type f -path '*/platforms/libqxcb.so' \
+        -print -quit
+)
+if [ -z "$QXCB_PLUGIN" ]; then
+    echo "ERROR: Qt xcb platform plugin is missing from the AppImage." >&2
+    exit 1
+fi
+for REQUIRED_LIBRARY in \
+    libxcb-cursor.so.0 \
+    libxcb-image.so.0 \
+    libxcb-render-util.so.0 \
+    libxcb-util.so.1 \
+    libxcb-xkb.so.1 \
+    libxkbcommon.so.0 \
+    libxkbcommon-x11.so.0
+do
+    RESOLVED_LIBRARY=$(
+        find "$BUNDLED_LIBRARY_DIR" -maxdepth 1 \
+            \( -type f -o -type l \) -name "$REQUIRED_LIBRARY" -print -quit
+    )
+    if [ -z "$RESOLVED_LIBRARY" ]; then
+        echo "ERROR: Required bundled Qt runtime library is missing: $REQUIRED_LIBRARY" >&2
+        exit 1
+    fi
+done
+
+QXCB_DEPENDENCIES=$(LD_LIBRARY_PATH="$BUNDLED_LIBRARY_DIR" ldd "$QXCB_PLUGIN")
+if printf '%s\n' "$QXCB_DEPENDENCIES" | grep -q 'not found'; then
+    echo "ERROR: Qt xcb plugin still has unresolved runtime dependencies:" >&2
+    printf '%s\n' "$QXCB_DEPENDENCIES" >&2
+    exit 1
+fi
+for REQUIRED_LIBRARY in libxcb-cursor.so.0 libxkbcommon-x11.so.0
+do
+    if ! printf '%s\n' "$QXCB_DEPENDENCIES" | \
+        grep "$REQUIRED_LIBRARY" | grep -F "$BUNDLED_LIBRARY_DIR/" >/dev/null; then
+        echo "ERROR: Qt xcb plugin did not resolve bundled $REQUIRED_LIBRARY." >&2
+        exit 1
+    fi
+done

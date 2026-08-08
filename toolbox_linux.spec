@@ -84,11 +84,23 @@ a = Analysis(
     noarchive=False,
     optimize=1,
 )
-# Linux Mint 22.3 is the oldest supported target. Use its base-system
-# libraries instead of copying them from the builder; the Python, PySide6,
-# Qt, Shiboken, and ICU files installed outside /lib and /usr/lib remain
-# bundled.
-a.exclude_system_libraries()
+# Linux Mint 22.3 is the primary release target. Keep glibc, the graphics
+# driver stack, and other base-system libraries on the host, but bundle the
+# small XCB/XKB helper libraries that are not guaranteed to be installed on
+# an otherwise complete Mint desktop. These are required by Qt's qxcb plugin
+# before QApplication can show an actionable error.
+bundled_xcb_runtime_libraries = [
+    "libxcb-cursor.so.*",
+    "libxcb-image.so.*",
+    "libxcb-render-util.so.*",
+    "libxcb-util.so.*",
+    "libxcb-xkb.so.*",
+    "libxkbcommon.so.*",
+    "libxkbcommon-x11.so.*",
+]
+a.exclude_system_libraries(
+    list_of_exceptions=bundled_xcb_runtime_libraries,
+)
 
 pyz = PYZ(a.pure)
 

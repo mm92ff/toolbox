@@ -39,11 +39,17 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   for normal toolbox tabs, without modifying saved tile coordinates
 - Responsive wrapping is enabled by default for normal toolbox tabs, with a
   one-time migration from the earlier development default
+- Bundled XCB cursor/image/utility and XKB runtime helpers for Qt startup on
+  Mint systems where the optional host packages are not installed
+- Reproducible native `amd64` DEB packaging derived from the verified AppImage
+  payload, with dependency metadata, private FFmpeg placement, and smoke tests
 
 ### Changed
 
 - Folder views now reflow tiles from multiple columns down to one column as the
   window narrows; responsive normal tabs temporarily disable manual movement
+- AppImage content validation now proves that Qt resolves the bundled XCB/XKB
+  helpers from the payload and includes their license notices
 
 - Application identity is stable across renamed/versioned executables and honors
   `XDG_CONFIG_HOME` on Linux

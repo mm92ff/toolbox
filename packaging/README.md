@@ -39,7 +39,8 @@ The build performs:
 8. normal and extract-and-run AppImage smoke tests.
 9. renamed, space-containing, symlinked, and read-only-directory relocation tests;
 10. a real XCB smoke test when the builder has an X11 session;
-11. extracted-content checks for development files, glibc, and accidental FFmpeg.
+11. extracted-content checks for development files, glibc, accidental FFmpeg,
+    and bundled XCB/XKB runtime resolution;
 12. in a live X11 session, native window identity, icon metadata, resizing, clean
     window-manager shutdown, and XDG persistence.
 13. a Qt scale-factor-2 startup check for the HiDPI code path.
@@ -69,6 +70,18 @@ Final release verification:
 
 The `.sha256` file contains a relative filename and therefore remains usable after
 the two release files are moved together.
+
+To create the native Mint/Ubuntu package from the same verified payload:
+
+```bash
+./scripts/build-deb.sh \
+  dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+```
+
+The DEB acceptance test extracts the package without root access, validates its
+metadata and desktop integration, runs a frozen smoke test, verifies private
+FFmpeg placement, and confirms bundled XCB/XKB resolution. Installing the DEB
+does not require FUSE.
 
 To compare two repeat builds:
 

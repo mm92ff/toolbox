@@ -14,7 +14,10 @@ def test_linux_spec_is_onedir_and_does_not_autodetect_ffmpeg() -> None:
 
     assert "exclude_binaries=True" in spec_text
     assert "COLLECT(" in spec_text
-    assert "exclude_system_libraries()" in spec_text
+    assert "exclude_system_libraries(" in spec_text
+    assert "list_of_exceptions=bundled_xcb_runtime_libraries" in spec_text
+    assert '"libxcb-cursor.so.*"' in spec_text
+    assert '"libxkbcommon-x11.so.*"' in spec_text
     assert "shutil.which" not in spec_text
     assert "TOOLBOX_FFMPEG_BINARY" in spec_text
     assert '"one_tray.png"' in spec_text
@@ -94,6 +97,8 @@ def test_build_script_packages_license_and_build_information() -> None:
     assert "PYINSTALLER-COPYING.txt" in build_script
     assert "APPIMAGE-RUNTIME-LICENSE.txt" in build_script
     assert "ICU-LICENSE.txt" in build_script
+    assert "XCB-LICENSE.txt" in build_script
+    assert "XKBCOMMON-LICENSE.txt" in build_script
     assert "LGPL-3.txt" in build_script
     assert "build-info.txt" in build_script
 
@@ -184,6 +189,9 @@ def test_appimage_acceptance_covers_content_relocation_and_xcb() -> None:
     assert ".pytest_cache" in content_test
     assert "*.bat" in content_test
     assert "libc.so" in content_test
+    assert "libxcb-cursor.so.0" in content_test
+    assert "libxkbcommon-x11.so.0" in content_test
+    assert 'LD_LIBRARY_PATH="$BUNDLED_LIBRARY_DIR" ldd' in content_test
     assert "EXPECTED_FFMPEG_SHA256" in content_test
     assert "EXPECTED_FFPROBE_SHA256" in content_test
     assert "app/assets/one_tray.png" in content_test

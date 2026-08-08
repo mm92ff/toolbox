@@ -49,11 +49,14 @@ def test_linux_backup_script_uses_toolbox_paths_and_exclusions() -> None:
     assert "BACKUP_PREFIX=\"toolbox_code\"" in script
     assert "Toolbox-Code-Backup.desktop" in script
     assert "scripts/build-appimage.sh" in script
+    assert "scripts/build-deb.sh" in script
     assert "dist-appimage" in script
+    assert "dist-deb" in script
     assert "Toolbox.AppDir" in script
     assert "'-xr!thirdparty'" in script
     assert "'-xr!.bin'" in script
     assert "*.AppImage" in script
+    assert "*.deb" in script
     assert ".toolbox-backup-tmp-" in script
     assert "--self-test" in script
     assert "clauodexi" not in script.lower()
@@ -65,9 +68,11 @@ def test_windows_backup_script_matches_linux_build_exclusions() -> None:
     )
 
     assert "-xr!dist-appimage" in script
+    assert "-xr!dist-deb" in script
     assert "-xr!Toolbox.AppDir" in script
     assert "-xr!thirdparty" in script
     assert "-xr!.bin" in script
     assert "-xr!*.AppImage" in script
+    assert "*.deb" in script
     assert "Toolbox-Code-Backup.desktop" in script
     assert "scripts\\create_code_backup.sh" in script

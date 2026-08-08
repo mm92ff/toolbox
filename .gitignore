@@ -32,6 +32,9 @@ pip-wheel-metadata/
 *.AppImage.sha256
 Toolbox.AppDir/
 dist-appimage/
+dist-deb/
+*.deb
+*.deb.sha256
 
 # IDE/editor files
 .vscode/

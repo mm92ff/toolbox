@@ -87,6 +87,10 @@ The application stores Linux configuration in
 
 The AppImage is a single-file x86_64 release. Internally it contains a
 PyInstaller `onedir` payload to avoid a second extraction step at every launch.
+Qt's XCB cursor, image, utility, and XKB helper libraries are bundled so a
+standard Mint desktop does not need the optional `libxcb-cursor0` or
+`libxkbcommon-x11-0` runtime packages. The AppImage type-2 runtime itself still
+requires the host package `libfuse2t64`.
 
 ```bash
 .venv/bin/python -m pip install -r requirements-build-linux.txt
@@ -98,6 +102,20 @@ SHA-256 is stored in
 `packaging/linux/appimagetool-x86_64.sha256`. To update the tool intentionally,
 set `TOOLBOX_APPIMAGETOOL_SHA256` to the reviewed replacement binary's SHA-256 and
 update the pinned file in the same change.
+
+## Build the Linux DEB
+
+After building and verifying the AppImage, create a native Mint/Ubuntu package
+from the identical payload:
+
+```bash
+./scripts/build-deb.sh dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+```
+
+The resulting `dist-deb/Toolbox-0.42-beta-amd64.deb` installs Toolbox below
+`/usr/lib/toolbox` with `/usr/bin/toolbox` as its launcher. Unlike the AppImage,
+the native package does not require FUSE. Bundled FFmpeg remains private to
+Toolbox and never replaces `/usr/bin/ffmpeg` or `/usr/bin/ffprobe`.
 
 Outputs:
 

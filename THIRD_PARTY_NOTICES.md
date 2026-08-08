@@ -39,6 +39,17 @@ libraries are deliberately not copied from the build system.
 The matching PyInstaller license and bootloader exception are copied from the build
 environment into the AppImage.
 
+## XCB utility libraries / libxkbcommon
+
+- Components: XCB cursor, image, render-util, util and XKB libraries; libxkbcommon
+- Upstream projects: https://xcb.freedesktop.org/ and https://xkbcommon.org/
+- License: MIT/X11-style licenses
+
+The Linux AppImage bundles the small XCB/XKB helper libraries required by Qt's
+`qxcb` platform plugin. The corresponding license notices are included as
+`XCB-LICENSE.txt` and `XKBCOMMON-LICENSE.txt`. glibc and the system graphics
+driver stack remain external runtime dependencies.
+
 ## AppImage Runtime
 
 - Component: AppImage type-2 runtime and AppDir format
