@@ -44,7 +44,8 @@ def test_windows_release_script_builds_tests_and_checksums_exe() -> None:
     assert "Compress-Archive" in script
     assert "FFmpeg bundled: no" in script
     assert "QT-LGPL-3.0.txt" in script
-    assert "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118" in script
+    assert "qt/qtbase/v6.11.1/LICENSES/LGPL-3.0-only.txt" in script
+    assert "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768" in script
     assert "--retry 4" in script
     assert "License download failed" in script
 

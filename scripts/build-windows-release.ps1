@@ -52,13 +52,13 @@ Copy-Item -LiteralPath $PyInstallerLicense -Destination (Join-Path $LicenseRoot 
 $GnuLicenses = @(
     @{
         Name = "QT-LGPL-3.0.txt"
-        Url = "https://www.gnu.org/licenses/lgpl-3.0.txt"
-        Sha256 = "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        Url = "https://raw.githubusercontent.com/qt/qtbase/v6.11.1/LICENSES/LGPL-3.0-only.txt"
+        Sha256 = "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
     },
     @{
         Name = "QT-GPL-3.0.txt"
-        Url = "https://www.gnu.org/licenses/gpl-3.0.txt"
-        Sha256 = "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        Url = "https://raw.githubusercontent.com/qt/qtbase/v6.11.1/LICENSES/GPL-3.0-only.txt"
+        Sha256 = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
     }
 )
 foreach ($License in $GnuLicenses) {
