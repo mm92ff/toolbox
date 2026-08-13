@@ -16,7 +16,7 @@ source.
 - Version: `0.45-beta`
 - Linux AppImage build output: `dist-appimage/Toolbox-0.45-beta-x86_64.AppImage`
 - Linux DEB build output: `dist-deb/Toolbox-0.45-beta-amd64.deb`
-- Windows executable build output: `dist/toolbox_lightweight.exe`
+- Windows executable build output: `dist-windows/Toolbox-0.45-beta-windows-x86_64.exe`
 
 ## Screenshots
 
@@ -83,17 +83,23 @@ with `.venv\Scripts\pythonw.exe`.
 
 ## Build the Windows EXE
 
-From an activated Windows development environment:
+The official Windows x86_64 release is built on Windows with Python 3.11.9 and
+the exact dependencies in `requirements-build-windows.txt`:
 
 ```powershell
-python -m pip install "pyinstaller>=6,<7"
-python -m PyInstaller --clean --noconfirm toolbox_lightweight.spec
+py -3.11 -m venv .venv-release
+.venv-release\Scripts\python.exe -m pip install -r requirements-build-windows.txt
+.venv-release\Scripts\Activate.ps1
+.\scripts\build-windows-release.ps1
 ```
 
-This creates `dist\toolbox_lightweight.exe`. The interactive
-`_pyinstaller_venv_spec_v3.3_debug_fixed.bat` helper can also select the spec,
-prepare an environment, build the EXE, and copy the selected output into the
-project directory.
+The script embeds the Toolbox and runtime license notices, runs a frozen EXE
+smoke test, and produces a portable ZIP plus SHA-256 files in `dist-windows/`.
+The manual GitHub workflow `.github/workflows/build-windows-release.yml` performs
+the same isolated build on Windows Server 2022 and uploads only validated files.
+
+The interactive `_pyinstaller_venv_spec_v3.3_debug_fixed.bat` remains available
+for development builds, but its output is not an official release artifact.
 
 The normal Windows build does not silently collect FFmpeg from `PATH` or from
 arbitrary project folders. FFmpeg/FFprobe are bundled only when the reviewed
@@ -177,6 +183,10 @@ dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-source.tar.xz
 dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-source.tar.xz.sha256
 dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-linux-x86_64.tar.xz
 dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-linux-x86_64.tar.xz.sha256
+dist-windows/Toolbox-0.45-beta-windows-x86_64.exe
+dist-windows/Toolbox-0.45-beta-windows-x86_64.exe.sha256
+dist-windows/Toolbox-0.45-beta-windows-x86_64.zip
+dist-windows/Toolbox-0.45-beta-windows-x86_64.zip.sha256
 ```
 
 Run it:
@@ -318,6 +328,9 @@ $env:PYTHONPATH='.'
 - Official Linux releases contain FFmpeg/FFprobe 7.0.2 under
   LGPL-2.1-or-later. Their exact source, signature, license, binary build script,
   and checksums are provided in the matching `dist-source` release archive.
+- Official Windows EXE builds contain no FFmpeg. They embed the Toolbox, Python,
+  PySide6/Qt, and PyInstaller notices; the Windows ZIP exposes the same notices
+  as regular files beside the EXE.
 - Every download location offering the AppImage or DEB must also offer that
   corresponding-source archive and clearly link the two.
 
@@ -330,6 +343,8 @@ $env:PYTHONPATH='.'
 - `scripts/build-appimage.sh`: reproducible Linux AppImage build
 - `scripts/build-bundled-ffmpeg.sh`: reproducible bundled FFmpeg and source offer
 - `scripts/build-deb.sh`: native Linux Mint/Ubuntu DEB build
+- `scripts/build-windows-release.ps1`: verified Windows EXE and ZIP build
+- `.github/workflows/build-windows-release.yml`: isolated Windows release runner
 - `toolbox_lightweight.spec`: Windows PyInstaller EXE definition
 - `toolbox_linux.spec`: Linux PyInstaller AppDir definition
 

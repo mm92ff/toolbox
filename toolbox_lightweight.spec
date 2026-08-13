@@ -13,6 +13,28 @@ datas: list[tuple[str, str]] = []
 if app_icon_png.is_file():
     datas.append((str(app_icon_png), "app/assets"))
 
+for release_document in ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"):
+    document_path = project_root / release_document
+    if not document_path.is_file():
+        raise FileNotFoundError(f"Required release document is missing: {document_path}")
+    datas.append((str(document_path), "."))
+
+windows_license_dir = os.environ.get("TOOLBOX_WINDOWS_LICENSE_DIR", "").strip()
+if windows_license_dir:
+    license_root = Path(windows_license_dir).expanduser().resolve()
+    required_license_files = (
+        "PYTHON-LICENSE.txt",
+        "PYINSTALLER-COPYING.txt",
+        "QT-LGPL-3.0.txt",
+        "QT-GPL-3.0.txt",
+        "WINDOWS-BUILD-INFO.txt",
+    )
+    for license_name in required_license_files:
+        license_path = license_root / license_name
+        if not license_path.is_file():
+            raise FileNotFoundError(f"Required Windows license file is missing: {license_path}")
+        datas.append((str(license_path), "licenses"))
+
 
 def _explicit_optional_binary(binary_name: str, env_var: str) -> tuple[str, str] | None:
     env_override = os.environ.get(env_var, "").strip()

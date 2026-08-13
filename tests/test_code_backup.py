@@ -56,6 +56,7 @@ def test_linux_backup_script_uses_toolbox_paths_and_exclusions() -> None:
     assert "dist-appimage" in script
     assert "dist-deb" in script
     assert "dist-source" in script
+    assert "dist-windows" in script
     assert "Toolbox.AppDir" in script
     assert "'-xr!thirdparty'" in script
     assert "'-xr!.bin'" in script
@@ -72,6 +73,7 @@ def test_windows_backup_script_matches_linux_build_exclusions() -> None:
     assert "-xr!dist-appimage" in script
     assert "-xr!dist-deb" in script
     assert "-xr!dist-source" in script
+    assert "-xr!dist-windows" in script
     assert "-xr!Toolbox.AppDir" in script
     assert "-xr!thirdparty" in script
     assert "-xr!.bin" in script

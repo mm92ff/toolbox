@@ -34,6 +34,7 @@ REQUIRED_BACKUP_FILES=(
   "requirements.txt"
   "requirements-dev.txt"
   "requirements-build-linux.txt"
+  "requirements-build-windows.txt"
   "toolbox_lightweight.spec"
   "toolbox_linux.spec"
   "packaging/linux/AppRun"
@@ -48,6 +49,7 @@ REQUIRED_BACKUP_FILES=(
   "scripts/build-appimage.sh"
   "scripts/build-bundled-ffmpeg.sh"
   "scripts/build-deb.sh"
+  "scripts/build-windows-release.ps1"
   "scripts/create_code_backup.sh"
   "scripts/test-deb.sh"
   "scripts/verify-linux-release.sh"
@@ -61,6 +63,8 @@ REQUIRED_BACKUP_FILES=(
   "tests/test_deb_packaging.py"
   "tests/test_desktop_entries.py"
   "tests/test_release_licensing.py"
+  "tests/test_windows_packaging.py"
+  ".github/workflows/build-windows-release.yml"
 )
 
 OPTIONAL_BACKUP_FILES=(
@@ -264,6 +268,7 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
     '-xr!dist-appimage' \
     '-xr!dist-deb' \
     '-xr!dist-source' \
+    '-xr!dist-windows' \
     '-xr!Toolbox.AppDir' \
     '-xr!thirdparty' \
     '-xr!.bin' \
@@ -323,6 +328,7 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
       -name 'dist-appimage' -o \
       -name 'dist-deb' -o \
       -name 'dist-source' -o \
+      -name 'dist-windows' -o \
       -name 'Toolbox.AppDir' \
       -o -name 'thirdparty' \
       -o -name '.bin' \

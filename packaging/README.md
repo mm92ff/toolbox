@@ -107,3 +107,22 @@ nondeterministic parallel block ordering.
 Repeat builds with the same sources and toolchain are expected to be bit-identical.
 If hashes still differ, the comparison script distinguishes an archive-metadata
 difference from an actual payload difference.
+
+## Windows release
+
+Official Windows x86_64 packages are built only on Windows:
+
+```powershell
+py -3.11 -m venv .venv-release
+.venv-release\Scripts\python.exe -m pip install -r requirements-build-windows.txt
+.venv-release\Scripts\Activate.ps1
+.\scripts\build-windows-release.ps1
+```
+
+The PowerShell builder enforces the reviewed PySide6 and PyInstaller versions,
+prepares and embeds the Python, Qt, PyInstaller, Toolbox, and third-party
+notices, runs the frozen EXE smoke test, and creates EXE/ZIP SHA-256 files.
+`.github/workflows/build-windows-release.yml` is the official isolated builder.
+It uses Python 3.11.9 x64 and exact dependencies from
+`requirements-build-windows.txt`. FFmpeg is deliberately not bundled in the
+Windows release.

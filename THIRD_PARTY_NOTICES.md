@@ -8,8 +8,9 @@ This project includes or supports third-party components.
 - Upstream project: https://www.python.org/
 - License: Python Software Foundation License
 
-The Linux AppImage contains a Python runtime supplied by the selected build
-environment. The matching Python license is copied into the AppImage at build time.
+The Linux AppImage and Windows EXE contain a Python runtime supplied by their
+selected build environments. The matching Python license is copied into each
+official package and is also exposed in the Windows release ZIP.
 
 ## PySide6 / Qt / Shiboken
 
@@ -17,9 +18,10 @@ environment. The matching Python license is copied into the AppImage at build ti
 - Upstream project: https://doc.qt.io/qtforpython-6/
 - License options: LGPLv3, GPLv3, or a commercial Qt license
 
-The community AppImage build uses the PyPI community packages. The AppImage includes
+Official packages use the PyPI community packages. The Linux AppImage includes
 the LGPLv3 and GPLv3 license texts and keeps Qt as dynamically linked shared
-libraries inside the bundle.
+libraries inside the bundle. The Windows one-file EXE embeds the same license
+texts, and the Windows ZIP exposes them as regular files.
 
 ## ICU
 
@@ -37,7 +39,8 @@ libraries are deliberately not copied from the build system.
 - License: GPLv2-or-later with the PyInstaller bootloader exception
 
 The matching PyInstaller license and bootloader exception are copied from the build
-environment into the AppImage.
+environment into the Linux AppImage and Windows EXE. The Windows ZIP also contains
+a directly readable copy.
 
 ## XCB utility libraries / libxkbcommon
 

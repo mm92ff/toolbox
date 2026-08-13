@@ -20,6 +20,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   license packaging, and AppImage/DEB compliance checks for bundled FFmpeg
 - Documented Windows and Linux release paths and disabled accidental FFmpeg
   collection from the Windows builder's `PATH`
+- Added a pinned Windows Server 2022 release workflow that tests, lints, builds,
+  smoke-tests, licenses, checksums, and packages the Windows x86_64 EXE
 
 ### Added
 
