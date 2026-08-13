@@ -6,10 +6,10 @@ from app import constants
 def test_settings_tab_has_subtabs():
     _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tab, _widgets = create_settings_tab()
-    
+
     # Root layout must be a QVBoxLayout
     assert isinstance(tab.layout(), QtWidgets.QVBoxLayout)
-    
+
     # We expect a QTabWidget inside
     tab_widget = None
     for i in range(tab.layout().count()):
@@ -17,12 +17,12 @@ def test_settings_tab_has_subtabs():
         if isinstance(item, QtWidgets.QTabWidget):
             tab_widget = item
             break
-            
+
     assert tab_widget is not None, "Settings tab is missing the QTabWidget for subtabs"
-    
+
     # Check that there are at least 3 tabs
     assert tab_widget.count() >= 3
-    
+
     # Verify the tab names
     tab_texts = [tab_widget.tabText(i) for i in range(tab_widget.count())]
     assert "Appearance & Layout" in tab_texts

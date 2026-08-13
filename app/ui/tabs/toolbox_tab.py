@@ -31,7 +31,7 @@ def create_toolbox_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget
     breadcrumb_layout = QtWidgets.QHBoxLayout(breadcrumb_bar)
     breadcrumb_layout.setContentsMargins(8, 4, 8, 4)
     breadcrumb_layout.setSpacing(6)
-    
+
     back_btn = QtWidgets.QToolButton()
     back_btn.setObjectName(constants.BUTTON_BROWSE_BACK)
     back_btn.setText("← Zurück")
@@ -39,12 +39,12 @@ def create_toolbox_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget
     back_btn.setAutoRaise(True)
     back_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
     breadcrumb_layout.addWidget(back_btn)
-    
+
     breadcrumb_sep = QtWidgets.QFrame()
     breadcrumb_sep.setFrameShape(QtWidgets.QFrame.Shape.VLine)
     breadcrumb_sep.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
     breadcrumb_layout.addWidget(breadcrumb_sep)
-    
+
     breadcrumb_path_label = QtWidgets.QLabel()
     breadcrumb_path_label.setObjectName(constants.WIDGET_BROWSE_PATH_LABEL)
     breadcrumb_path_label.setTextFormat(QtCore.Qt.TextFormat.PlainText)

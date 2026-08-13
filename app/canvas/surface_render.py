@@ -269,7 +269,7 @@ class CanvasSurfaceRenderMixin:
         else:
             is_media = (self._image_file_preview_enabled and is_supported_image_path(entry.path)) or \
                        (self._video_file_preview_enabled and is_supported_video_path(entry.path))
-            
+
             icon = self._icon_for_tool_entry(entry)
             widget = ToolTileWidget(
                 entry,

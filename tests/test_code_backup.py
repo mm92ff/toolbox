@@ -21,8 +21,10 @@ def test_backup_desktop_targets_toolbox_script() -> None:
     assert metadata.name == "Toolbox Code-Backup"
     assert metadata.icon == "document-save"
     assert metadata.terminal is False
-    assert str(BACKUP_SCRIPT) in metadata.exec_line
-    assert metadata.working_directory == str(PROJECT_ROOT)
+    assert "%k" in metadata.exec_line
+    assert "scripts/create_code_backup.sh" in metadata.exec_line
+    assert metadata.working_directory == ""
+    assert "/home/" not in metadata.exec_line
     assert "clauodexi" not in DESKTOP_FILE.read_text(encoding="utf-8").lower()
 
 
@@ -46,7 +48,7 @@ def test_linux_backup_script_is_executable_and_syntax_valid() -> None:
 def test_linux_backup_script_uses_toolbox_paths_and_exclusions() -> None:
     script = BACKUP_SCRIPT.read_text(encoding="utf-8")
 
-    assert "BACKUP_PREFIX=\"toolbox_code\"" in script
+    assert 'BACKUP_PREFIX="toolbox_code"' in script
     assert "Toolbox-Code-Backup.desktop" in script
     assert "scripts/build-appimage.sh" in script
     assert "scripts/build-deb.sh" in script
@@ -63,9 +65,7 @@ def test_linux_backup_script_uses_toolbox_paths_and_exclusions() -> None:
 
 
 def test_windows_backup_script_matches_linux_build_exclusions() -> None:
-    script = (PROJECT_ROOT / "create-project-backup.bat").read_text(
-        encoding="utf-8"
-    )
+    script = (PROJECT_ROOT / "create-project-backup.bat").read_text(encoding="utf-8")
 
     assert "-xr!dist-appimage" in script
     assert "-xr!dist-deb" in script

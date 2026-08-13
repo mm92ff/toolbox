@@ -2,10 +2,10 @@
 
 Desktop toolbox launcher built with Python and PySide6.
 
-## Latest Release
+## Current Version
 
-- Version: `0.42-beta`
-- Linux AppImage build output: `dist-appimage/Toolbox-0.42-beta-x86_64.AppImage`
+- Version: `0.45-beta`
+- Linux AppImage build output: `dist-appimage/Toolbox-0.45-beta-x86_64.AppImage`
 - Windows executable builds remain supported by `toolbox_lightweight.spec`
 
 ## Screenshots
@@ -109,10 +109,10 @@ After building and verifying the AppImage, create a native Mint/Ubuntu package
 from the identical payload:
 
 ```bash
-./scripts/build-deb.sh dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+./scripts/build-deb.sh dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
 ```
 
-The resulting `dist-deb/Toolbox-0.42-beta-amd64.deb` installs Toolbox below
+The resulting `dist-deb/Toolbox-0.45-beta-amd64.deb` installs Toolbox below
 `/usr/lib/toolbox` with `/usr/bin/toolbox` as its launcher. Unlike the AppImage,
 the native package does not require FUSE. Bundled FFmpeg remains private to
 Toolbox and never replaces `/usr/bin/ffmpeg` or `/usr/bin/ffprobe`.
@@ -120,21 +120,21 @@ Toolbox and never replaces `/usr/bin/ffmpeg` or `/usr/bin/ffprobe`.
 Outputs:
 
 ```text
-dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
-dist-appimage/Toolbox-0.42-beta-x86_64.AppImage.sha256
+dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
+dist-appimage/Toolbox-0.45-beta-x86_64.AppImage.sha256
 ```
 
 Run it:
 
 ```bash
-chmod +x dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
-./dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+chmod +x dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
+./dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
 ```
 
 If FUSE is unavailable:
 
 ```bash
-./dist-appimage/Toolbox-0.42-beta-x86_64.AppImage --appimage-extract-and-run
+./dist-appimage/Toolbox-0.45-beta-x86_64.AppImage --appimage-extract-and-run
 ```
 
 The AppImage does not bundle FFmpeg by default. Install the distribution package
@@ -157,9 +157,9 @@ Linux:
 ```bash
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q
 ./scripts/test-appdir.sh
-./scripts/test-appimage.sh dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+./scripts/test-appimage.sh dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
 ./scripts/verify-linux-release.sh \
-  dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+  dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
 ```
 
 Windows:

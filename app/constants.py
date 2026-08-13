@@ -3,7 +3,7 @@
 """Central constants for the toolbox launcher."""
 
 PRODUCT_NAME = "Toolbox"
-VERSION = "0.42-beta"
+VERSION = "0.45-beta"
 ORGANIZATION_NAME = "Toolbox"
 DESKTOP_FILE_NAME = "io.github.toolbox.Toolbox"
 CONFIG_DIRECTORY_NAME = "toolbox"

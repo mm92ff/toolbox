@@ -1,6 +1,6 @@
 # Umsetzungs- und Release-Validierung
 
-Stand: 8. August 2026  
+Stand: 8. August 2026
 Geprüfter Git-HEAD vor einem Abschluss-Commit: `e7c3e3aa21eecf8223395711578e21b18cb861b8`
 
 ## Ergebnis

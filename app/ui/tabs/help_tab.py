@@ -17,7 +17,7 @@ def _create_help_section(title: str, points: Sequence[str]) -> QtWidgets.QWidget
     section_layout = QtWidgets.QVBoxLayout(section)
     section_layout.setContentsMargins(0, 0, 0, 10)
     section_layout.setSpacing(6)
-    
+
     title_label = QtWidgets.QLabel(title)
     title_label.setObjectName("help_section_title")
     title_font = title_label.font()
@@ -25,14 +25,14 @@ def _create_help_section(title: str, points: Sequence[str]) -> QtWidgets.QWidget
     title_font.setPointSize(max(10, title_font.pointSize() + 1))
     title_label.setFont(title_font)
     section_layout.addWidget(title_label)
-    
+
     # Use HTML for bullet points
     html_points = "".join(f"<li style='margin-bottom: 4px;'>{point}</li>" for point in points)
     content_label = QtWidgets.QLabel(f"<ul style='margin-top: 4px; margin-bottom: 0px; padding-left: 20px;'>{html_points}</ul>")
     content_label.setWordWrap(True)
     content_label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse | QtCore.Qt.TextInteractionFlag.LinksAccessibleByMouse)
     section_layout.addWidget(content_label)
-    
+
     return section
 
 

@@ -3,7 +3,7 @@ set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PYTHON_BIN=${TOOLBOX_BUILD_PYTHON:-"$PROJECT_ROOT/.venv/bin/python"}
-APPIMAGE=${1:-"$PROJECT_ROOT/dist-appimage/Toolbox-0.42-beta-x86_64.AppImage"}
+APPIMAGE=${1:-"$PROJECT_ROOT/dist-appimage/Toolbox-0.45-beta-x86_64.AppImage"}
 APPDIR="$PROJECT_ROOT/Toolbox.AppDir"
 
 if [ ! -x "$PYTHON_BIN" ]; then

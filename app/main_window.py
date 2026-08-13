@@ -294,7 +294,7 @@ class MainWindow(
             "new_toolbox_tab_action_page"
         )
         self._new_toolbox_tab_button: QtWidgets.QToolButton | None = None
-        
+
         self.tab_size_label = QtWidgets.QLabel("")
         self.status.addPermanentWidget(self.tab_size_label)
 
@@ -456,7 +456,7 @@ class MainWindow(
         image_preview_checkbox.toggled.connect(self._on_layout_settings_changed)
         image_preview_mode_combobox = self.widgets[constants.WIDGET_IMAGE_FILE_PREVIEW_MODE_COMBOBOX]
         image_preview_mode_combobox.currentIndexChanged.connect(self._on_layout_settings_changed)
-        
+
         preview_overlay_checkbox = self.widgets.get(constants.WIDGET_PREVIEW_OVERLAY_CHECKBOX)
         if preview_overlay_checkbox:
             preview_overlay_checkbox.toggled.connect(self._on_layout_settings_changed)
@@ -701,7 +701,7 @@ class MainWindow(
             self._update_ffmpeg_status_preview()
         else:
             self.tab_size_label.setText("")
-            
+
         self._last_tab_index = index
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:

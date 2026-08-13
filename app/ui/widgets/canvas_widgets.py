@@ -423,7 +423,7 @@ class ToolTileWidget(CanvasItemBase):
     ) -> None:
         self._metrics = build_tile_metrics(icon_size, tile_font_size)
         self._apply_style()
-        
+
         if self._overlay_mode:
             self._layout.setContentsMargins(0, 0, 0, 0)
             self._layout.setSpacing(0)
@@ -479,7 +479,7 @@ class ToolTileWidget(CanvasItemBase):
                 self._metrics.tile_size.width(),
                 self._metrics.title_height
             )
-        
+
         tooltip = f"{self.entry.title}\n{self.entry.path}"
         if self.entry.path.lower().endswith(".desktop"):
             try:

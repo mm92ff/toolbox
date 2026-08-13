@@ -65,7 +65,7 @@ Final release verification:
 
 ```bash
 ./scripts/verify-linux-release.sh \
-  dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+  dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
 ```
 
 The `.sha256` file contains a relative filename and therefore remains usable after
@@ -75,7 +75,7 @@ To create the native Mint/Ubuntu package from the same verified payload:
 
 ```bash
 ./scripts/build-deb.sh \
-  dist-appimage/Toolbox-0.42-beta-x86_64.AppImage
+  dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
 ```
 
 The DEB acceptance test extracts the package without root access, validates its

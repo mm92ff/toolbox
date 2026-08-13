@@ -29,7 +29,7 @@ class TilePropertiesDialog(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
 
         form_layout = QtWidgets.QFormLayout()
-        
+
         self.title_input = QtWidgets.QLineEdit(self.custom_title)
         form_layout.addRow("Anzeigename:", self.title_input)
 
@@ -38,12 +38,12 @@ class TilePropertiesDialog(QtWidgets.QDialog):
         self.icon_input.setPlaceholderText("Standard-Icon verwenden (leer lassen)")
         self.icon_browse_btn = QtWidgets.QPushButton("Durchsuchen...")
         self.icon_browse_btn.clicked.connect(self._browse_icon)
-        
+
         self.icon_layout.addWidget(self.icon_input)
         self.icon_layout.addWidget(self.icon_browse_btn)
-        
+
         form_layout.addRow("Benutzerdefiniertes Icon:", self.icon_layout)
-        
+
         layout.addLayout(form_layout)
 
         buttons = QtWidgets.QDialogButtonBox(
@@ -67,9 +67,9 @@ class TilePropertiesDialog(QtWidgets.QDialog):
     def accept(self) -> None:
         self.custom_title = self.title_input.text().strip()
         self.custom_icon_path = self.icon_input.text().strip()
-        
+
         # If the user enters the original title, treat it as "no custom title" to avoid redundancy
         if self.custom_title == self.entry.title:
             self.custom_title = ""
-            
+
         super().accept()

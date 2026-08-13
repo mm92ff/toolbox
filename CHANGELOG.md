@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.45-beta] - 2026-08-13
+
+### Release preparation
+
+- Synchronized application, AppImage, DEB, documentation, and AppStream
+  metadata after the previously tagged `v0.44-beta` still reported `0.42-beta`
+- Made the tracked development and code-backup desktop launchers portable by
+  resolving their project directory through the desktop-entry `%k` field code
+
 ### Added
 
 - Safe multi-window support in one process with shared state, global undo/redo,

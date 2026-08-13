@@ -6,10 +6,9 @@ Name=Toolbox
 Name[de]=Toolbox
 Comment=Start the Toolbox GUI from this project checkout
 Comment[de]=Startet die Toolbox-GUI aus diesem Projektordner
-TryExec=/home/jemi/Desktop/Github/toolbox--/.venv/bin/python
-Exec=/home/jemi/Desktop/Github/toolbox--/.venv/bin/python /home/jemi/Desktop/Github/toolbox--/main.py
-Path=/home/jemi/Desktop/Github/toolbox--
-Icon=/home/jemi/Desktop/Github/toolbox--/app/assets/one.png
+TryExec=/usr/bin/python3
+Exec=/usr/bin/python3 -c "import os,sys; project_dir=os.path.dirname(sys.argv[1]); python_bin=os.path.join(project_dir,'.venv/bin/python'); python_bin=python_bin if os.access(python_bin,os.X_OK) else sys.executable; os.chdir(project_dir); os.execl(python_bin,python_bin,os.path.join(project_dir,'main.py'))" %k
+Icon=applications-utilities
 Terminal=false
 Categories=Utility;
 StartupNotify=true
