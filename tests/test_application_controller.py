@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 import uuid
 from unittest.mock import MagicMock, patch
@@ -35,24 +36,44 @@ def test_second_controller_notifies_primary_instance() -> None:
     name = single_instance_server_name(f"pytest-{uuid.uuid4().hex[:8]}")
     QtNetwork.QLocalServer.removeServer(name)
     primary = SingleInstanceController(name)
-    secondary = SingleInstanceController(name)
     activation_count = 0
+    secondary_results: list[InstanceStartResult] = []
+    secondary_errors: list[BaseException] = []
 
     def activated() -> None:
         nonlocal activation_count
         activation_count += 1
 
     primary.activation_requested.connect(activated)
+
+    def notify_from_secondary_process_thread() -> None:
+        secondary = SingleInstanceController(name)
+        try:
+            secondary_results.append(secondary.start())
+        except BaseException as exc:  # pragma: no cover - re-raised in the test thread
+            secondary_errors.append(exc)
+        finally:
+            secondary._server.close()
+
     try:
         assert primary.start() is InstanceStartResult.PRIMARY
-        assert secondary.start() is InstanceStartResult.SECONDARY
+        secondary_thread = threading.Thread(
+            target=notify_from_secondary_process_thread,
+            name="toolbox-secondary-instance-test",
+        )
+        secondary_thread.start()
         deadline = time.monotonic() + 2
-        while activation_count == 0 and time.monotonic() < deadline:
+        while (
+            (activation_count == 0 or secondary_thread.is_alive())
+            and time.monotonic() < deadline
+        ):
             app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 50)
+        secondary_thread.join(timeout=0.5)
+        assert secondary_errors == []
+        assert secondary_results == [InstanceStartResult.SECONDARY]
         assert activation_count == 1
     finally:
         primary._server.close()
-        secondary._server.close()
         QtNetwork.QLocalServer.removeServer(name)
 
 
