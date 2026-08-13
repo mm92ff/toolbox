@@ -32,13 +32,13 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --disable-pip-version-check -r requirements-build-windows.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Run tests and lint
+      - name: Run Windows-compatible tests and lint
         shell: pwsh
-        run: |
-          python -m pytest -q
-          python -m ruff check .
+        run: ./scripts/test-windows-release.ps1
 
       - name: Build and smoke-test Windows release
         shell: pwsh

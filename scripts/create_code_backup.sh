@@ -50,6 +50,7 @@ REQUIRED_BACKUP_FILES=(
   "scripts/build-bundled-ffmpeg.sh"
   "scripts/build-deb.sh"
   "scripts/build-windows-release.ps1"
+  "scripts/test-windows-release.ps1"
   "scripts/create_code_backup.sh"
   "scripts/test-deb.sh"
   "scripts/verify-linux-release.sh"

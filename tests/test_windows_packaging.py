@@ -58,6 +58,19 @@ def test_windows_workflow_uses_pinned_actions_and_exact_python() -> None:
     assert "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803" in workflow
     assert "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1" in workflow
     assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in workflow
-    assert "python -m pytest -q" in workflow
-    assert "python -m ruff check ." in workflow
+    assert "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }" in workflow
+    assert "./scripts/test-windows-release.ps1" in workflow
     assert "dist-windows/*.exe.sha256" in workflow
+
+
+def test_windows_test_runner_propagates_native_failures() -> None:
+    script = (PROJECT_ROOT / "scripts" / "test-windows-release.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "$LASTEXITCODE -ne 0" in script
+    assert "Windows-compatible pytest selection failed" in script
+    assert "python -m ruff check ." in script
+    assert "tests/test_appimage_packaging.py" in script
+    assert "tests/test_linux_launch.py" in script
+    assert "tests/test_windows_packaging.py" not in script
