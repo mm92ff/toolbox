@@ -12,6 +12,7 @@ import pytest
 from PySide6 import QtCore, QtNetwork, QtWidgets
 
 from app.application_controller import (
+    IPC_ACK,
     MAX_IPC_MESSAGE_BYTES,
     InstanceStartResult,
     SingleInstanceController,
@@ -119,6 +120,8 @@ def test_versioned_command_supports_partial_reads() -> None:
     assert received == []
     controller._read_client(client)
     assert received == ["new_window"]
+    client.write.assert_called_once_with(IPC_ACK)
+    client.flush.assert_called_once_with()
 
 
 def test_unknown_and_oversized_ipc_messages_are_rejected() -> None:

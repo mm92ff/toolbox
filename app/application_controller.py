@@ -17,6 +17,7 @@ from app import constants
 
 logger = logging.getLogger(__name__)
 ACTIVATE_COMMAND = b"ACTIVATE"
+IPC_ACK = b"OK\n"
 IPC_VERSION = 1
 MAX_IPC_MESSAGE_BYTES = 4096
 SUPPORTED_COMMANDS = frozenset({"activate", "new_window"})
@@ -110,9 +111,20 @@ class SingleInstanceController(QtCore.QObject):
             encoded = self.encode_command(command)
         except ValueError:
             return False
-        socket.write(encoded)
-        socket.waitForBytesWritten(timeout_ms)
+        if socket.write(encoded) < 0 or not socket.waitForBytesWritten(timeout_ms):
+            socket.abort()
+            return False
+
+        # Keep Windows named-pipe connections alive until the primary process
+        # has consumed the command. Without this acknowledgement, a fast
+        # secondary process can disconnect before QLocalServer dispatches its
+        # readyRead signal even though waitForBytesWritten() succeeded.
+        acknowledged = socket.waitForReadyRead(timeout_ms)
+        if acknowledged and bytes(socket.readAll()) != IPC_ACK:
+            logger.warning("Primary instance returned an unexpected IPC acknowledgement.")
         socket.disconnectFromServer()
+        if not acknowledged:
+            logger.warning("Primary instance did not acknowledge the IPC command in time.")
         return True
 
     @QtCore.Slot()
@@ -134,6 +146,8 @@ class SingleInstanceController(QtCore.QObject):
             return
         if bytes(buffer) == ACTIVATE_COMMAND:
             self._dispatch_command("activate", None)
+            client.write(IPC_ACK)
+            client.flush()
             buffer.clear()
             return
         while b"\n" in buffer:
@@ -151,6 +165,8 @@ class SingleInstanceController(QtCore.QObject):
             if not isinstance(command, str) or command not in SUPPORTED_COMMANDS:
                 continue
             self._dispatch_command(command, message.get("payload"))
+            client.write(IPC_ACK)
+            client.flush()
 
     def _dispatch_command(self, command: str, payload: object) -> None:
         self.command_received.emit(command, payload)
