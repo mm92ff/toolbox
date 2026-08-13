@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
-import threading
+import subprocess
+import sys
 import time
 import uuid
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -38,8 +40,6 @@ def test_second_controller_notifies_primary_instance() -> None:
     QtNetwork.QLocalServer.removeServer(name)
     primary = SingleInstanceController(name)
     activation_count = 0
-    secondary_results: list[InstanceStartResult] = []
-    secondary_errors: list[BaseException] = []
 
     def activated() -> None:
         nonlocal activation_count
@@ -47,33 +47,41 @@ def test_second_controller_notifies_primary_instance() -> None:
 
     primary.activation_requested.connect(activated)
 
-    def notify_from_secondary_process_thread() -> None:
-        secondary = SingleInstanceController(name)
-        try:
-            secondary_results.append(secondary.start())
-        except BaseException as exc:  # pragma: no cover - re-raised in the test thread
-            secondary_errors.append(exc)
-        finally:
-            secondary._server.close()
-
+    child: subprocess.Popen[str] | None = None
     try:
         assert primary.start() is InstanceStartResult.PRIMARY
-        secondary_thread = threading.Thread(
-            target=notify_from_secondary_process_thread,
-            name="toolbox-secondary-instance-test",
+        child_code = "\n".join(
+            (
+                "import sys",
+                "from PySide6 import QtCore",
+                "from app.application_controller import SingleInstanceController",
+                "app = QtCore.QCoreApplication([])",
+                "controller = SingleInstanceController(sys.argv[1])",
+                "print(controller.start().value, flush=True)",
+                "controller._server.close()",
+            )
         )
-        secondary_thread.start()
-        deadline = time.monotonic() + 2
+        child = subprocess.Popen(
+            [sys.executable, "-c", child_code, name],
+            cwd=os.fspath(Path(__file__).resolve().parents[1]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.monotonic() + 5
         while (
-            (activation_count == 0 or secondary_thread.is_alive())
+            (activation_count == 0 or child.poll() is None)
             and time.monotonic() < deadline
         ):
             app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 50)
-        secondary_thread.join(timeout=0.5)
-        assert secondary_errors == []
-        assert secondary_results == [InstanceStartResult.SECONDARY]
+        stdout, stderr = child.communicate(timeout=1)
+        assert child.returncode == 0, stderr
+        assert stdout.strip() == InstanceStartResult.SECONDARY.value
         assert activation_count == 1
     finally:
+        if child is not None and child.poll() is None:
+            child.kill()
+            child.wait(timeout=1)
         primary._server.close()
         QtNetwork.QLocalServer.removeServer(name)
 
