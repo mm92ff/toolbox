@@ -63,7 +63,20 @@ $GnuLicenses = @(
 )
 foreach ($License in $GnuLicenses) {
     $Target = Join-Path $LicenseRoot $License.Name
-    Invoke-WebRequest -Uri $License.Url -OutFile $Target
+    & curl.exe `
+        --fail `
+        --location `
+        --silent `
+        --show-error `
+        --retry 4 `
+        --retry-all-errors `
+        --connect-timeout 15 `
+        --max-time 120 `
+        --output $Target `
+        $License.Url
+    if ($LASTEXITCODE -ne 0) {
+        throw "License download failed for $($License.Name) with exit code $LASTEXITCODE."
+    }
     $ActualHash = (Get-FileHash -LiteralPath $Target -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($ActualHash -ne $License.Sha256) {
         throw "License checksum mismatch for $($License.Name): $ActualHash"
