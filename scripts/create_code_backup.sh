@@ -24,6 +24,7 @@ REQUIRED_BACKUP_FILES=(
   ".gitignore"
   "CHANGELOG.md"
   "LICENSE"
+  "NOTICE"
   "README.md"
   "THIRD_PARTY_NOTICES.md"
   "Toolbox-Code-Backup.desktop"
@@ -38,11 +39,14 @@ REQUIRED_BACKUP_FILES=(
   "packaging/linux/AppRun"
   "packaging/linux/toolbox.desktop"
   "packaging/linux/io.github.toolbox.Toolbox.appdata.xml"
-  "packaging/linux/ffmpeg-archive-x86_64.sha256"
+  "packaging/linux/FFMPEG-SOURCE.md"
+  "packaging/linux/ffmpeg-source-7.0.2.sha256"
+  "packaging/linux/ffmpeg-runtime-7.0.2.sha256"
   "packaging/linux/ffmpeg-x86_64.sha256"
   "packaging/linux/licenses/XCB-LICENSE.txt"
   "packaging/linux/licenses/XKBCOMMON-LICENSE.txt"
   "scripts/build-appimage.sh"
+  "scripts/build-bundled-ffmpeg.sh"
   "scripts/build-deb.sh"
   "scripts/create_code_backup.sh"
   "scripts/test-deb.sh"
@@ -56,6 +60,7 @@ REQUIRED_BACKUP_FILES=(
   "tests/test_appimage_packaging.py"
   "tests/test_deb_packaging.py"
   "tests/test_desktop_entries.py"
+  "tests/test_release_licensing.py"
 )
 
 OPTIONAL_BACKUP_FILES=(
@@ -258,6 +263,7 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
     '-xr!dist' \
     '-xr!dist-appimage' \
     '-xr!dist-deb' \
+    '-xr!dist-source' \
     '-xr!Toolbox.AppDir' \
     '-xr!thirdparty' \
     '-xr!.bin' \
@@ -316,6 +322,7 @@ RESTORED_GIT_REFS_FILE="${TEMP_DIR}/restored-git-refs.txt"
       -name 'dist' -o \
       -name 'dist-appimage' -o \
       -name 'dist-deb' -o \
+      -name 'dist-source' -o \
       -name 'Toolbox.AppDir' \
       -o -name 'thirdparty' \
       -o -name '.bin' \

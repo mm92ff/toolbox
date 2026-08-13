@@ -65,36 +65,60 @@ records the value in `build-info.txt`.
 
 - Component: `ffmpeg`, `ffprobe`
 - Upstream project: https://ffmpeg.org/
-- Bundled Linux build: `7.0.2-static` from https://johnvansickle.com/ffmpeg/
-- Verified source archive: `ffmpeg-release-amd64-static.tar.xz`
-- Source archive hash: `packaging/linux/ffmpeg-archive-x86_64.sha256`
+- Bundled Linux build: Toolbox reproducible build of FFmpeg `7.0.2`
+- Official source archive: https://ffmpeg.org/releases/ffmpeg-7.0.2.tar.xz
+- Official source signature: https://ffmpeg.org/releases/ffmpeg-7.0.2.tar.xz.asc
+- Source archive hash: `packaging/linux/ffmpeg-source-7.0.2.sha256`
 - Bundled binary hashes: `packaging/linux/ffmpeg-x86_64.sha256`
 - Copyright: FFmpeg developers
-- License: GNU General Public License (GPL) v3 or later (for the bundled `full_build` binaries)
+- License: GNU Lesser General Public License version 2.1 or later
 
-### Why this matters
+### Linux release build and separation
 
-The application can ship FFmpeg/FFprobe binaries for video thumbnail generation,
-but Linux AppImage builds do not include them unless explicitly requested.
-When these binaries are distributed together with the app, FFmpeg license obligations apply.
+Official Toolbox Linux AppImage and DEB releases contain FFmpeg and FFprobe as
+separate executables used through command-line arguments for local video-thumbnail
+generation. They are not linked into the MIT-licensed Toolbox application.
 
-### Binary provenance used for current beta builds
+The release binaries are built by `scripts/build-bundled-ffmpeg.sh` from the
+unmodified official source archive. The fixed configure profile explicitly uses
+`--disable-gpl`, `--disable-nonfree`, and `--disable-autodetect`. It links no
+optional third-party codec libraries. The system C library, math library, dynamic
+loader, and zlib remain external system libraries.
 
-- Build flavor: `7.0.2-full_build-www.gyan.dev`
-- Distributor/build provider: https://www.gyan.dev/ffmpeg/builds/
-- Provider releases: https://github.com/GyanD/codexffmpeg/releases
+The build verifies the LGPL report emitted by `ffmpeg -L`, exercises real
+MP4-to-PNG thumbnail extraction, and checks both binaries against their reviewed
+SHA-256 values before Linux packaging proceeds.
 
 ### Corresponding source code
 
-For the current bundled FFmpeg binary flavor (`7.0.2-full_build-www.gyan.dev`), the provider metadata references:
+Each Toolbox Linux release that contains these binaries must be accompanied at the
+same download location by:
 
-- FFmpeg source commit: https://github.com/FFmpeg/FFmpeg/commit/e3a61e9103
+- `Toolbox-0.45-beta-ffmpeg-7.0.2-source.tar.xz`
+- `Toolbox-0.45-beta-ffmpeg-7.0.2-source.tar.xz.sha256`
 
-If you distribute a different FFmpeg binary in future releases, update this file with the matching source reference for that exact binary.
+The source release contains the original FFmpeg source archive and upstream
+signature, `COPYING.LGPLv2.1`, the exact Toolbox build script and instructions,
+and a manifest covering every included file. See
+`packaging/linux/FFMPEG-SOURCE.md` for reproduction instructions.
+
+The AppImage builder refuses to create an official release unless that matching
+source release exists and passes its checksum. The DEB is derived from the same
+verified AppImage payload.
+
+Source runs can install the same reviewed LGPL binaries from the matching
+`Toolbox-0.45-beta-ffmpeg-7.0.2-linux-x86_64.tar.xz` release asset. That runtime
+archive includes the LGPL text and source instructions, and its SHA-256 is pinned
+in both the application and `packaging/linux/ffmpeg-runtime-7.0.2.sha256`.
+
+Windows EXE builds do not bundle FFmpeg automatically. If FFmpeg/FFprobe are
+explicitly selected for a future Windows distribution, add the exact Windows
+binary provenance, applicable license, and matching corresponding-source release
+before publishing that artifact.
 
 ### License text
 
-- GPLv3 license text: https://www.gnu.org/licenses/gpl-3.0.txt
+- LGPLv2.1 license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
 - FFmpeg legal page: https://ffmpeg.org/legal.html
 
 ## No Legal Advice

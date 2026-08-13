@@ -46,7 +46,7 @@ echo Running project backup self-test...
 
 "%SEVEN_ZIP%" a -t7z "%ARCHIVE_PATH%" "." ^
     -mx=7 -m0=lzma2 ^
-    -xr!build -xr!dist -xr!dist-appimage -xr!dist-deb -xr!Toolbox.AppDir -xr!thirdparty -xr!.bin ^
+    -xr!build -xr!dist -xr!dist-appimage -xr!dist-deb -xr!dist-source -xr!Toolbox.AppDir -xr!thirdparty -xr!.bin ^
     -xr!__pycache__ -xr!.pytest_cache -xr!.mypy_cache -xr!.ruff_cache ^
     -xr!.tox -xr!.nox -xr!.hypothesis -xr!htmlcov ^
     -xr!.venv -xr!venv -xr!env -xr!*.egg-info ^
@@ -107,7 +107,7 @@ for %%R in (
     )
 )
 
-powershell.exe -NoProfile -Command "$bad = Get-Content -LiteralPath $env:LIST_FILE | Where-Object { $_ -match '^Path = (?![A-Za-z]:[\\/])(?:(?:.*\\)?(?:build|dist|dist-appimage|dist-deb|Toolbox\.AppDir|thirdparty|\.bin|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.tox|\.nox|\.hypothesis|htmlcov|\.venv|venv|env|[^\\]+\.egg-info)(?:\\|$)|.*(?:\.pyc|\.pyo|\.log|\.lnk|\.exe|\.AppImage|\.AppImage\.sha256|\.deb|\.deb\.sha256|\.7z|\.zip|\.rar)$|(?:.*\\)?(?:\.coverage|coverage\.xml)$)' }; if ($bad) { $bad | Select-Object -First 20; exit 1 }"
+powershell.exe -NoProfile -Command "$bad = Get-Content -LiteralPath $env:LIST_FILE | Where-Object { $_ -match '^Path = (?![A-Za-z]:[\\/])(?:(?:.*\\)?(?:build|dist|dist-appimage|dist-deb|dist-source|Toolbox\.AppDir|thirdparty|\.bin|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.tox|\.nox|\.hypothesis|htmlcov|\.venv|venv|env|[^\\]+\.egg-info)(?:\\|$)|.*(?:\.pyc|\.pyo|\.log|\.lnk|\.exe|\.AppImage|\.AppImage\.sha256|\.deb|\.deb\.sha256|\.7z|\.zip|\.rar)$|(?:.*\\)?(?:\.coverage|coverage\.xml)$)' }; if ($bad) { $bad | Select-Object -First 20; exit 1 }"
 if errorlevel 1 goto :found_excluded_entry
 
 del /q "%LIST_FILE%" >nul 2>&1

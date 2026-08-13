@@ -14,6 +14,12 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   metadata after the previously tagged `v0.44-beta` still reported `0.42-beta`
 - Made the tracked development and code-backup desktop launchers portable by
   resolving their project directory through the desktop-entry `%k` field code
+- Replaced the externally built GPL FFmpeg payload with a reproducible
+  LGPL-2.1-or-later build from pinned official FFmpeg 7.0.2 source
+- Added a mandatory corresponding-source release, third-party notice, exact
+  license packaging, and AppImage/DEB compliance checks for bundled FFmpeg
+- Documented Windows and Linux release paths and disabled accidental FFmpeg
+  collection from the Windows builder's `PATH`
 
 ### Added
 

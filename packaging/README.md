@@ -9,7 +9,8 @@ internal `onedir` payload, which is copied into an AppDir and compressed by
 Prerequisites:
 
 ```bash
-sudo apt install python3-venv desktop-file-utils libfuse2t64
+sudo apt install python3-venv desktop-file-utils libfuse2t64 \
+  build-essential curl pkg-config xz-utils zlib1g-dev
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-build-linux.txt
 ```
@@ -17,8 +18,15 @@ python3 -m venv .venv
 Build:
 
 ```bash
+./scripts/build-bundled-ffmpeg.sh
 APPIMAGETOOL=/absolute/path/to/appimagetool ./scripts/build-appimage.sh
 ```
+
+The FFmpeg step builds reviewed LGPL-2.1-or-later `ffmpeg` and `ffprobe`
+binaries from the pinned, unmodified official 7.0.2 source archive. It also
+creates the mandatory corresponding-source release and checksum in
+`dist-source/`. Publish both source files beside every AppImage and DEB. The
+AppImage build fails if the matching source release is absent or invalid.
 
 The selected tool must match
 `packaging/linux/appimagetool-x86_64.sha256`. A reviewed tool upgrade can be tested
@@ -49,8 +57,10 @@ The PyInstaller warning gate permits only imports that belong to other supported
 Python platforms (`winreg`, `_winapi`, Java, VMS, and frozen-import internals).
 Any new missing-module warning fails the Linux build and must be reviewed.
 
-FFmpeg is not detected from the builder's `PATH`. Bundle it only through explicit
-absolute paths:
+FFmpeg is never detected from the builder's `PATH`. Normal official builds use
+the reviewed outputs from `scripts/build-bundled-ffmpeg.sh`. Explicit paths are
+accepted only for controlled verification of binaries that match the committed
+hash pins:
 
 ```bash
 TOOLBOX_FFMPEG_BINARY=/path/to/ffmpeg \
@@ -58,8 +68,9 @@ TOOLBOX_FFPROBE_BINARY=/path/to/ffprobe \
 ./scripts/build-appimage.sh
 ```
 
-When FFmpeg is bundled, update `THIRD_PARTY_NOTICES.md` with the exact binary
-provenance, license, and corresponding source.
+Any intentional FFmpeg version, source, configure-profile, or binary change must
+update the source and binary hash pins, `THIRD_PARTY_NOTICES.md`, the source
+bundle, and all release artifacts in one reviewed change.
 
 Final release verification:
 
@@ -69,7 +80,8 @@ Final release verification:
 ```
 
 The `.sha256` file contains a relative filename and therefore remains usable after
-the two release files are moved together.
+the release files are moved together. The corresponding-source `.sha256` follows
+the same rule.
 
 To create the native Mint/Ubuntu package from the same verified payload:
 

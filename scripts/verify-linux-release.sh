@@ -5,6 +5,8 @@ PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PYTHON_BIN=${TOOLBOX_BUILD_PYTHON:-"$PROJECT_ROOT/.venv/bin/python"}
 APPIMAGE=${1:-"$PROJECT_ROOT/dist-appimage/Toolbox-0.45-beta-x86_64.AppImage"}
 APPDIR="$PROJECT_ROOT/Toolbox.AppDir"
+FFMPEG_SOURCE_BUNDLE="$PROJECT_ROOT/dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-source.tar.xz"
+FFMPEG_RUNTIME_BUNDLE="$PROJECT_ROOT/dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-linux-x86_64.tar.xz"
 
 if [ ! -x "$PYTHON_BIN" ]; then
     echo "ERROR: Test Python not found: $PYTHON_BIN" >&2
@@ -14,8 +16,34 @@ if [ ! -x "$APPIMAGE" ]; then
     echo "ERROR: Release AppImage not found or not executable: $APPIMAGE" >&2
     exit 1
 fi
+if [ ! -f "$FFMPEG_SOURCE_BUNDLE" ] || [ ! -f "$FFMPEG_SOURCE_BUNDLE.sha256" ]; then
+    echo "ERROR: Corresponding FFmpeg source release is missing: $FFMPEG_SOURCE_BUNDLE" >&2
+    exit 1
+fi
+(
+    cd "$(dirname "$FFMPEG_SOURCE_BUNDLE")"
+    sha256sum -c "$(basename "$FFMPEG_SOURCE_BUNDLE").sha256"
+)
+if [ ! -f "$FFMPEG_RUNTIME_BUNDLE" ] || [ ! -f "$FFMPEG_RUNTIME_BUNDLE.sha256" ]; then
+    echo "ERROR: Reviewed FFmpeg runtime release is missing: $FFMPEG_RUNTIME_BUNDLE" >&2
+    exit 1
+fi
+(
+    cd "$(dirname "$FFMPEG_RUNTIME_BUNDLE")"
+    sha256sum -c "$(basename "$FFMPEG_RUNTIME_BUNDLE").sha256"
+)
 
-QT_QPA_PLATFORM=offscreen "$PYTHON_BIN" -m pytest -q "$PROJECT_ROOT/tests"
+PYSIDE_QT_LIBRARY_DIR=$(
+    "$PYTHON_BIN" -c \
+        'from pathlib import Path; import PySide6; print(Path(PySide6.__file__).parent / "Qt" / "lib")'
+)
+if [ ! -d "$PYSIDE_QT_LIBRARY_DIR" ]; then
+    echo "ERROR: PySide6 Qt library directory not found: $PYSIDE_QT_LIBRARY_DIR" >&2
+    exit 1
+fi
+LD_LIBRARY_PATH="$PYSIDE_QT_LIBRARY_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    QT_QPA_PLATFORM=offscreen \
+    "$PYTHON_BIN" -m pytest -q "$PROJECT_ROOT/tests"
 
 desktop-file-validate "$PROJECT_ROOT/packaging/linux/toolbox.desktop"
 appstreamcli validate --no-net \

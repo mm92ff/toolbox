@@ -14,30 +14,31 @@ def test_deb_scripts_are_executable() -> None:
 
 
 def test_deb_build_uses_verified_appimage_payload_and_native_paths() -> None:
-    script = (PROJECT_ROOT / "scripts" / "build-deb.sh").read_text(
-        encoding="utf-8"
-    )
+    script = (PROJECT_ROOT / "scripts" / "build-deb.sh").read_text(encoding="utf-8")
 
-    assert 'PACKAGE_NAME=toolbox-launcher' in script
-    assert 'ARCHITECTURE=amd64' in script
-    assert '--appimage-extract' in script
-    assert 'dpkg-deb --root-owner-group' in script
-    assert 'usr/lib/toolbox/_internal/$MEDIA_BINARY' in script
-    assert 'X-Toolbox-AppImage-SHA256' in script
-    assert 'libfuse' not in script
+    assert "PACKAGE_NAME=toolbox-launcher" in script
+    assert "ARCHITECTURE=amd64" in script
+    assert "--appimage-extract" in script
+    assert "dpkg-deb --root-owner-group" in script
+    assert "usr/lib/toolbox/_internal/$MEDIA_BINARY" in script
+    assert "X-Toolbox-AppImage-SHA256" in script
+    assert "libfuse" not in script
 
 
 def test_deb_acceptance_checks_dependencies_content_and_startup() -> None:
-    script = (PROJECT_ROOT / "scripts" / "test-deb.sh").read_text(
-        encoding="utf-8"
-    )
+    script = (PROJECT_ROOT / "scripts" / "test-deb.sh").read_text(encoding="utf-8")
 
-    assert 'dpkg-deb --extract' in script
-    assert 'dpkg-deb --control' in script
-    assert 'libfuse' in script
-    assert 'usr/bin/ffmpeg' in script
-    assert 'usr/lib/toolbox/_internal/ffmpeg' in script
-    assert 'libxcb-cursor.so.0' in script
-    assert 'libxkbcommon-x11.so.0' in script
-    assert '--deb-smoke-token' in script
-    assert 'QT_QPA_PLATFORM=offscreen' in script
+    assert "dpkg-deb --extract" in script
+    assert "dpkg-deb --control" in script
+    assert "libfuse" in script
+    assert "usr/bin/ffmpeg" in script
+    assert "usr/lib/toolbox/_internal/ffmpeg" in script
+    assert "usr/share/doc/toolbox-launcher/NOTICE" in script
+    assert "usr/share/doc/toolbox-launcher/FFMPEG-SOURCE.md" in script
+    assert "usr/share/doc/toolbox-launcher/licenses/FFMPEG-LGPL-2.1.txt" in script
+    assert "GNU Lesser General Public" in script
+    assert "GPL code instead of the reviewed LGPL build" in script
+    assert "libxcb-cursor.so.0" in script
+    assert "libxkbcommon-x11.so.0" in script
+    assert "--deb-smoke-token" in script
+    assert "QT_QPA_PLATFORM=offscreen" in script

@@ -21,13 +21,17 @@ from PySide6 import QtCore
 
 FFMPEG_VERSION = "7.0.2"
 LINUX_X86_64_URL = (
-    "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+    "https://github.com/mm92ff/toolbox/releases/download/v0.45-beta/"
+    "Toolbox-0.45-beta-ffmpeg-7.0.2-linux-x86_64.tar.xz"
 )
-EXPECTED_ARCHIVE_SHA256 = "abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67"
+EXPECTED_ARCHIVE_SHA256 = "ba916b084e2aa7051500b94ccb01da1a6c03a4f3a054f8758578b9c8d38d9853"
 EXPECTED_BINARY_SHA256 = {
-    "ffmpeg": "e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99",
-    "ffprobe": "4f231a1960d83e403d08f7971e271707bec278a9ae18e21b8b5b03186668450d",
+    "ffmpeg": "080d5baae7e66281a31b04456049b8c6f83bf5aea95d3f72b4db7f9554f3e80a",
+    "ffprobe": "f4380875a06580ad62671a63c79521f0913b8e80c4abc8a5461c59fac55ae3b2",
 }
+EXPECTED_ARCHIVE_FILES = frozenset(
+    {*EXPECTED_BINARY_SHA256, "COPYING.LGPLv2.1", "README.md"}
+)
 MAX_ARCHIVE_BYTES = 150 * 1024 * 1024
 MAX_BINARY_BYTES = 120 * 1024 * 1024
 
@@ -104,7 +108,7 @@ def _extract_verified_binaries(
                 raise RuntimeError("FFmpeg installation was cancelled.")
             member_path = PurePosixPath(member.name)
             name = member_path.name
-            if name not in EXPECTED_BINARY_SHA256:
+            if name not in EXPECTED_ARCHIVE_FILES:
                 continue
             if member_path.is_absolute() or ".." in member_path.parts:
                 raise RuntimeError(f"Unsafe archive path for '{name}'.")
@@ -118,7 +122,7 @@ def _extract_verified_binaries(
             _copy_limited(source, output_dir / name, MAX_BINARY_BYTES, cancelled)
             found.add(name)
 
-    missing = set(EXPECTED_BINARY_SHA256) - found
+    missing = set(EXPECTED_ARCHIVE_FILES) - found
     if missing:
         raise RuntimeError(f"FFmpeg archive is missing: {', '.join(sorted(missing))}.")
     for name, expected_hash in EXPECTED_BINARY_SHA256.items():
@@ -132,7 +136,7 @@ def _extract_verified_binaries(
 
 
 def _existing_install_is_valid(install_dir: Path) -> bool:
-    return all(
+    return all((install_dir / name).is_file() for name in EXPECTED_ARCHIVE_FILES) and all(
         (install_dir / name).is_file() and _sha256(install_dir / name) == expected
         for name, expected in EXPECTED_BINARY_SHA256.items()
     )
@@ -145,7 +149,7 @@ def download_and_extract_ffmpeg(
     data_root: Path | None = None,
     cancelled: threading.Event | None = None,
 ) -> Path:
-    """Install the pinned Linux x86_64 FFmpeg build after binary hash verification."""
+    """Install the pinned LGPL Linux x86_64 FFmpeg build and its notices."""
 
     cancel_event = cancelled or threading.Event()
     if platform.system() != "Linux" or platform.machine().lower() not in {"x86_64", "amd64"}:

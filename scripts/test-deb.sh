@@ -51,7 +51,10 @@ for REQUIRED_PATH in \
     usr/share/icons/hicolor/1024x1024/apps/toolbox.png \
     usr/share/metainfo/io.github.toolbox.Toolbox.appdata.xml \
     usr/share/doc/toolbox-launcher/LICENSE \
+    usr/share/doc/toolbox-launcher/NOTICE \
     usr/share/doc/toolbox-launcher/THIRD_PARTY_NOTICES.md \
+    usr/share/doc/toolbox-launcher/FFMPEG-SOURCE.md \
+    usr/share/doc/toolbox-launcher/licenses/FFMPEG-LGPL-2.1.txt \
     usr/share/doc/toolbox-launcher/licenses/XCB-LICENSE.txt \
     usr/share/doc/toolbox-launcher/licenses/XKBCOMMON-LICENSE.txt
 do
@@ -83,6 +86,14 @@ appstreamcli validate --no-net \
     "$PACKAGE_ROOT/usr/share/metainfo/io.github.toolbox.Toolbox.appdata.xml"
 "$PACKAGE_ROOT/usr/lib/toolbox/_internal/ffmpeg" -version >/dev/null
 "$PACKAGE_ROOT/usr/lib/toolbox/_internal/ffprobe" -version >/dev/null
+FFMPEG_LICENSE_REPORT=$("$PACKAGE_ROOT/usr/lib/toolbox/_internal/ffmpeg" -L 2>&1)
+printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F "GNU Lesser General Public" >/dev/null
+printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F -- "--disable-gpl" >/dev/null
+printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F -- "--disable-nonfree" >/dev/null
+if printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F "GNU General Public License" >/dev/null; then
+    echo "ERROR: Bundled FFmpeg reports GPL code instead of the reviewed LGPL build." >&2
+    exit 1
+fi
 
 env -u PYTHONPATH \
     PATH=/usr/bin:/bin \

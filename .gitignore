@@ -33,6 +33,7 @@ pip-wheel-metadata/
 Toolbox.AppDir/
 dist-appimage/
 dist-deb/
+dist-source/
 *.deb
 *.deb.sha256
 

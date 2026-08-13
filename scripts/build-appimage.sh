@@ -8,7 +8,7 @@ VERSION=${TOOLBOX_VERSION:-}
 ARCHITECTURE=${ARCH:-x86_64}
 PINNED_APPIMAGETOOL_HASH_FILE="$PROJECT_ROOT/packaging/linux/appimagetool-x86_64.sha256"
 PINNED_FFMPEG_HASH_FILE="$PROJECT_ROOT/packaging/linux/ffmpeg-x86_64.sha256"
-PINNED_FFMPEG_ARCHIVE_HASH_FILE="$PROJECT_ROOT/packaging/linux/ffmpeg-archive-x86_64.sha256"
+PINNED_FFMPEG_SOURCE_HASH_FILE="$PROJECT_ROOT/packaging/linux/ffmpeg-source-7.0.2.sha256"
 SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-}
 PYTHONHASHSEED=${PYTHONHASHSEED:-0}
 
@@ -17,6 +17,8 @@ DIST_DIR="$PROJECT_ROOT/dist"
 APPDIR="$PROJECT_ROOT/Toolbox.AppDir"
 OUTPUT_DIR="$PROJECT_ROOT/dist-appimage"
 OUTPUT="$OUTPUT_DIR/Toolbox-$VERSION-$ARCHITECTURE.AppImage"
+FFMPEG_SOURCE_BUNDLE=""
+FFMPEG_RUNTIME_BUNDLE=""
 
 require_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -58,6 +60,18 @@ if ! "$PYTHON_BIN" -c 'import PyInstaller, PySide6' >/dev/null 2>&1; then
     echo "ERROR: PyInstaller and PySide6 must be installed in the build environment." >&2
     exit 1
 fi
+PYSIDE_QT_LIBRARY_DIR=$(
+    "$PYTHON_BIN" -c \
+        'from pathlib import Path; import PySide6; print(Path(PySide6.__file__).resolve().parent / "Qt" / "lib")'
+)
+if [ ! -d "$PYSIDE_QT_LIBRARY_DIR" ]; then
+    echo "ERROR: PySide6 Qt library directory was not found: $PYSIDE_QT_LIBRARY_DIR" >&2
+    exit 1
+fi
+PYINSTALLER_LIBRARY_PATH="$PYSIDE_QT_LIBRARY_DIR"
+if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+    PYINSTALLER_LIBRARY_PATH="$PYINSTALLER_LIBRARY_PATH:$LD_LIBRARY_PATH"
+fi
 
 if [ -z "$VERSION" ]; then
     VERSION=$(
@@ -70,6 +84,28 @@ if ! printf '%s\n' "$VERSION" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._+-]*$'; then
     exit 1
 fi
 OUTPUT="$OUTPUT_DIR/Toolbox-$VERSION-$ARCHITECTURE.AppImage"
+FFMPEG_SOURCE_BUNDLE="$PROJECT_ROOT/dist-source/Toolbox-$VERSION-ffmpeg-7.0.2-source.tar.xz"
+FFMPEG_RUNTIME_BUNDLE="$PROJECT_ROOT/dist-source/Toolbox-$VERSION-ffmpeg-7.0.2-linux-x86_64.tar.xz"
+if [ ! -f "$FFMPEG_SOURCE_BUNDLE" ] || [ ! -f "$FFMPEG_SOURCE_BUNDLE.sha256" ]; then
+    echo "ERROR: Corresponding FFmpeg source release is missing." >&2
+    echo "Run ./scripts/build-bundled-ffmpeg.sh before building the AppImage." >&2
+    exit 1
+fi
+(
+    cd "$(dirname "$FFMPEG_SOURCE_BUNDLE")"
+    sha256sum -c "$(basename "$FFMPEG_SOURCE_BUNDLE").sha256" >/dev/null
+)
+FFMPEG_SOURCE_BUNDLE_SHA256=$(sha256sum "$FFMPEG_SOURCE_BUNDLE" | awk '{ print $1 }')
+if [ ! -f "$FFMPEG_RUNTIME_BUNDLE" ] || [ ! -f "$FFMPEG_RUNTIME_BUNDLE.sha256" ]; then
+    echo "ERROR: Reviewed FFmpeg runtime release is missing." >&2
+    echo "Run ./scripts/build-bundled-ffmpeg.sh before building the AppImage." >&2
+    exit 1
+fi
+(
+    cd "$(dirname "$FFMPEG_RUNTIME_BUNDLE")"
+    sha256sum -c "$(basename "$FFMPEG_RUNTIME_BUNDLE").sha256" >/dev/null
+)
+FFMPEG_RUNTIME_BUNDLE_SHA256=$(sha256sum "$FFMPEG_RUNTIME_BUNDLE" | awk '{ print $1 }')
 
 if [ -z "$APPIMAGETOOL_BIN" ]; then
     if command -v appimagetool >/dev/null 2>&1; then
@@ -110,7 +146,7 @@ find "$OUTPUT_DIR" -maxdepth 1 -type f \
     \( -name 'Toolbox-*.AppImage' -o -name 'Toolbox-*.AppImage.sha256' \) \
     -delete
 
-"$PYTHON_BIN" -m PyInstaller \
+env LD_LIBRARY_PATH="$PYINSTALLER_LIBRARY_PATH" "$PYTHON_BIN" -m PyInstaller \
     --clean \
     --noconfirm \
     --workpath "$BUILD_DIR" \
@@ -130,9 +166,13 @@ install -Dm644 \
     "$PROJECT_ROOT/app/assets/one.png" \
     "$APPDIR/usr/share/icons/hicolor/1024x1024/apps/toolbox.png"
 install -Dm644 "$PROJECT_ROOT/LICENSE" "$APPDIR/usr/share/doc/toolbox/LICENSE"
+install -Dm644 "$PROJECT_ROOT/NOTICE" "$APPDIR/usr/share/doc/toolbox/NOTICE"
 install -Dm644 \
     "$PROJECT_ROOT/THIRD_PARTY_NOTICES.md" \
     "$APPDIR/usr/share/doc/toolbox/THIRD_PARTY_NOTICES.md"
+install -Dm644 \
+    "$PROJECT_ROOT/packaging/linux/FFMPEG-SOURCE.md" \
+    "$APPDIR/usr/share/doc/toolbox/FFMPEG-SOURCE.md"
 install -Dm644 \
     "$PROJECT_ROOT/packaging/linux/licenses/APPIMAGE-RUNTIME-LICENSE.txt" \
     "$APPDIR/usr/share/doc/toolbox/licenses/APPIMAGE-RUNTIME-LICENSE.txt"
@@ -183,6 +223,9 @@ install -Dm644 \
 install -Dm644 \
     /usr/share/common-licenses/GPL-3 \
     "$APPDIR/usr/share/doc/toolbox/licenses/GPL-3.txt"
+install -Dm644 \
+    /usr/share/common-licenses/LGPL-2.1 \
+    "$APPDIR/usr/share/doc/toolbox/licenses/FFMPEG-LGPL-2.1.txt"
 
 {
     echo "Toolbox version: $VERSION"
@@ -226,7 +269,7 @@ if [ -z "$FFMPEG_SOURCE" ] || [ -z "$FFPROBE_SOURCE" ]; then
 fi
 EXPECTED_FFMPEG_SHA256=$(awk '$2 == "ffmpeg" {print $1}' "$PINNED_FFMPEG_HASH_FILE")
 EXPECTED_FFPROBE_SHA256=$(awk '$2 == "ffprobe" {print $1}' "$PINNED_FFMPEG_HASH_FILE")
-EXPECTED_FFMPEG_ARCHIVE_SHA256=$(awk 'NF {print $1; exit}' "$PINNED_FFMPEG_ARCHIVE_HASH_FILE")
+EXPECTED_FFMPEG_SOURCE_SHA256=$(awk 'NF {print $1; exit}' "$PINNED_FFMPEG_SOURCE_HASH_FILE")
 ACTUAL_FFMPEG_SHA256=$(sha256sum "$FFMPEG_SOURCE" | awk '{print $1}')
 ACTUAL_FFPROBE_SHA256=$(sha256sum "$FFPROBE_SOURCE" | awk '{print $1}')
 if [ "$ACTUAL_FFMPEG_SHA256" != "$EXPECTED_FFMPEG_SHA256" ] || \
@@ -234,13 +277,26 @@ if [ "$ACTUAL_FFMPEG_SHA256" != "$EXPECTED_FFMPEG_SHA256" ] || \
     echo "ERROR: FFmpeg input SHA-256 verification failed." >&2
     exit 1
 fi
+FFMPEG_LICENSE_REPORT=$("$FFMPEG_SOURCE" -L 2>&1)
+printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F "GNU Lesser General Public" >/dev/null
+printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F -- "--disable-gpl" >/dev/null
+printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F -- "--disable-nonfree" >/dev/null
+if printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F "GNU General Public License" >/dev/null; then
+    echo "ERROR: FFmpeg input reports GPL code; the official release requires LGPL binaries." >&2
+    exit 1
+fi
 cp "$FFMPEG_SOURCE" "$APPDIR/usr/bin/ffmpeg"
 cp "$FFPROBE_SOURCE" "$APPDIR/usr/bin/ffprobe"
 chmod +x "$APPDIR/usr/bin/ffmpeg" "$APPDIR/usr/bin/ffprobe"
 {
-    echo "FFmpeg version: 7.0.2-static"
-    echo "FFmpeg source: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
-    echo "FFmpeg source archive SHA-256: $EXPECTED_FFMPEG_ARCHIVE_SHA256"
+    echo "FFmpeg version: 7.0.2"
+    echo "FFmpeg license: LGPL-2.1-or-later"
+    echo "FFmpeg source: https://ffmpeg.org/releases/ffmpeg-7.0.2.tar.xz"
+    echo "FFmpeg source archive SHA-256: $EXPECTED_FFMPEG_SOURCE_SHA256"
+    echo "FFmpeg corresponding source asset: $(basename "$FFMPEG_SOURCE_BUNDLE")"
+    echo "FFmpeg corresponding source asset SHA-256: $FFMPEG_SOURCE_BUNDLE_SHA256"
+    echo "FFmpeg runtime asset: $(basename "$FFMPEG_RUNTIME_BUNDLE")"
+    echo "FFmpeg runtime asset SHA-256: $FFMPEG_RUNTIME_BUNDLE_SHA256"
     echo "FFmpeg SHA-256: $ACTUAL_FFMPEG_SHA256"
     echo "FFprobe SHA-256: $ACTUAL_FFPROBE_SHA256"
 } >> "$APPDIR/usr/share/doc/toolbox/build-info.txt"

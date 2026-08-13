@@ -247,6 +247,26 @@ def create_help_tab() -> Tuple[QtWidgets.QWidget, Dict[str, QtWidgets.QWidget]]:
             ),
         )
     )
+    layout.addWidget(
+        _create_help_section(
+            "Licenses and Third-Party Software",
+            (
+                (
+                    "Toolbox source code is licensed under the MIT License. "
+                    "Bundled components retain their own licenses."
+                ),
+                (
+                    "Official Linux AppImage and DEB releases include FFmpeg and "
+                    "FFprobe 7.0.2 as separate programs under LGPL 2.1 or later."
+                ),
+                (
+                    "License, provenance, exact source, checksum, and rebuild "
+                    "information are provided in NOTICE, THIRD_PARTY_NOTICES.md, "
+                    "and the matching FFmpeg source release beside the download."
+                ),
+            ),
+        )
+    )
 
     quick_tips = QtWidgets.QLabel(
         "Tips: Shift-click supports multi-select, Ctrl+Z undoes the last toolbox change, "

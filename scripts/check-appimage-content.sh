@@ -28,13 +28,16 @@ for REQUIRED_PATH in \
     usr/lib/toolbox/toolbox \
     usr/lib/toolbox/_internal/app/assets/one_tray.png \
     usr/share/doc/toolbox/LICENSE \
+    usr/share/doc/toolbox/NOTICE \
     usr/share/doc/toolbox/THIRD_PARTY_NOTICES.md \
+    usr/share/doc/toolbox/FFMPEG-SOURCE.md \
     usr/share/doc/toolbox/licenses/APPIMAGE-RUNTIME-LICENSE.txt \
     usr/share/doc/toolbox/licenses/ICU-LICENSE.txt \
     usr/share/doc/toolbox/licenses/XCB-LICENSE.txt \
     usr/share/doc/toolbox/licenses/XKBCOMMON-LICENSE.txt \
     usr/share/doc/toolbox/licenses/PYTHON-LICENSE.txt \
-    usr/share/doc/toolbox/licenses/PYINSTALLER-COPYING.txt
+    usr/share/doc/toolbox/licenses/PYINSTALLER-COPYING.txt \
+    usr/share/doc/toolbox/licenses/FFMPEG-LGPL-2.1.txt
 do
     if [ ! -e "$EXTRACTED/$REQUIRED_PATH" ]; then
         echo "ERROR: Required AppImage content is missing: $REQUIRED_PATH" >&2
@@ -66,6 +69,14 @@ if [ "${TOOLBOX_EXPECT_BUNDLED_FFMPEG:-0}" = "1" ]; then
     fi
     "$EXTRACTED/usr/bin/ffmpeg" -version >/dev/null
     "$EXTRACTED/usr/bin/ffprobe" -version >/dev/null
+    FFMPEG_LICENSE_REPORT=$("$EXTRACTED/usr/bin/ffmpeg" -L 2>&1)
+    printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F "GNU Lesser General Public" >/dev/null
+    printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F -- "--disable-gpl" >/dev/null
+    printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F -- "--disable-nonfree" >/dev/null
+    if printf '%s\n' "$FFMPEG_LICENSE_REPORT" | grep -F "GNU General Public License" >/dev/null; then
+        echo "ERROR: Bundled FFmpeg reports GPL code instead of the reviewed LGPL build." >&2
+        exit 1
+    fi
     HASH_FILE="$PROJECT_ROOT/packaging/linux/ffmpeg-x86_64.sha256"
     EXPECTED_FFMPEG_SHA256=$(awk '$2 == "ffmpeg" {print $1}' "$HASH_FILE")
     EXPECTED_FFPROBE_SHA256=$(awk '$2 == "ffprobe" {print $1}' "$HASH_FILE")

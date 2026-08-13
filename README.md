@@ -1,12 +1,22 @@
 # Toolbox
 
-Desktop toolbox launcher built with Python and PySide6.
+Cross-platform desktop toolbox launcher built with Python and PySide6.
+
+| Platform | Supported forms | Release scope |
+| --- | --- | --- |
+| Windows | Python source and PyInstaller `.exe` | Windows launcher and EXE build are supported |
+| Linux | Python source, AppImage, and native `.deb` | Linux Mint 22.3 Cinnamon x86_64 is the primary tested release target |
+
+Ready-made AppImage, DEB, and EXE packages include their Python and PySide6
+runtimes; a separate Python installation is needed only to run or build from
+source.
 
 ## Current Version
 
 - Version: `0.45-beta`
 - Linux AppImage build output: `dist-appimage/Toolbox-0.45-beta-x86_64.AppImage`
-- Windows executable builds remain supported by `toolbox_lightweight.spec`
+- Linux DEB build output: `dist-deb/Toolbox-0.45-beta-amd64.deb`
+- Windows executable build output: `dist/toolbox_lightweight.exe`
 
 ## Screenshots
 
@@ -41,12 +51,16 @@ Desktop toolbox launcher built with Python and PySide6.
 - JSON import/export for toolbox state and UI settings
 - Keyboard undo/redo (`Ctrl+Z`, `Ctrl+Y`)
 
-## Requirements
+## Source requirements
 
-- Python 3.11
+- Python 3.11 or newer for the application source
 - PySide6
 - pytest (for running tests)
-- `ffmpeg` (optional, only needed for video thumbnail previews)
+- `ffmpeg` (optional for source runs, only needed for video thumbnail previews)
+
+The Windows setup script intentionally uses Python 3.11. Linux Mint 22.3 uses
+Python 3.12. Official Linux packages include their own reviewed FFmpeg/FFprobe
+build and corresponding-source release.
 
 ## Windows Setup
 
@@ -66,6 +80,27 @@ python -m pip install -r requirements-dev.txt
 On Windows, `start-toolbox.bat` is the recommended launcher. It creates the `.venv`
 with Python 3.11 when needed, installs missing runtime dependencies, and starts the GUI
 with `.venv\Scripts\pythonw.exe`.
+
+## Build the Windows EXE
+
+From an activated Windows development environment:
+
+```powershell
+python -m pip install "pyinstaller>=6,<7"
+python -m PyInstaller --clean --noconfirm toolbox_lightweight.spec
+```
+
+This creates `dist\toolbox_lightweight.exe`. The interactive
+`_pyinstaller_venv_spec_v3.3_debug_fixed.bat` helper can also select the spec,
+prepare an environment, build the EXE, and copy the selected output into the
+project directory.
+
+The normal Windows build does not silently collect FFmpeg from `PATH` or from
+arbitrary project folders. FFmpeg/FFprobe are bundled only when the reviewed
+absolute paths are supplied through `TOOLBOX_FFMPEG_BINARY` and
+`TOOLBOX_FFPROBE_BINARY`. Do not distribute such a Windows build until its exact
+binary provenance, license, and corresponding source have been added to the
+release notices and assets.
 
 ## Linux Development Setup
 
@@ -90,12 +125,21 @@ PyInstaller `onedir` payload to avoid a second extraction step at every launch.
 Qt's XCB cursor, image, utility, and XKB helper libraries are bundled so a
 standard Mint desktop does not need the optional `libxcb-cursor0` or
 `libxkbcommon-x11-0` runtime packages. The AppImage type-2 runtime itself still
-requires the host package `libfuse2t64`.
+requires the host package `libfuse2t64`. The official Linux release includes
+separate FFmpeg/FFprobe 7.0.2 programs built from pinned official source under
+LGPL-2.1-or-later.
 
 ```bash
+sudo apt install build-essential curl pkg-config xz-utils zlib1g-dev
 .venv/bin/python -m pip install -r requirements-build-linux.txt
+./scripts/build-bundled-ffmpeg.sh
 APPIMAGETOOL="$HOME/.local/bin/appimagetool" ./scripts/build-appimage.sh
 ```
+
+`build-bundled-ffmpeg.sh` also creates the mandatory corresponding-source
+release below `dist-source/`. Publish that archive and its checksum next to the
+AppImage and DEB. The AppImage build refuses to proceed if the source release is
+missing or has an invalid checksum.
 
 The build accepts only the pinned `appimagetool` binary by default. Its expected
 SHA-256 is stored in
@@ -117,11 +161,22 @@ The resulting `dist-deb/Toolbox-0.45-beta-amd64.deb` installs Toolbox below
 the native package does not require FUSE. Bundled FFmpeg remains private to
 Toolbox and never replaces `/usr/bin/ffmpeg` or `/usr/bin/ffprobe`.
 
+Install and start it with:
+
+```bash
+sudo apt install ./dist-deb/Toolbox-0.45-beta-amd64.deb
+toolbox
+```
+
 Outputs:
 
 ```text
 dist-appimage/Toolbox-0.45-beta-x86_64.AppImage
 dist-appimage/Toolbox-0.45-beta-x86_64.AppImage.sha256
+dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-source.tar.xz
+dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-source.tar.xz.sha256
+dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-linux-x86_64.tar.xz
+dist-source/Toolbox-0.45-beta-ffmpeg-7.0.2-linux-x86_64.tar.xz.sha256
 ```
 
 Run it:
@@ -137,9 +192,11 @@ If FUSE is unavailable:
 ./dist-appimage/Toolbox-0.45-beta-x86_64.AppImage --appimage-extract-and-run
 ```
 
-The AppImage does not bundle FFmpeg by default. Install the distribution package
-or set `TOOLBOX_FFMPEG_PATH`. A release build can bundle explicitly selected
-binaries through `TOOLBOX_FFMPEG_BINARY` and `TOOLBOX_FFPROBE_BINARY`.
+Official AppImage and DEB releases always contain the pinned, reproducibly built
+FFmpeg and FFprobe binaries. Source runs still use the configured manual path,
+the system `PATH`, or an internal build in that order. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the corresponding-source
+archive for provenance, license, source, and rebuild instructions.
 
 ### Existing configuration
 
@@ -232,8 +289,8 @@ $env:PYTHONPATH='.'
   directly. `Terminal=true` and `DBusActivatable=true` entries are delegated to
   GIO; GIO cannot report every failure that occurs after the desktop system has
   accepted the start request.
-- FFmpeg remains optional and is taken from the configured path or system `PATH`
-  unless explicitly bundled by the release builder.
+- FFmpeg remains optional for source runs. Official Linux AppImage and DEB
+  releases bundle the pinned LGPL build privately for video thumbnails.
 - AppImage desktop-menu installation, automatic updates, signing, and Wayland
   certification are outside this release.
 - A visible Cinnamon/X11 check for panel icon, resizing, HiDPI, and file-manager
@@ -255,9 +312,14 @@ $env:PYTHONPATH='.'
 
 ## Third-Party Licensing
 
-- This project can distribute FFmpeg/FFprobe binaries for video preview support.
-- If FFmpeg is bundled with your release, you must comply with FFmpeg/GPL obligations for that binary build.
-- See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for source references and legal links used by this project.
+- Toolbox source code remains under the MIT License. Bundled components retain
+  their own licenses; see [NOTICE](NOTICE) and
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- Official Linux releases contain FFmpeg/FFprobe 7.0.2 under
+  LGPL-2.1-or-later. Their exact source, signature, license, binary build script,
+  and checksums are provided in the matching `dist-source` release archive.
+- Every download location offering the AppImage or DEB must also offer that
+  corresponding-source archive and clearly link the two.
 
 ## Project Layout
 
@@ -266,7 +328,13 @@ $env:PYTHONPATH='.'
 - `tests/`: unit tests
 - `packaging/linux/`: AppDir metadata and PyInstaller hook
 - `scripts/build-appimage.sh`: reproducible Linux AppImage build
+- `scripts/build-bundled-ffmpeg.sh`: reproducible bundled FFmpeg and source offer
+- `scripts/build-deb.sh`: native Linux Mint/Ubuntu DEB build
+- `toolbox_lightweight.spec`: Windows PyInstaller EXE definition
+- `toolbox_linux.spec`: Linux PyInstaller AppDir definition
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+Toolbox itself is licensed under the MIT License. See [LICENSE](LICENSE).
+Bundled third-party software remains under the licenses listed in
+[NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

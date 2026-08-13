@@ -1,0 +1,12 @@
+Toolbox third-party software notice
+
+The Toolbox source code is licensed under the MIT License in LICENSE.
+
+Release packages can also contain separately licensed third-party software.
+In particular, the official Linux AppImage and DEB releases contain FFmpeg and
+FFprobe as separate executable programs for video-thumbnail generation. Those
+programs remain subject to the GNU Lesser General Public License version 2.1
+or later and are not relicensed under the Toolbox MIT License.
+
+Copyright, license, provenance, corresponding-source, and build information for
+all bundled third-party components is documented in THIRD_PARTY_NOTICES.md.

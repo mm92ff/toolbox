@@ -22,7 +22,12 @@ def _hash(payload: bytes) -> str:
 
 def _archive(path: Path, ffmpeg: bytes, ffprobe: bytes) -> Path:
     with tarfile.open(path, "w:xz") as tar:
-        for name, payload in (("bundle/ffmpeg", ffmpeg), ("bundle/ffprobe", ffprobe)):
+        for name, payload in (
+            ("bundle/ffmpeg", ffmpeg),
+            ("bundle/ffprobe", ffprobe),
+            ("bundle/COPYING.LGPLv2.1", b"LGPL 2.1 test fixture"),
+            ("bundle/README.md", b"Corresponding source test fixture"),
+        ):
             member = tarfile.TarInfo(name)
             member.size = len(payload)
             member.mode = 0o755
@@ -51,6 +56,8 @@ def test_verified_linux_install_uses_user_data_directory(tmp_path: Path) -> None
     assert result.read_bytes() == ffmpeg
     assert result.stat().st_mode & 0o111
     assert result.with_name("ffprobe").read_bytes() == ffprobe
+    assert result.with_name("COPYING.LGPLv2.1").is_file()
+    assert result.with_name("README.md").is_file()
 
 
 def test_hash_mismatch_is_rejected_without_installing(tmp_path: Path) -> None:
@@ -127,9 +134,9 @@ def test_archive_hash_mismatch_is_rejected_before_extraction(tmp_path: Path) -> 
 
 
 def test_runtime_archive_hash_matches_versioned_manifest() -> None:
-    manifest = (
-        PROJECT_ROOT / "packaging" / "linux" / "ffmpeg-archive-x86_64.sha256"
-    ).read_text(encoding="utf-8")
+    manifest = (PROJECT_ROOT / "packaging" / "linux" / "ffmpeg-runtime-7.0.2.sha256").read_text(
+        encoding="utf-8"
+    )
 
     assert manifest.split()[0] == ffmpeg_downloader.EXPECTED_ARCHIVE_SHA256
 

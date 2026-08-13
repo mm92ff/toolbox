@@ -1,7 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
-import shutil
 from pathlib import Path
 
 
@@ -15,41 +14,14 @@ if app_icon_png.is_file():
     datas.append((str(app_icon_png), "app/assets"))
 
 
-def _dedupe_existing_paths(paths: list[Path]) -> list[Path]:
-    seen: set[str] = set()
-    unique: list[Path] = []
-    for path in paths:
-        try:
-            resolved = path.expanduser().resolve()
-        except OSError:
-            continue
-        key = str(resolved).lower() if os.name == "nt" else str(resolved)
-        if key in seen or not resolved.is_file():
-            continue
-        seen.add(key)
-        unique.append(resolved)
-    return unique
-
-
-def _binary_candidates(binary_name: str, env_var: str) -> list[Path]:
-    candidates: list[Path] = []
+def _explicit_optional_binary(binary_name: str, env_var: str) -> tuple[str, str] | None:
     env_override = os.environ.get(env_var, "").strip()
-    if env_override:
-        candidates.append(Path(env_override))
-
-    candidates.extend(
-        [
-            project_root / binary_name,
-            project_root / "bin" / binary_name,
-            project_root / "third_party" / "ffmpeg" / binary_name,
-        ]
-    )
-
-    path_binary = shutil.which(binary_name)
-    if path_binary:
-        candidates.append(Path(path_binary))
-
-    return _dedupe_existing_paths(candidates)
+    if not env_override:
+        return None
+    binary_path = Path(env_override).expanduser().resolve()
+    if not binary_path.is_file():
+        raise FileNotFoundError(f"{env_var} does not point to a file: {binary_path}")
+    return (str(binary_path), ".")
 
 
 def _optional_ffmpeg_binaries() -> list[tuple[str, str]]:
@@ -57,13 +29,12 @@ def _optional_ffmpeg_binaries() -> list[tuple[str, str]]:
     ffprobe_name = "ffprobe.exe" if os.name == "nt" else "ffprobe"
 
     entries: list[tuple[str, str]] = []
-    ffmpeg_candidates = _binary_candidates(ffmpeg_name, "TOOLBOX_FFMPEG_BINARY")
-    if ffmpeg_candidates:
-        entries.append((str(ffmpeg_candidates[0]), "."))
-
-    ffprobe_candidates = _binary_candidates(ffprobe_name, "TOOLBOX_FFPROBE_BINARY")
-    if ffprobe_candidates:
-        entries.append((str(ffprobe_candidates[0]), "."))
+    ffmpeg_entry = _explicit_optional_binary(ffmpeg_name, "TOOLBOX_FFMPEG_BINARY")
+    if ffmpeg_entry is not None:
+        entries.append(ffmpeg_entry)
+    ffprobe_entry = _explicit_optional_binary(ffprobe_name, "TOOLBOX_FFPROBE_BINARY")
+    if ffprobe_entry is not None:
+        entries.append(ffprobe_entry)
     return entries
 
 # Lightweight exclusions: keep QtCore/QtGui/QtWidgets path, strip heavy optional Qt stacks.
